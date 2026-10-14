@@ -28,8 +28,11 @@ interface LastKnown {
   range?: number;
   odo?: number;
   battery?: number;
+  tyres?: Record<string, string | undefined>; // tyre entity -> last 'on' (low) / 'off'
   at?: number; // epoch ms of the newest reading
 }
+
+const TYRES = () => [CAR_DETAIL.tyres.frontLeft, CAR_DETAIL.tyres.frontRight, CAR_DETAIL.tyres.rearLeft, CAR_DETAIL.tyres.rearRight];
 
 // One lookup shared by the card and the detail modal. The 14-day history query
 // takes seconds on the Pi; with a fetch per component the modal opened blank
@@ -40,13 +43,16 @@ let inflight: Promise<LastKnown> | null = null;
 function loadLastKnown(hass: HassApi): Promise<LastKnown> {
   if (shared && Date.now() - shared.fetchedAt < 10 * 60_000) return Promise.resolve(shared.value);
   if (!inflight) {
-    inflight = hass
-      .fetchHistory([CAR.fuel, CAR.range, CAR.odometer, CAR_DETAIL.battery12v], 24 * 14)
-      .then((h) => {
+    inflight = Promise.all([
+      hass.fetchHistory([CAR.fuel, CAR.range, CAR.odometer, CAR_DETAIL.battery12v], 24 * 14),
+      hass.fetchLastStates(TYRES(), 24 * 14),
+    ])
+      .then(([h, tyreStates]) => {
         const latest = (id: string) => h[id]?.[h[id].length - 1];
         const [fuel, range, odo, battery] = [CAR.fuel, CAR.range, CAR.odometer, CAR_DETAIL.battery12v].map(latest);
         const times = [fuel, range, odo].flatMap((pt) => (pt ? [pt.t] : []));
-        const value = { fuel: fuel?.v, range: range?.v, odo: odo?.v, battery: battery?.v, at: times.length ? Math.max(...times) : undefined };
+        const tyres = Object.fromEntries(TYRES().map((id) => [id, tyreStates[id]?.state]));
+        const value = { fuel: fuel?.v, range: range?.v, odo: odo?.v, battery: battery?.v, tyres, at: times.length ? Math.max(...times) : undefined };
         shared = { value, fetchedAt: Date.now() };
         return value;
       })
@@ -113,6 +119,7 @@ function useCar() {
     rangeKm: num(range) ?? last?.range,
     odoKm: num(odo) ?? last?.odo,
     battery12vPct: num(battery) ?? last?.battery,
+    lastTyres: last?.tyres,
     // When the shown values were last fresh: the car's own timestamp, else history.
     seenAgo: relTime(updated?.state) || relTime(last?.at),
   };
@@ -163,13 +170,16 @@ function LockButton({ locked, disabled }: { locked: boolean; disabled: boolean }
   );
 }
 
-function Tyre({ entity, label }: { entity: string; label: string }) {
+// `last` is the last known state, used while the car is offline (dimmed).
+function Tyre({ entity, label, last }: { entity: string; label: string; last?: string }) {
   const e = useEntity(entity);
-  const low = e?.state === 'on';
+  const live = !isUnavailable(e);
+  const state = live ? e!.state : last;
+  const low = state === 'on';
   return (
-    <div className={`tyre ${low ? 'low' : ''}`}>
+    <div className={`tyre ${low ? 'low' : ''} ${!live && state ? 'last-known' : ''}`}>
       <div className="label">{label}</div>
-      <div className="tyre-val">{isUnavailable(e) ? '–' : low ? 'Low' : 'OK'}</div>
+      <div className="tyre-val">{state === undefined ? '–' : low ? 'Low' : 'OK'}</div>
     </div>
   );
 }
@@ -202,9 +212,10 @@ function CarDetail() {
   const hass = useHass();
   const car = useCar();
   const climate = useEntity(CAR_DETAIL.climate);
-  const tyreWarn = [CAR_DETAIL.tyres.frontLeft, CAR_DETAIL.tyres.frontRight, CAR_DETAIL.tyres.rearLeft, CAR_DETAIL.tyres.rearRight];
-  const tyres = useEntities(tyreWarn);
-  const anyTyre = tyres.some((t) => t?.state === 'on');
+  const tyres = useEntities(TYRES());
+  const tyreState = (i: number) => (isUnavailable(tyres[i]) ? car.lastTyres?.[TYRES()[i]] : tyres[i]?.state);
+  const anyTyre = tyres.some((_, i) => tyreState(i) === 'on');
+  const tyresFromHistory = car.offline && tyres.some((_, i) => isUnavailable(tyres[i]) && tyreState(i) !== undefined);
   const fuelPct = car.fuelPct;
   const lat = car.tracker?.attributes.latitude as number | undefined;
   const lng = car.tracker?.attributes.longitude as number | undefined;
@@ -248,16 +259,17 @@ function CarDetail() {
         <div className="car-status card">
           <header className="panel-head">
             <h2 className="label">Car status</h2>
-            {anyTyre && <span className="chip warn">Tyre check suggested</span>}
+            {anyTyre && <span className="chip warn">{tyresFromHistory ? 'Low tyre (last known)' : 'Tyre check suggested'}</span>}
             {car.activeWarnings.map((w) => <span key={w.entity} className="chip warn">{w.name}</span>)}
           </header>
           <div className="tyre-grid">
-            <Tyre entity={CAR_DETAIL.tyres.frontLeft} label="Front left" />
+            <Tyre entity={CAR_DETAIL.tyres.frontLeft} label="Front left" last={car.lastTyres?.[CAR_DETAIL.tyres.frontLeft]} />
             <div className="car-top"><CarTopView /></div>
-            <Tyre entity={CAR_DETAIL.tyres.frontRight} label="Front right" />
-            <Tyre entity={CAR_DETAIL.tyres.rearLeft} label="Rear left" />
-            <Tyre entity={CAR_DETAIL.tyres.rearRight} label="Rear right" />
+            <Tyre entity={CAR_DETAIL.tyres.frontRight} label="Front right" last={car.lastTyres?.[CAR_DETAIL.tyres.frontRight]} />
+            <Tyre entity={CAR_DETAIL.tyres.rearLeft} label="Rear left" last={car.lastTyres?.[CAR_DETAIL.tyres.rearLeft]} />
+            <Tyre entity={CAR_DETAIL.tyres.rearRight} label="Rear right" last={car.lastTyres?.[CAR_DETAIL.tyres.rearRight]} />
           </div>
+          {tyresFromHistory && <div className="muted small tyre-note">Tyre pressure: last known{car.seenAgo ? `, from ${car.seenAgo}` : ''}</div>}
           <div className="chips-row">
             {CAR_DETAIL.openings.map((o) => <Opening key={o.name} {...o} />)}
           </div>

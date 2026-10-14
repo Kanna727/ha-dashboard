@@ -92,6 +92,13 @@ const CAR_HISTORY: Record<string, number> = {
   'sensor.car_car_battery_level': 82,
 };
 const carHistory = (v: number): HistoryPoint[] => [{ t: Date.now() - 3 * 3600_000, v }];
+// Last known tyre warnings (front left low), for the same offline state.
+const CAR_LAST_STATES: Record<string, string> = {
+  'binary_sensor.car_tire_pressure_front_left': 'on',
+  'binary_sensor.car_tire_pressure_front_right': 'off',
+  'binary_sensor.car_tire_pressure_rear_left': 'off',
+  'binary_sensor.car_tire_pressure_rear_right': 'off',
+};
 
 // ?mockSync=<ms> simulates a slow connect (status 'connecting' -> 'live');
 // ?mockSync=reconnect stays in 'reconnecting'. Lets the sync indicator be tested.
@@ -141,6 +148,12 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         if (entityIds.some((id) => CAR_HISTORY[id])) await new Promise((r) => setTimeout(r, 1500));
         return Object.fromEntries(
           entityIds.map((id) => [id, CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : fakeHistory(1400, hours)]),
+        );
+      },
+      async fetchLastStates(entityIds) {
+        if (entityIds.some((id) => CAR_LAST_STATES[id])) await new Promise((r) => setTimeout(r, 1500));
+        return Object.fromEntries(
+          entityIds.map((id) => [id, CAR_LAST_STATES[id] ? { state: CAR_LAST_STATES[id], t: Date.now() - 3 * 3600_000 } : undefined]),
         );
       },
       subscribeForecast(_id, type, cb) {

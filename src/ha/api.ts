@@ -59,6 +59,11 @@ export interface RegistrySnapshot {
   entities: RegistryEntity[];
 }
 
+export interface LastState {
+  state: string;
+  t: number;
+}
+
 export interface HassTarget {
   entity_id?: string | string[];
   area_id?: string | string[];
@@ -72,6 +77,9 @@ export interface HassTarget {
 export interface HassApi {
   callService(domain: string, service: string, data?: Record<string, unknown>, target?: HassTarget): Promise<unknown>;
   fetchHistory(entityIds: string[], hours: number): Promise<Record<string, HistoryPoint[]>>;
+  // Each entity's newest state in the window that isn't unavailable/unknown, with
+  // its time in ms. For last-known values of non-numeric entities (e.g. binary sensors).
+  fetchLastStates(entityIds: string[], hours: number): Promise<Record<string, LastState | undefined>>;
   subscribeForecast(entityId: string, type: 'daily' | 'hourly', cb: (days: ForecastDay[]) => void): () => void;
   fetchTodo(entityId: string): Promise<TodoItem[]>;
   // Raw Lovelace config of a storage dashboard (authenticated WS call).
