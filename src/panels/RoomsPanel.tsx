@@ -8,6 +8,7 @@ import { MediaCard } from '../components/MediaCard';
 import { EntityTile } from '../components/EntityTile';
 import { Icon, type IconName } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
+import { useSlide } from '../hooks/useSlide';
 import type { HassEntities } from 'home-assistant-js-websocket';
 
 const lightsOf = (r: RoomDef) => r.controls.filter((c) => c.entity.startsWith('light.')).map((c) => c.entity);
@@ -89,6 +90,24 @@ function RoomRow({ room }: { room: RoomDef }) {
   // Dishwasher cycle progress, drawn as a read-only fill behind the card.
   const progress = room.appliances?.includes('dishwasher') ? appStatus.dishwasher.pct : undefined;
 
+  // The quick fan's speed, drawn as a fill behind the card; sliding across the
+  // card sets it (snapped to the fan's speed steps; all the way left = off).
+  const isFan = room.quick?.kind === 'fan';
+  const fanStep = (quick?.attributes.percentage_step as number | undefined) || 100 / 6;
+  const fanPct = isOn(quick) ? ((quick?.attributes.percentage as number | undefined) ?? 100) : 0;
+  const fanSlide = useSlide({
+    value: fanPct,
+    step: fanStep,
+    enabled: isFan && !!quick && quick.state !== 'unavailable',
+    onCommit: (v) => {
+      const target = { entity_id: room.quick!.entity };
+      if (v <= 0) hass.callService('fan', 'turn_off', {}, target);
+      else hass.callService('fan', 'set_percentage', { percentage: Math.round(v) }, target);
+    },
+  });
+  const fanSpeeds = Math.round(100 / fanStep);
+  const fanSpeed = Math.round(fanSlide.value / fanStep);
+
   // Climate first, then what's running: lights, running appliances, else the first other device that's on.
   const status: string[] = [];
   if (lit) status.push(`${lit} light${lit > 1 ? 's' : ''}`);
@@ -113,18 +132,29 @@ function RoomRow({ room }: { room: RoomDef }) {
     hass.callService(room.quick.entity.split('.')[0], 'toggle', {}, { entity_id: room.quick.entity });
   };
   const quickName = room.quick?.kind === 'geyser' ? 'geyser' : (quick?.attributes.friendly_name as string | undefined) ?? 'fan';
+  const fanLabel = room.controls.find((c) => c.entity === room.quick?.entity)?.name ?? 'Fan';
+  // While sliding, the subtitle shows the speed being set instead of the room status.
+  const subtitle = fanSlide.sliding ? `${fanLabel} · ${fanSpeed ? `speed ${fanSpeed}/${fanSpeeds}` : 'off'}` : parts.join(' · ');
   const openDetail = () => modal.open({ title: room.name, icon: room.icon as IconName, accent: lit ? 'var(--accent-light)' : undefined, body: <RoomDetail room={room} /> });
 
   return (
     <div
-      className={`room-row ${lit ? 'lit' : ''} ${held.length ? 'fan-held' : ''}`}
+      className={`room-row ${lit ? 'lit' : ''} ${held.length ? 'fan-held' : ''} ${isFan ? 'slidable' : ''} ${fanSlide.sliding ? 'sliding' : ''}`}
       role="button"
       tabIndex={0}
       onClick={openDetail}
+      aria-keyshortcuts={isFan ? 'ArrowLeft ArrowRight' : undefined}
+      title={isFan ? `Slide across to set the ${fanLabel.toLowerCase()} speed` : undefined}
+      {...(isFan ? fanSlide.handlers : {})}
     >
       {progress !== undefined && (
         <span className="room-row-progress" aria-hidden="true">
           <span style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
+        </span>
+      )}
+      {isFan && fanSlide.value > 0 && (
+        <span className="room-row-progress fan" aria-hidden="true">
+          <span style={{ width: `${fanSlide.value}%` }} />
         </span>
       )}
       <div className="room-row-top">
@@ -168,7 +198,7 @@ function RoomRow({ room }: { room: RoomDef }) {
         {occupied && <span className="presence-dot" title="Someone's here" />}
         {doorOpen && <Icon name="doorOpen" size={14} className="door-warn" />}
       </span>
-      <span className={`room-row-sub ${lit ? 'lit' : ''}`}>{parts.join(' · ')}</span>
+      <span className={`room-row-sub ${lit ? 'lit' : ''}`}>{subtitle}</span>
       {held.length > 0 && (
         <span className="hold-note">{held.length > 1 ? 'Fans' : held[0].name.toLowerCase().includes('fan') ? held[0].name : `${held[0].name} fan`} on manual override</span>
       )}
