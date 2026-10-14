@@ -158,8 +158,11 @@ function RoomRow({ room }: { room: RoomDef }) {
       )}
       {isFan && fanSlide.value > 0 && (
         <span className="room-row-progress fan" aria-hidden="true">
-          {/* Airflow stripes speed up with the fan: ~3 s per cycle at speed 1, ~0.5 s at 6. */}
-          <span style={{ width: `${fanSlide.value}%`, ['--fan-dur' as string]: `${(3.2 / Math.max(1, fanSpeed)).toFixed(2)}s` }} />
+          {/* Breeze wisps drifting across the fill; one crossing takes ~3.3 s at speed 1, ~1.8 s at 6
+              (and the fill is wider at higher speeds, so they also travel further). */}
+          <span style={{ width: `${fanSlide.value}%`, ['--fan-dur' as string]: `${(3.6 - 0.3 * Math.max(1, fanSpeed)).toFixed(2)}s` }}>
+            <i /><i /><i /><i />
+          </span>
         </span>
       )}
       <div className="room-row-top">
