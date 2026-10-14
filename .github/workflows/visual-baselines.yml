@@ -1,19 +1,25 @@
 name: Update visual baselines
 
 # Regenerates tests/visual/__screenshots__ on Linux (where CI compares them) and
-# commits them to the branch it runs on. Run it on a PR branch after an
-# intended visual change, then re-run CI on that branch.
+# commits them to the branch. After an intended visual change, either add the
+# `update-baselines` label to the PR or run this workflow on the PR's branch;
+# then re-run CI on that branch (pushes by this workflow don't trigger CI).
 on:
   workflow_dispatch:
+  pull_request:
+    types: [labeled]
 
 permissions:
   contents: write
 
 jobs:
   update:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'update-baselines'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
