@@ -47,7 +47,9 @@ Create an automation in YAML mode. Replace the two placeholders:
 alias: Dashboard - install release
 description: >-
   Called by the GitHub release workflow over Tailscale. Downloads the release's
-  index.html into www/dashboard, then updates the build helper so kiosks reload.
+  files (index.html and the app-install files) into www/dashboard, then updates
+  the build helper so kiosks reload. Accepts {version, url} or
+  {version, files: [{name, url}]}.
 mode: queued
 triggers:
   - trigger: webhook
@@ -57,50 +59,63 @@ triggers:
 conditions:
   - condition: template
     value_template: >-
-      {{ trigger.json is defined
-         and (trigger.json.version | default('')) is match('^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')
-         and (trigger.json.url | default('')) is match('^https://[a-z-]+\.githubusercontent\.com/[^/]+/<REPO_ID>/') }}
+      {%- set allowed = ['index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'] -%}
+      {%- set j = trigger.json if trigger.json is defined else {} -%}
+      {%- set files = j.files if j.files is defined else [{'name': 'index.html', 'url': j.url | default('')}] -%}
+      {{ (j.version | default('')) is match('^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')
+         and files | count > 0
+         and files | map(attribute='name') | reject('in', allowed) | list | count == 0
+         and files | map(attribute='url') | reject('match', '^https://[a-z-]+\.githubusercontent\.com/[^/]+/<REPO_ID>/') | list | count == 0 }}
 actions:
-  # download_file may block until the file is saved, so listen for the result
-  # in parallel; a wait started afterwards would miss the event.
-  - parallel:
-      - sequence:
-          - wait_for_trigger:
-              - trigger: event
-                event_type: downloader_download_completed
-                event_data: { filename: index.html }
-              - trigger: event
-                event_type: downloader_download_failed
-                event_data: { filename: index.html }
-            timeout: "00:02:00"
-            continue_on_timeout: true
-          - if:
-              - condition: template
-                value_template: "{{ wait.trigger is not none and wait.trigger.event.event_type == 'downloader_download_completed' }}"
-            then:
-              # Keep the config half of "<version>/<config hash>"; only the app changed.
-              - action: input_text.set_value
-                target:
-                  entity_id: input_text.dashboard_build
-                data:
-                  value: "{{ trigger.json.version }}/{{ (states('input_text.dashboard_build').split('/'))[1] | default('none') }}"
-            else:
-              - action: persistent_notification.create
-                data:
-                  title: Dashboard deploy failed
-                  message: "Release v{{ trigger.json.version }} could not be downloaded."
-      - sequence:
-          - delay: { milliseconds: 500 }
-          - action: downloader.download_file
-            data:
-              url: "{{ trigger.json.url }}"
-              filename: index.html
-              overwrite: true
+  - variables:
+      files: "{{ trigger.json.files if trigger.json.files is defined else [{'name': 'index.html', 'url': trigger.json.url}] }}"
+      failed: false
+  - repeat:
+      for_each: "{{ files }}"
+      sequence:
+        # download_file may block until the file is saved, so listen for the
+        # result in parallel; a wait started afterwards would miss the event.
+        - parallel:
+            - sequence:
+                - wait_for_trigger:
+                    - trigger: event
+                      event_type: downloader_download_completed
+                    - trigger: event
+                      event_type: downloader_download_failed
+                  timeout: "00:02:00"
+                  continue_on_timeout: true
+                - if:
+                    - condition: template
+                      value_template: "{{ wait.trigger is none or wait.trigger.event.event_type != 'downloader_download_completed' }}"
+                  then:
+                    - variables: { failed: true } # updates the outer variable
+            - sequence:
+                - delay: { milliseconds: 500 }
+                - action: downloader.download_file
+                  data:
+                    url: "{{ repeat.item.url }}"
+                    filename: "{{ repeat.item.name }}"
+                    overwrite: true
+  - if:
+      - condition: template
+        value_template: "{{ not failed }}"
+    then:
+      # Keep the config half of "<version>/<config hash>"; only the app changed.
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.dashboard_build
+        data:
+          value: "{{ trigger.json.version }}/{{ (states('input_text.dashboard_build').split('/'))[1] | default('none') }}"
+    else:
+      - action: persistent_notification.create
+        data:
+          title: Dashboard deploy failed
+          message: "Release v{{ trigger.json.version }}: a file could not be downloaded, so open dashboards were not told to reload."
 ```
 
 The helper `input_text.dashboard_build` (max length 64) must exist and already hold `<version>/<config hash>`, and the config must be in HA: do the first deploy with `python scripts/deploy.py` (with `HA_URL` and an admin `HA_TOKEN`), which also creates the hidden `dashboard-config` dashboard that holds your config.
 
-To test without CI, POST the same payload from a machine on your LAN: `{"version": "<x.y.z>", "url": "<signed asset URL>"}` to `http://homeassistant.local/api/webhook/<WEBHOOK_ID>`.
+To test without CI, POST the same payload from a machine on your LAN: `{"version": "<x.y.z>", "files": [{"name": "index.html", "url": "<signed asset URL>"}]}` to `http://homeassistant.local/api/webhook/<WEBHOOK_ID>`.
 
 ## 5. GitHub secrets
 

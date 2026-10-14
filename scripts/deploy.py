@@ -145,6 +145,10 @@ def main():
 
     target = Path(args.target)
     if not args.config_only:
+        # App-install files (manifest, icons) first, index.html last.
+        for extra in ("manifest.webmanifest", "icon-192.png", "icon-512.png", "apple-touch-icon.png"):
+            if (dist / extra).exists():
+                copy(dist / extra, target)
         print(f"copied -> {copy(dist / 'index.html', target)}")
         # Older versions served the config publicly as config.js; it lives in HA now.
         (target / "config.js").unlink(missing_ok=True)
