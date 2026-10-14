@@ -23,7 +23,7 @@ export interface RoomDef {
   // Second one-tap button on the room row, next to the lights button.
   quick?: { entity: string; kind: 'fan' | 'geyser' };
   // Status buttons on the room card; tap opens the appliance details (never toggles power).
-  appliances?: ('washer' | 'dishwasher')[];
+  appliances?: ('washer' | 'dishwasher' | 'purifier')[];
   // Extra cards shown in the room's detail modal.
   detailCards?: ('climate' | 'media')[];
 }
@@ -63,6 +63,19 @@ export interface DashboardConfig {
   APPLIANCES: {
     dishwasher: { state: string; progress: string; finish: string; connectivity: string };
     washer: { running: string; power: string; door: string };
+    // Optional (added after the config moved into HA): a water purifier with
+    // TDS readings. The dashboard may change its mode (two taps) and refresh it.
+    purifier?: {
+      name?: string; // default 'Water purifier'
+      tankTds: string; // ppm of the purified water
+      inputTds?: string; // ppm of the incoming water
+      tankFull?: string; // binary_sensor, on = full
+      mode?: string; // select.* purification mode
+      fallbackMode?: string; // select.*, shown while the mode is Adaptive
+      refresh?: string; // button.* asking the cloud for new readings
+      lastReported?: string; // timestamp sensor
+      faults?: NamedEntity[]; // problem binary_sensors, on = fault
+    };
   };
   MEDIA: NamedEntity[];
   MUSIC_PLAYERS: NamedEntity[];

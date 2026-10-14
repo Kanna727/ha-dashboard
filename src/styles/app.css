@@ -566,7 +566,8 @@ button.wide { width: 100%; }
 .room-row-sub.lit { color: var(--accent-light); font-weight: 600; }
 .presence-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); flex-shrink: 0; }
 .door-warn { color: var(--warn); flex-shrink: 0; }
-.row-buttons { display: flex; gap: 8px; flex-shrink: 0; }
+/* margin-left: auto keeps the buttons right-aligned when the room icon is hidden. */
+.row-buttons { display: flex; gap: 8px; flex-shrink: 0; margin-left: auto; }
 .row-btn {
   --tint: var(--accent-light);
   width: 46px; height: 46px; border-radius: 15px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
@@ -576,9 +577,15 @@ button.wide { width: 100%; }
 .row-btn.geyser { --tint: #fb923c; }
 .row-btn.washer { --tint: var(--accent-energy); }
 .row-btn.dishwasher { --tint: #2dd4bf; }
+.row-btn.purifier { --tint: var(--accent-fan); }
+/* Purifier fault: amber outline rather than a fill (it isn't "running"). */
+.row-btn.fault { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--tile)); }
 /* An odd last room card (Utility) spans both columns instead of leaving a hole,
    which also gives its three buttons room. */
 .room-rows > .room-row:last-child:nth-child(odd) { grid-column: 1 / -1; }
+/* A half-width card can't fit the room icon plus three buttons (e.g. Kitchen:
+   purifier, fan, lights); the buttons win and the name still says which room. */
+.room-rows > .room-row:not(:last-child:nth-child(odd)):has(.row-buttons > :nth-child(3)) .room-row-icon { display: none; }
 .detail-card { margin-top: 16px; }
 .detail-card .card { margin: 0; }
 .leave-home { color: var(--accent); }
@@ -789,6 +796,21 @@ button.wide { width: 100%; }
 .appliance.running > svg { color: var(--accent-energy); }
 .app-body, .media-info { flex: 1; min-width: 0; display: grid; gap: 6px; }
 .app-title { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; font-weight: 700; }
+/* Water purifier (Appliances card) */
+.purifier + .appliance, .appliance + .purifier { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.purifier .appliance > svg { color: var(--accent-fan); }
+.purifier.fault .appliance > svg { color: var(--warn); }
+.purifier-tds { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+.purifier-tds .stat-val { margin-top: 0; }
+.purifier-tds .stat-val small { font-size: 13px; font-weight: 600; color: var(--muted); }
+.purifier-chart { margin-top: 6px; display: grid; gap: 4px; }
+.mode-chips { margin-top: 6px; }
+.purifier-chart + .purifier-note { margin-top: 12px; }
+.mode-chips .chip-btn { text-transform: none; }
+.mode-chips .chip-btn.active { background: color-mix(in srgb, var(--accent-fan) 22%, transparent); color: var(--accent-fan); }
+.mode-chips .chip-btn.armed { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.purifier-note { margin-top: 6px; }
+.purifier-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; }
 .media-row.playing > svg { color: var(--accent); }
 .media-info { gap: 2px; font-size: 15px; font-weight: 600; }
 .wobble { animation: wobble 0.5s ease-in-out infinite; }
