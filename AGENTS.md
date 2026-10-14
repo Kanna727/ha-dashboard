@@ -90,7 +90,7 @@ python3 scripts/deploy.py --build-only   # build with the real version, no copy
 - Boot (`main.tsx`): use the embedded config, else the device cache (`localStorage.dashConfig`). With one, set `window.__DASHBOARD_CONFIG__` **synchronously, before any `await`**, then render. Without one (a device's first visit), connect (OAuth if needed), fetch with `lovelace/config`, cache it, and **reload**; the next load starts from the cache. If caching fails (storage blocked) it shows a message instead of looping.
 - **Why the reload:** `vite-plugin-singlefile` inlines dynamic imports, so `import('./App')` is not lazy. Every app module runs as soon as `main.tsx` yields (its first `await`), whether or not the config has arrived. `entities.ts` therefore falls back to a complete `EMPTY` config so that module-level code (`TopBar`'s `LEAVE_ROOMS`, `MealsPanel`'s destructure) can't crash, and the app is never rendered with it. Don't add module-level code that assumes real config values, and don't move the window assignment after an `await`. The mock can't catch this (its config is embedded and set synchronously), so test the production boot as described under Verifying UI changes.
 - When the helper's config half changes, `useSelfUpdate` fetches the new config into the cache before reloading.
-- When adding a config key: update `types.ts`, both config files, the export list in `entities.ts`, and `mock/fixtures.ts` if it needs states.
+- When adding a config key: update `types.ts`, both config files, the export list in `entities.ts`, and `mock/fixtures.ts` if it needs states. **New keys must be optional with defaults in `entities.ts`** (e.g. `ALERTS = { chime: true, doorOpenMinutes: 3, ...cfg.ALERTS }`): the config stored in HA can be older than the deployed app, and a required key it lacks would crash every screen. Push the real config to HA afterwards so its copy matches the file.
 
 ## Releases and deploys
 
@@ -144,6 +144,10 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - Tweaks: raindrops are thickened (they almost vanish at 36–44 px); `cloudy` uses grey-recoloured overcast art; `pouring` gets a grey cloud with fatter drops, to tell it apart from `rainy`.
 - The URI cache is keyed by the **full SVG string**. Recoloured variants share length and suffix with their source, and an earlier shorter key made them collide.
 - On the light theme, `.wx-img` gets a soft drop shadow so white clouds stay visible.
+
+## Done and door alerts
+
+`components/Alerts.tsx` (mounted in `App.tsx` inside `ToastProvider`) watches live data only, never the cached snapshot: the washer `running` flag going on → off, the dishwasher going from running (progress 0–100 %) to not, and any room or fridge door open longer than `ALERTS.doorOpenMinutes` (default 3, once per open episode). Decisions are in `src/lib/alerts.ts` (unit-tested; the first reading after load never counts). `components/Toasts.tsx` shows stacked banners top-right (full width on phones) for 15 s; tap to dismiss. `src/lib/chime.ts` plays a soft two-tone chime via Web Audio when `ALERTS.chime` (default true); the audio context is created/resumed on the first touch because iOS blocks audio until then, so the chime is silent before any interaction. To test in the mock: `__mockPatch('input_boolean.washing_machine_running', { state: 'off' })` after it was on; for doors, shift `Date` forward past the limit.
 
 ## Forecast sharing and the rain nudge
 

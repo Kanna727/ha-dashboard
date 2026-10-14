@@ -68,6 +68,9 @@ export const {
   MEALS,
 } = cfg;
 
+// Optional settings, with defaults for configs stored before they existed.
+export const ALERTS = { chime: true, doorOpenMinutes: 3, ...cfg.ALERTS };
+
 // Deploys write "<app version>/<config hash>" here; open pages reload when it
 // stops matching what they run (see update/useSelfUpdate.ts).
 export const BUILD_HELPER = 'input_text.dashboard_build';
