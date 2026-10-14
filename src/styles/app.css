@@ -587,6 +587,8 @@ button.wide { width: 100%; }
 .tyre-grid .tyre:nth-child(1), .tyre-grid .tyre:nth-child(4) { text-align: right; }
 .tyre-val { font-size: 24px; font-weight: 800; margin-top: 2px; }
 .tyre.low .tyre-val { color: var(--warn); }
+.tyre.last-known .tyre-val { opacity: 0.6; }
+.tyre-note { text-align: center; margin: -4px 0 8px; }
 .car-actions { display: grid; grid-template-columns: 1fr auto 1.3fr; gap: 12px; align-items: center; padding-top: 8px; border-top: 1px solid var(--border); }
 .car-lock-state { font-size: 22px; font-weight: 800; margin: 2px 0; }
 .big-btn {

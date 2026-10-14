@@ -16,6 +16,7 @@ import {
   type ForecastDay,
   type HassApi,
   type HistoryPoint,
+  type LastState,
   type TodoItem,
 } from './api';
 import { loadSnapshot, persistSnapshots } from './snapshot';
@@ -97,6 +98,25 @@ export const haApi: HassApi = {
     const out: Record<string, HistoryPoint[]> = {};
     for (const [id, rows] of Object.entries(res)) {
       out[id] = rows.map((r) => ({ t: r.lu * 1000, v: parseFloat(r.s) })).filter((p) => Number.isFinite(p.v));
+    }
+    return out;
+  },
+  async fetchLastStates(entityIds, hours) {
+    const conn = await getConnection();
+    const start = new Date(Date.now() - hours * 3600_000).toISOString();
+    const res = await conn.sendMessagePromise<Record<string, { s: string; lu: number }[]>>({
+      type: 'history/history_during_period',
+      start_time: start,
+      entity_ids: entityIds,
+      minimal_response: true,
+      no_attributes: true,
+      significant_changes_only: false,
+    });
+    const out: Record<string, LastState | undefined> = {};
+    for (const id of entityIds) {
+      const rows = (res[id] ?? []).filter((r) => r.s !== 'unavailable' && r.s !== 'unknown');
+      const r = rows[rows.length - 1];
+      out[id] = r ? { state: r.s, t: r.lu * 1000 } : undefined;
     }
     return out;
   },
