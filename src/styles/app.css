@@ -460,6 +460,11 @@ button.wide { width: 100%; }
 .room-row { position: relative; isolation: isolate; }
 .room-row-progress { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none; }
 .room-row-progress > span { position: absolute; top: 0; bottom: 0; left: 0; background: color-mix(in srgb, #2dd4bf 24%, transparent); border-right: 2px solid color-mix(in srgb, #2dd4bf 70%, transparent); transition: width 1s ease; }
+/* Quick-fan speed: slide across the card to set it (see hooks/useSlide.ts). */
+.room-row.slidable { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.room-row-progress.fan > span { background: color-mix(in srgb, var(--accent-fan) 18%, transparent); border-right-color: color-mix(in srgb, var(--accent-fan) 70%, transparent); transition: width 0.35s ease; }
+.room-row.sliding .room-row-progress.fan > span { transition: none; background: color-mix(in srgb, var(--accent-fan) 28%, transparent); }
+.room-row.sliding { border-color: color-mix(in srgb, var(--accent-fan) 60%, transparent); }
 .hold-badge { position: absolute; top: -5px; right: -5px; width: 19px; height: 19px; border-radius: 50%; display: grid; place-items: center; background: var(--danger); color: #fff; border: 2px solid var(--card); }
 .hold-banner { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; padding: 12px 14px; border-radius: 16px; font-size: 14px; line-height: 1.35; color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
 .hold-banner svg { flex-shrink: 0; margin-top: 1px; }

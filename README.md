@@ -16,7 +16,7 @@ A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lo
 ## Highlights
 
 - **Three layouts**: a 3-column tablet kiosk, a 4-column desktop, and a phone layout with bottom tabs (`?layout=tablet|desktop|phone`, or picked from the viewport).
-- **Rooms at a glance**: one-tap lights and fan/geyser buttons, presence, temperature and humidity, and long-press for brightness or fan speed.
+- **Rooms at a glance**: one-tap lights and fan/geyser buttons, presence, temperature and humidity. Each room's fan speed is drawn across its card; slide sideways to change it.
 - **Live energy tree**: the top consumers right now. New smart plugs are discovered automatically, with no list to maintain.
 - **Weather** with animated skies, plus a car card, commute traffic (Google Routes), media, appliances and a meal plan.
 - **Instant loads**: a single self-contained file that paints from a cached snapshot in ~80 ms, then syncs live over the HA WebSocket API.
