@@ -11,3 +11,9 @@ CLAUDE.local.md
 .privacy-patterns
 *.local.*
 .DS_Store
+
+# 3D car models: licensed for use, not redistribution. Downloads go in
+# model-src/, the optimised .glb is copied to HA's /config/www/ by hand.
+model-src/
+*.glb
+*.gltf

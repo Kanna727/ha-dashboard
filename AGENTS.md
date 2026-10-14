@@ -146,6 +146,13 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - The URI cache is keyed by the **full SVG string**. Recoloured variants share length and suffix with their source, and an earlier shorter key made them collide.
 - On the light theme, `.wx-img` gets a soft drop shadow so white clouds stay visible.
 
+## 3D car model
+
+The car modal can show a 3D model of the owner's car instead of the photo (`CAR_DETAIL.model`, optional; without it, or when WebGL or the file fails, the photo stays).
+
+- **Never commit model files.** Downloaded models (e.g. Sketchfab "Standard"/"Free Standard") may be used in the app but not redistributed. `.gitignore` covers `model-src/` (where the owner drops downloads), `*.glb` and `*.gltf`. The optimised `.glb` is copied by hand to HA's `/config/www/` (next to the car photo), so it is served from `/local/` but never in a release or the repo. Don't name the owner's car model in tracked files (the privacy check blocks it).
+- **Optimising** (`scripts/car-model/`, its own `package.json`, not part of the app build or CI): `cd scripts/car-model && npm install && node optimize.mjs <scene.gltf> <out.glb> [--ratio 0.45] [--texture 1024]`. It runs dedup → prune (`keepLeaves`, so empty hinge/pivot nodes survive) → weld → meshopt simplify → resample (drops constant keyframes) → WebP textures ≤ 1024 px → meshopt compression; node names and animations are kept because the viewer finds doors, wheels and lamps by name. On Windows run it in the local build dir (`BUILD_DIR`; node_modules can't live on Google Drive). Keep its `sharp` on the same version that `@gltf-transform/functions` pulls in through `ndarray-pixels` (`npm ls sharp` must show one copy): two libvips copies in one process fail every encode with "colourspace: parameter space not set". The current model came out at ~308k triangles, 7.6 MB (from 500k, 35 MB).
+
 ## Phone app install
 
 `public/manifest.webmanifest` (start URL `./index.html?layout=phone`, standalone) and icons, linked from `index.html`; Vite copies `public/` into `dist/` next to the single-file bundle. Chrome only offers "Install app" on HTTPS, so install from the Funnel/HTTPS address; on plain `http://homeassistant.local` it can only add a home-screen shortcut. iOS uses `apple-touch-icon.png` and the `apple-mobile-web-app-*` meta tags. The icons were rendered from the `homePower` MDI glyph on the dark tile (maskable-safe padding); re-render with headless Chrome if the look changes.
