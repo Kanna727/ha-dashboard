@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/Kanna727/ha-dashboard/compare/v1.9.0...v1.10.0) (2026-10-14)
+
+
+### Features
+
+* 30-day energy history in the Power popup ([#17](https://github.com/Kanna727/ha-dashboard/issues/17)) ([3a6b5e6](https://github.com/Kanna727/ha-dashboard/commit/3a6b5e6f2b2f0e042ec3ad49e62ced4d1a38cbe4))
+
 # [1.9.0](https://github.com/Kanna727/ha-dashboard/compare/v1.8.0...v1.9.0) (2026-10-14)
 
 
