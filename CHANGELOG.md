@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/Kanna727/ha-dashboard/compare/v1.17.0...v1.18.0) (2026-10-14)
+
+
+### Features
+
+* **appliances:** water purifier in the Kitchen ([#29](https://github.com/Kanna727/ha-dashboard/issues/29)) ([cf7ac76](https://github.com/Kanna727/ha-dashboard/commit/cf7ac76f01c83b9c3970cdcd135030d9fcd5e792))
+
 # [1.17.0](https://github.com/Kanna727/ha-dashboard/compare/v1.16.0...v1.17.0) (2026-10-14)
 
 
