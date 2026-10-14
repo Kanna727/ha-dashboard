@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useHass } from '../ha/api';
 import { EnergyCard } from '../components/EnergyCard';
 import { OfflinePlugsNote } from '../components/OfflinePlugsNote';
@@ -6,7 +6,7 @@ import { fetchHomePowerHistory, useHomePower } from '../components/useHomePower'
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { useTweenedNumber } from '../hooks/useTweenedNumber';
-import { flowDensity, flowDuration } from '../lib/energyFlow';
+import { flowDensity, flowDuration, flowLevel } from '../lib/energyFlow';
 
 function splitWatts(w: number | undefined): [string, string] {
   if (w === undefined) return ['–', ''];
@@ -39,6 +39,8 @@ export function EnergyPanel() {
   const modal = useModal();
   const { totalW, consumers, offline } = useHomePower();
   const [peak, setPeak] = useState<number>();
+  // Each plug's particle level, kept between renders for its hysteresis.
+  const levels = useRef(new Map<string, number>());
 
   useEffect(() => {
     let alive = true;
@@ -62,7 +64,11 @@ export function EnergyPanel() {
     .sort((a, b) => b.w - a.w);
   const top = drawing.slice(0, 4);
   const [pv, pu] = splitWatts(peak);
-  const maxW = top.reduce((m, c) => Math.max(m, c.w), 0);
+  const flows = top.map((c) => {
+    const level = flowLevel(c.w, levels.current.get(c.entity));
+    levels.current.set(c.entity, level);
+    return level;
+  });
 
   const rowsH = top.length ? top.length * ROW_H + (top.length - 1) * ROW_GAP : 0;
   const height = Math.max(rowsH, MIN_H);
@@ -79,7 +85,7 @@ export function EnergyPanel() {
       <div className="ef" style={{ height }}>
         <svg className="ef-lines" width="100%" height={height} aria-hidden="true">
           {/* Each branch: a faint track plus round particles flowing home → consumer.
-              Faster for bigger draws; denser in three buckets (see lib/energyFlow.ts). */}
+              Speed and density come from that plug's own watts (see lib/energyFlow.ts). */}
           {top.map((c, i) => (
             <g key={c.entity} style={{ stroke: c.color }}>
               <line x1={HOME_X} y1={height / 2} x2={ROWS_X} y2={rowY(i)} className="flow-track" />
@@ -88,8 +94,8 @@ export function EnergyPanel() {
                 y1={height / 2}
                 x2={ROWS_X}
                 y2={rowY(i)}
-                className={`flow-particles ${flowDensity(c.w)}`}
-                style={{ animationDuration: `${flowDuration(c.w, maxW).toFixed(2)}s` }}
+                className={`flow-particles ${flowDensity(flows[i])}`}
+                style={{ animationDuration: `${flowDuration(flows[i]).toFixed(2)}s` }}
               />
             </g>
           ))}
