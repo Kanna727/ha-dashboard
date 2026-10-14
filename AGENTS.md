@@ -145,6 +145,10 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - The URI cache is keyed by the **full SVG string**. Recoloured variants share length and suffix with their source, and an earlier shorter key made them collide.
 - On the light theme, `.wx-img` gets a soft drop shadow so white clouds stay visible.
 
+## Forecast sharing and the rain nudge
+
+Forecasts come from `useForecast(hass, entity, 'daily'|'hourly')` in `src/ha/forecast.ts`: one HA subscription per entity and type for the whole page, started by the first user and stopped with the last, so the Weather card, the rain nudge and night mode don't each subscribe. `src/lib/rain.ts` (unit-tested) flags the first hourly slot in the next 3 hours that is rainy (or has > 0.2 mm, or ≥ 60 % probability) while the weather entity isn't already rainy; `useIssues` adds it as an `info` issue: "Rain likely soon" (current hour) or "Rain likely around 4 PM". Hourly forecasts only resolve to the hour, so never word it in minutes.
+
 ## Sun and moon arc
 
 `src/components/SkyArc.tsx` (in the Weather card, under the current conditions; it replaced the sunrise/sunset chip) draws the sun's arc from sunrise to sunset by day and the moon's from sunset to sunrise by night, with a dot for "now" that glides between once-a-minute positions. The maths is in `src/lib/sky.ts` (unit-tested): `sun.sun` only gives the *next* rising/setting, so today's sunrise is `next_rising − 24 h` by day and the last sunset `next_setting − 24 h` by night. HA has no moon sensor, so the phase is computed from the synodic month against a reference new moon, and `moonLitPath` draws the lit part (right while waxing, left while waning). Night mode reuses the component.

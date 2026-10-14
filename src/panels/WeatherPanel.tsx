@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { OUTDOOR_TEMP, SUN, WEATHER } from '../config/entities';
 import { useHass, type ForecastDay } from '../ha/api';
+import { useForecast } from '../ha/forecast';
 import { useEntity } from '../ha/store';
 import { num } from '../ha/format';
 import { WeatherIcon } from '../components/WeatherIcon';
@@ -40,11 +40,8 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
   const weather = useEntity(WEATHER);
   const outdoor = useEntity(OUTDOOR_TEMP);
   const sun = useEntity(SUN);
-  const [forecast, setForecast] = useState<ForecastDay[]>([]);
-  const [hourly, setHourly] = useState<ForecastDay[]>([]);
-
-  useEffect(() => hass.subscribeForecast(WEATHER, 'daily', setForecast), [hass]);
-  useEffect(() => hass.subscribeForecast(WEATHER, 'hourly', setHourly), [hass]);
+  const forecast = useForecast(hass, WEATHER, 'daily');
+  const hourly = useForecast(hass, WEATHER, 'hourly');
 
   const a = weather?.attributes ?? {};
   const temp = num(outdoor) ?? (a.temperature as number | undefined);
