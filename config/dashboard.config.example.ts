@@ -272,6 +272,13 @@ const config: DashboardConfig = {
       },
       locationUpdated: 'sensor.car_location_last_updated',
     },
+    // Remote actions in the car modal. Hazards and horn need a second tap.
+    actions: {
+      refresh: 'button.car_force_refresh',
+      hazards: 'button.car_start_hazard_lights',
+      hornHazards: 'button.car_start_hazard_lights_and_horn',
+      climate: 'climate.car_climate_control',
+    },
   },
   // Banners when the washer or dishwasher finishes, or a door stays open.
   ALERTS: { chime: true, doorOpenMinutes: 3 },

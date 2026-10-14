@@ -104,6 +104,13 @@ export interface DashboardConfig {
       seats?: { frontLeft?: string; frontRight?: string; rearLeft?: string; rearRight?: string };
       locationUpdated?: string;
     };
+    // Optional remote actions in the car modal (Kia Connect buttons and climate).
+    actions?: {
+      refresh?: string; // button.* that asks the car for fresh data
+      hazards?: string; // button.* flashing the hazards
+      hornHazards?: string; // button.* sounding the horn with the hazards
+      climate?: string; // climate.* for remote climate with a target temperature
+    };
   };
   NETWORK: { wan: string };
   FRIDGE: { power: string; door: string };

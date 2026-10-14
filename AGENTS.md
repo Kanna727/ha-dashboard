@@ -170,6 +170,11 @@ The car modal can show a 3D model of the owner's car instead of the photo (`CAR_
   - **Auto-focus:** the anchors of warning callouts (`focusAnchors`) are visited in turn: a 1.6 s eased turn (shortest way round), a 3.5 s dwell, then 15 s of free turntable and repeat. A drag pauses it all for 8 s (`userHold`). Reduced motion jumps once to the first issue. `schedule()` owns `controls.autoRotate`.
   - **Inside view:** chips list the seat heat levels, steering heat, defrost and climate.
   - **Mock:** has the `CAR_DETAIL.status` entities (all off); turn them on with `__mockPatch`.
+- **Remote actions** (`src/panels/CarActions.tsx`, optional `CAR_DETAIL.actions`):
+  - **Climate:** with `actions.climate` (a `climate.*` entity), Comfort becomes a tile plus a target-temperature stepper (min/max/step from the entity, 14–30 °C in 0.5 steps for Kia). The stepper is local until a tap sends it, so stepping doesn't wake the car each time. Start = `climate.set_temperature` with `hvac_mode: auto`; while running, a changed temperature sends `set_temperature` alone and an unchanged tap stops it (`set_hvac_mode: off`). Without `actions.climate` the old `switch.*` toggle stays.
+  - **Refresh / Hazards / Horn:** `button.press`. Hazards and Horn need a second tap within 4 s (like Unlock). Refresh shows "Waking car…" until `CAR_DETAIL.lastUpdated` changes (or 90 s). Buttons sit at `unknown` until first pressed; that counts as available.
+  - **Find car** shows how old the location is (`status.locationUpdated`).
+  - The mock simulates the refresh (the timestamp updates after 3 s) and `set_temperature` with a mode. Never press the real car's buttons to test without the owner's say-so.
 - **CI bundle check:** three.js contains `light.color`/`light.direction`/`light.visible`, which match the entity-ID regex, so `ci.yml` filters those exact three.js property names. Real IDs like `light.kitchen_light` still fail the build.
 
 
