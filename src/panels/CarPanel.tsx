@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { HassEntity } from 'home-assistant-js-websocket';
 import { CAR, CAR_DETAIL, HOME_ZONE } from '../config/entities';
-import { useHass } from '../ha/api';
+import { useHass, type HassApi } from '../ha/api';
 import { useEntities, useEntity } from '../ha/store';
-import { fmtNum, isUnavailable, num, relTime } from '../ha/format';
+import { isUnavailable, num, relTime } from '../ha/format';
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 
@@ -27,27 +27,49 @@ interface LastKnown {
   fuel?: number;
   range?: number;
   odo?: number;
+  battery?: number;
   at?: number; // epoch ms of the newest reading
+}
+
+// One lookup shared by the card and the detail modal. The 14-day history query
+// takes seconds on the Pi; with a fetch per component the modal opened blank
+// and filled in late. Reused for 10 minutes; dropped when the car is back.
+let shared: { value: LastKnown; fetchedAt: number } | null = null;
+let inflight: Promise<LastKnown> | null = null;
+
+function loadLastKnown(hass: HassApi): Promise<LastKnown> {
+  if (shared && Date.now() - shared.fetchedAt < 10 * 60_000) return Promise.resolve(shared.value);
+  if (!inflight) {
+    inflight = hass
+      .fetchHistory([CAR.fuel, CAR.range, CAR.odometer, CAR_DETAIL.battery12v], 24 * 14)
+      .then((h) => {
+        const latest = (id: string) => h[id]?.[h[id].length - 1];
+        const [fuel, range, odo, battery] = [CAR.fuel, CAR.range, CAR.odometer, CAR_DETAIL.battery12v].map(latest);
+        const times = [fuel, range, odo].flatMap((pt) => (pt ? [pt.t] : []));
+        const value = { fuel: fuel?.v, range: range?.v, odo: odo?.v, battery: battery?.v, at: times.length ? Math.max(...times) : undefined };
+        shared = { value, fetchedAt: Date.now() };
+        return value;
+      })
+      .finally(() => {
+        inflight = null;
+      });
+  }
+  return inflight;
 }
 
 function useLastKnown(offline: boolean): LastKnown | null {
   const hass = useHass();
-  const [last, setLast] = useState<LastKnown | null>(null);
+  const [last, setLast] = useState<LastKnown | null>(() => (offline ? shared?.value ?? null : null));
   useEffect(() => {
     if (!offline) {
+      shared = null;
       setLast(null);
       return;
     }
     let alive = true;
-    hass
-      .fetchHistory([CAR.fuel, CAR.range, CAR.odometer], 24 * 14)
-      .then((h) => {
-        const latest = (id: string) => h[id]?.[h[id].length - 1];
-        const [fuel, range, odo] = [latest(CAR.fuel), latest(CAR.range), latest(CAR.odometer)];
-        const times = [fuel, range, odo].flatMap((pt) => (pt ? [pt.t] : []));
-        if (alive) setLast({ fuel: fuel?.v, range: range?.v, odo: odo?.v, at: times.length ? Math.max(...times) : undefined });
-      })
-      .catch(() => alive && setLast({}));
+    loadLastKnown(hass)
+      .then((v) => alive && setLast(v))
+      .catch(() => alive && setLast((prev) => prev ?? {}));
     return () => {
       alive = false;
     };
@@ -66,6 +88,7 @@ function useCar() {
   const home = useEntity(HOME_ZONE);
   const updated = useEntity(CAR_DETAIL.lastUpdated);
   const engine = useEntity(CAR_DETAIL.engine);
+  const battery = useEntity(CAR_DETAIL.battery12v);
   const doors = useEntities(CAR.doors);
   const warnings = useEntities(CAR.warnings.map((w) => w.entity));
 
@@ -89,6 +112,7 @@ function useCar() {
     fuelPct: num(fuel) ?? last?.fuel,
     rangeKm: num(range) ?? last?.range,
     odoKm: num(odo) ?? last?.odo,
+    battery12vPct: num(battery) ?? last?.battery,
     // When the shown values were last fresh: the car's own timestamp, else history.
     seenAgo: relTime(updated?.state) || relTime(last?.at),
   };
@@ -177,7 +201,6 @@ function OfflineNotice({ seenAgo }: { seenAgo: string }) {
 function CarDetail() {
   const hass = useHass();
   const car = useCar();
-  const battery = useEntity(CAR_DETAIL.battery12v);
   const climate = useEntity(CAR_DETAIL.climate);
   const tyreWarn = [CAR_DETAIL.tyres.frontLeft, CAR_DETAIL.tyres.frontRight, CAR_DETAIL.tyres.rearLeft, CAR_DETAIL.tyres.rearRight];
   const tyres = useEntities(tyreWarn);
@@ -201,7 +224,7 @@ function CarDetail() {
         <div className="stat-tiles three">
           <div className="stat-tile"><div className="label">Fuel</div><div className="stat-val">{fmtInt(car.fuelPct)}<small>%</small></div></div>
           <div className="stat-tile"><div className="label">Odometer</div><div className="stat-val">{car.odoKm !== undefined ? Math.round(car.odoKm).toLocaleString() : '–'}<small>km</small></div></div>
-          <div className="stat-tile"><div className="label">12V battery</div><div className="stat-val">{fmtNum(battery)}<small>%</small></div></div>
+          <div className="stat-tile"><div className="label">12V battery</div><div className="stat-val">{fmtInt(car.battery12vPct)}<small>%</small></div></div>
         </div>
         <div className="comfort">
           <div className="comfort-head">

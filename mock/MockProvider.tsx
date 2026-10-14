@@ -89,6 +89,7 @@ const CAR_HISTORY: Record<string, number> = {
   'sensor.car_fuel_level': 38,
   'sensor.car_fuel_driving_range': 312,
   'sensor.car_odometer': 18452,
+  'sensor.car_car_battery_level': 82,
 };
 const carHistory = (v: number): HistoryPoint[] => [{ t: Date.now() - 3 * 3600_000, v }];
 
@@ -136,6 +137,8 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         return {};
       },
       async fetchHistory(entityIds, hours) {
+        // The car's 14-day history query is slow on a real Pi; mimic it.
+        if (entityIds.some((id) => CAR_HISTORY[id])) await new Promise((r) => setTimeout(r, 1500));
         return Object.fromEntries(
           entityIds.map((id) => [id, CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : fakeHistory(1400, hours)]),
         );
