@@ -145,6 +145,10 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - The URI cache is keyed by the **full SVG string**. Recoloured variants share length and suffix with their source, and an earlier shorter key made them collide.
 - On the light theme, `.wx-img` gets a soft drop shadow so white clouds stay visible.
 
+## Night mode
+
+`components/NightMode.tsx` (mounted in `App.tsx`) fades to a black night screen after `NIGHT_MODE.idleMinutes` (default 5) without pointer/key/wheel input, only on `NIGHT_MODE.layouts` (default tablet) and, with `nightOnly` (default true), only while `sun.sun` is below the horizon. It shows a big dim clock, date, temperature and condition, the `SkyArc`, and `useIssues()`. The block drifts a few px per minute (`driftAt` in `src/lib/night.ts`, unit-tested with `nightActive`) against burn-in. A touch wakes it; that pointerdown and the following click are swallowed so nothing underneath gets pressed. While it's up, `html.night` pauses every other animation; toasts (z-index 90) still show above it (z-index 80). `?nightTest=1` makes it kick in after 5 s at any time, for checking. Kiosker's own screensaver should be off so the two don't overlap.
+
 ## Done and door alerts
 
 `components/Alerts.tsx` (mounted in `App.tsx` inside `ToastProvider`) watches live data only, never the cached snapshot: the washer `running` flag going on → off, the dishwasher going from running (progress 0–100 %) to not, and any room or fridge door open longer than `ALERTS.doorOpenMinutes` (default 3, once per open episode). Decisions are in `src/lib/alerts.ts` (unit-tested; the first reading after load never counts). `components/Toasts.tsx` shows stacked banners top-right (full width on phones) for 15 s; tap to dismiss. `src/lib/chime.ts` plays a soft two-tone chime via Web Audio when `ALERTS.chime` (default true); the audio context is created/resumed on the first touch because iOS blocks audio until then, so the chime is silent before any interaction. To test in the mock: `__mockPatch('input_boolean.washing_machine_running', { state: 'off' })` after it was on; for doors, shift `Date` forward past the limit.
