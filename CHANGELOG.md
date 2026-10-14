@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/Kanna727/ha-dashboard/compare/v1.8.0...v1.9.0) (2026-10-14)
+
+
+### Features
+
+* banners and a chime when appliances finish or a door stays open ([#16](https://github.com/Kanna727/ha-dashboard/issues/16)) ([b9dbc99](https://github.com/Kanna727/ha-dashboard/commit/b9dbc99fc6a8807432e477ed2bc8d13c7114c6b7))
+
 # [1.8.0](https://github.com/Kanna727/ha-dashboard/compare/v1.7.0...v1.8.0) (2026-10-14)
 
 
