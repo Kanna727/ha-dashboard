@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/Kanna727/ha-dashboard/compare/v1.3.1...v1.4.0) (2026-10-14)
+
+
+### Features
+
+* animate room cards for lights, fans, geysers and presence ([#11](https://github.com/Kanna727/ha-dashboard/issues/11)) ([9038b6f](https://github.com/Kanna727/ha-dashboard/commit/9038b6fd325311f6569ca1ad94954d98306008a5))
+
 ## [1.3.1](https://github.com/Kanna727/ha-dashboard/compare/v1.3.0...v1.3.1) (2026-10-14)
 
 
