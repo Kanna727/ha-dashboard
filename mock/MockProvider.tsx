@@ -70,14 +70,30 @@ function applyService(domain: string, service: string, data: Record<string, unkn
   }
 }
 
+// ?mockFreeze=1 makes the mock deterministic for screenshot tests: no power
+// jitter and no artificial delays. (History is always seeded, see below.)
+const FROZEN = new URLSearchParams(window.location.search).has('mockFreeze');
+
+// Small seeded PRNG (mulberry32), so fake history is the same on every load.
+function seeded(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function fakeHistory(base: number, hours: number): HistoryPoint[] {
+  const rand = seeded(base * 31 + hours);
   const pts: HistoryPoint[] = [];
-  const start = Date.now() - hours * 3600_000;
-  for (let t = start; t <= Date.now(); t += 10 * 60_000) {
+  // Align to 10-minute slots so the series doesn't shift with the clock's seconds.
+  const end = Math.floor(Date.now() / 600_000) * 600_000;
+  for (let t = end - hours * 3600_000; t <= end; t += 10 * 60_000) {
     const hour = new Date(t).getHours();
     const daily = hour >= 7 && hour <= 23 ? 1 : 0.45;
-    const spike = Math.random() > 0.93 ? 1800 : 0;
-    pts.push({ t, v: Math.max(80, base * daily * (0.7 + Math.random() * 0.5) + spike) });
+    const spike = rand() > 0.93 ? 1800 : 0;
+    pts.push({ t, v: Math.max(80, base * daily * (0.7 + rand() * 0.5) + spike) });
   }
   return pts;
 }
@@ -121,6 +137,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
     // Test hook (mock build only): window.__mockPatch('sensor.x', { state: '0' })
     (window as unknown as { __mockPatch: typeof patch }).__mockPatch = patch;
     // Jitter power sensors so live updates are visible.
+    if (FROZEN) return;
     const id = window.setInterval(() => {
       const jitter = (eid: string, base: number, spread: number) => {
         if (states[eid]) patch(eid, { state: (base + (Math.random() - 0.5) * spread).toFixed(1) });
@@ -145,13 +162,13 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       },
       async fetchHistory(entityIds, hours) {
         // The car's 14-day history query is slow on a real Pi; mimic it.
-        if (entityIds.some((id) => CAR_HISTORY[id])) await new Promise((r) => setTimeout(r, 1500));
+        if (entityIds.some((id) => CAR_HISTORY[id])) if (!FROZEN) await new Promise((r) => setTimeout(r, 1500));
         return Object.fromEntries(
           entityIds.map((id) => [id, CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : fakeHistory(1400, hours)]),
         );
       },
       async fetchLastStates(entityIds) {
-        if (entityIds.some((id) => CAR_LAST_STATES[id])) await new Promise((r) => setTimeout(r, 1500));
+        if (entityIds.some((id) => CAR_LAST_STATES[id])) if (!FROZEN) await new Promise((r) => setTimeout(r, 1500));
         return Object.fromEntries(
           entityIds.map((id) => [id, CAR_LAST_STATES[id] ? { state: CAR_LAST_STATES[id], t: Date.now() - 3 * 3600_000 } : undefined]),
         );

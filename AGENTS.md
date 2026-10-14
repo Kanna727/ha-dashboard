@@ -132,7 +132,7 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - `SyncIndicator` in the top bar shows "Syncing" or "Reconnecting" until live data arrives, then flashes "Synced" and hides.
 - `useSelfUpdate` acts only when the status is `live`. The cached snapshot can hold an older helper value, and acting on it would loop reloads.
 - `index.html` has a tiny pre-paint script that applies the last resolved theme (`dashThemeResolved`), so light mode doesn't flash dark. The font uses `font-display: block`, which is fine because it's inlined.
-- In the mock, `?mockSync=1500` simulates a slow connect and `?mockSync=reconnect` stays in the reconnecting state. `window.__mockPatch(entityId, { state })` changes a mock state from puppeteer. It exists only in mock builds.
+- In the mock, `?mockSync=1500` simulates a slow connect and `?mockSync=reconnect` stays in the reconnecting state. `?mockFreeze=1` makes it deterministic for screenshot tests: no power jitter and no artificial delays; fake history is always seeded (mulberry32), aligned to 10-minute slots. `window.__mockPatch(entityId, { state })` changes a mock state from puppeteer. It exists only in mock builds.
 
 ## Weather icons
 
