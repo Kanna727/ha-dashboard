@@ -1,3 +1,10 @@
+# [1.17.0](https://github.com/Kanna727/ha-dashboard/compare/v1.16.0...v1.17.0) (2026-10-14)
+
+
+### Features
+
+* **car:** right-hand drive, softer paint and number plates on the 3D car ([#28](https://github.com/Kanna727/ha-dashboard/issues/28)) ([af1bc93](https://github.com/Kanna727/ha-dashboard/commit/af1bc934d5378c24cc121bbac28780492031eee3))
+
 # [1.16.0](https://github.com/Kanna727/ha-dashboard/compare/v1.15.0...v1.16.0) (2026-10-14)
 
 
