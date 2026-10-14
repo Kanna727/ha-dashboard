@@ -27,10 +27,10 @@ jobs:
       published: ${{ steps.semrel.outputs.new_release_published }}
       version: ${{ steps.semrel.outputs.new_release_version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -42,7 +42,7 @@ jobs:
         run: scripts/privacy-check.sh
       - name: Semantic release
         id: semrel
-        uses: cycjimmy/semantic-release-action@v4
+        uses: cycjimmy/semantic-release-action@v8
         with:
           semantic_version: 24
           extra_plugins: |
@@ -70,7 +70,7 @@ jobs:
           echo "::warning::Deploy skipped: set TS_OAUTH_CLIENT_ID, TS_OAUTH_SECRET, HA_WEBHOOK_ID secrets and the HA_TAILNET_HOST variable (see README)."
       - name: Join tailnet
         if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
-        uses: tailscale/github-action@v3
+        uses: tailscale/github-action@v4
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
