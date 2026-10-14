@@ -18,8 +18,11 @@ const splash = (content: ReactNode) => root.render(<div className="splash">{cont
 async function boot() {
   // Dev and mock builds embed the config. Production fetches it from HA after
   // login, and uses this device's cached copy when it has one.
-  let cfg = localConfig ?? loadCachedConfig();
+  const cfg = localConfig ?? loadCachedConfig();
   if (!cfg) {
+    // First visit on this device. The bundle is a single file, so the app's
+    // modules have already run (with an empty config) by the time the fetch
+    // returns; cache the config and reload so they start with it.
     splash(
       <>
         <span className="sync-spinner big" />
@@ -27,19 +30,19 @@ async function boot() {
       </>,
     );
     try {
-      cfg = await fetchConfig((urlPath) => haApi.fetchLovelaceConfig(urlPath));
-      cacheConfig(cfg);
+      if (cacheConfig(await fetchConfig((urlPath) => haApi.fetchLovelaceConfig(urlPath)))) window.location.reload();
+      else splash('This browser blocks local storage, which the dashboard needs. Allow site data for this page.');
     } catch (err) {
       const msg = (err as { message?: string })?.message ?? String(err);
       splash(`Couldn't load the dashboard config from Home Assistant (${msg}). Deploy it with python scripts/deploy.py --config-only.`);
-      return;
     }
+    return;
   }
+  // Set synchronously, before any await: the app's modules read it as soon as
+  // this function yields.
   window.__DASHBOARD_CONFIG__ = cfg.config;
   window.__DASHBOARD_CONFIG_HASH__ = cfg.hash;
 
-  // The app reads the config at module load, so it is imported only now. The
-  // bundle is a single file, so this resolves in a microtask.
   const { App } = await import('./App');
   root.render(
     <StrictMode>

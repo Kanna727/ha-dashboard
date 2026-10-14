@@ -1,11 +1,48 @@
 // Which HA entities the dashboard shows. The values come from the per-home
-// config (config/dashboard.config.ts), which main.tsx loads from HA (or the
-// device cache) before it imports the app, so `!` is safe here.
+// config (config/dashboard.config.ts), which main.tsx sets from the embedded
+// copy or the device cache before rendering.
 import type { DashboardConfig } from './types';
 
 export type { ControlDef, RoomDef } from './types';
 
-const cfg: DashboardConfig = window.__DASHBOARD_CONFIG__!;
+// The bundle is one file, so this module runs at page load even on a device's
+// first visit, while main.tsx is still fetching the config from HA. It must
+// not crash then; main.tsx caches the fetched config and reloads, and the app
+// is never rendered with this empty one.
+const EMPTY: DashboardConfig = {
+  ROOMS: [],
+  FAN_MANUAL_OFF: {},
+  WEATHER: '',
+  OUTDOOR_TEMP: '',
+  SUN: '',
+  PEOPLE: [],
+  HOME_ZONE: '',
+  CLIMATE: { entity: '', power: '', energyToday: '', pm25: '' },
+  ENERGY: { total: '', legacyTotal: '', plugs: {} },
+  APPLIANCES: {
+    dishwasher: { state: '', progress: '', finish: '', connectivity: '' },
+    washer: { running: '', power: '', door: '' },
+  },
+  MEDIA: [],
+  MUSIC_PLAYERS: [],
+  CAR: { name: '', lock: '', fuel: '', range: '', odometer: '', doors: [], warnings: [] },
+  CAR_DETAIL: {
+    image: '',
+    location: '',
+    battery12v: '',
+    climate: '',
+    lastUpdated: '',
+    tyres: { frontLeft: '', frontRight: '', rearLeft: '', rearRight: '' },
+    openings: [],
+    engine: '',
+  },
+  NETWORK: { wan: '' },
+  FRIDGE: { power: '', door: '' },
+  COMMUTE: { dashboard: '', cardType: '', windowDays: [], windowStartHour: 0, windowEndHour: 0 },
+  MEALS: { people: [], slots: [], plan: {}, notes: [] },
+};
+
+const cfg: DashboardConfig = window.__DASHBOARD_CONFIG__ ?? EMPTY;
 
 // Hash of the loaded config; part of the self-update version check.
 export const CONFIG_HASH = window.__DASHBOARD_CONFIG_HASH__ ?? 'none';

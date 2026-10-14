@@ -21,11 +21,13 @@ export function loadCachedConfig(): StoredConfig | null {
   }
 }
 
-export function cacheConfig(c: StoredConfig) {
+// False when storage is full or blocked; the next load then fetches it again.
+export function cacheConfig(c: StoredConfig): boolean {
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(c));
+    return loadCachedConfig()?.hash === c.hash;
   } catch {
-    // Storage full or blocked: the next load fetches it again.
+    return false;
   }
 }
 
