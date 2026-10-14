@@ -668,6 +668,31 @@ button.wide { width: 100%; }
 .hero-range strong { font-size: 28px; font-weight: 800; }
 .car-hero-img { display: block; width: 88%; max-height: 230px; object-fit: contain; margin: -10px auto 0; filter: drop-shadow(0 20px 26px rgba(0, 0, 0, 0.5)); }
 .car-hero .progress.thick { margin-top: 6px; }
+/* 3D stage (car3d/CarScene.tsx): full width above both columns. The photo
+   shows first and stays as the fallback; the canvas fades in over it. */
+.car-stage { grid-column: 1 / -1; padding: 0; }
+.car-stage .car-hero-nums { position: absolute; top: 18px; left: 22px; pointer-events: none; }
+.car-stage .progress.thick { position: absolute; left: 22px; right: 22px; bottom: 16px; margin: 0; pointer-events: none; }
+.car-stage-view { position: relative; height: clamp(300px, 46vh, 440px); touch-action: none; }
+.car-stage-photo { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transition: opacity 0.6s ease; }
+.car-stage-photo .car-hero-img { width: auto; max-width: 70%; max-height: 72%; margin: 0; }
+.car-stage-canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.6s ease; cursor: grab; }
+.car-stage-canvas:active { cursor: grabbing; }
+.car-stage-view.ready .car-stage-canvas { opacity: 1; }
+.car-stage-view.failed { height: clamp(220px, 32vh, 300px); }
+.car-stage-view.ready .car-stage-photo { opacity: 0; pointer-events: none; }
+.car-stage-progress { position: absolute; left: 50%; bottom: 44px; width: 160px; height: 4px; transform: translateX(-50%); border-radius: 2px; overflow: hidden; background: color-mix(in srgb, var(--text) 12%, transparent); }
+.car-stage-progress > i { display: block; height: 100%; background: var(--accent-energy); transition: width 0.2s linear; }
+.car-stage-btn {
+  position: absolute; top: 16px; right: 16px; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 14px;
+  border-radius: 19px; font-weight: 700; font-size: 14px; color: var(--text);
+  background: color-mix(in srgb, var(--card-hi) 85%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+@media (max-width: 600px) { .car-stage-btn { top: auto; bottom: 34px; } }
+/* Inside the cabin the fuel overlay would sit on the windscreen: hide it. */
+.car-stage .car-hero-nums, .car-stage .progress.thick { transition: opacity 0.4s ease; }
+.car-stage:has(.car-stage-view.inside) .car-hero-nums, .car-stage:has(.car-stage-view.inside) .progress.thick { opacity: 0; }
+.car-stage-btn.active { color: var(--accent-energy); border-color: color-mix(in srgb, var(--accent-energy) 60%, transparent); }
 .comfort { display: grid; gap: 12px; }
 .comfort-head h3 { font-size: 20px; font-weight: 800; }
 .comfort .action { max-width: 220px; }

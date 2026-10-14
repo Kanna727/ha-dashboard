@@ -238,6 +238,9 @@ const config: DashboardConfig = {
       { entities: ['binary_sensor.car_hood'], name: 'Bonnet' },
     ],
     engine: 'binary_sensor.car_engine',
+    // Optional 3D model in the car modal: an optimised .glb in /config/www/
+    // (scripts/car-model). Falls back to `image` when missing.
+    model: { url: '../car.glb', paint: '#2c3527' },
   },
   // Banners when the washer or dishwasher finishes, or a door stays open.
   ALERTS: { chime: true, doorOpenMinutes: 3 },
