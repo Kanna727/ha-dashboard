@@ -729,6 +729,12 @@ button.wide { width: 100%; }
   animation: pop 0.18s ease;
 }
 .modal.wide { width: min(1100px, 100%); }
+/* Card -> detail zoom (View Transitions, see Modal.tsx): the browser morphs the
+   tapped card into the modal, so skip the modal's own pop-in. */
+.modal.morph { animation: none; }
+::view-transition-group(modal-origin) { animation-duration: 0.32s; animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1); }
+::view-transition-old(modal-origin), ::view-transition-new(modal-origin) { animation-duration: 0.32s; height: 100%; object-fit: cover; overflow: hidden; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.22s; }
 .modal-head { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
 .modal-badge {
   width: 64px; height: 64px; border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
