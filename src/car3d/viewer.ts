@@ -5,6 +5,7 @@
 // coordinates, so any car model whose parts are named sensibly works.
 import {
   ACESFilmicToneMapping,
+  AdditiveBlending,
   AnimationClip,
   AnimationMixer,
   Box3,
@@ -20,6 +21,9 @@ import {
   PlaneGeometry,
   PMREMGenerator,
   Scene,
+  Spherical,
+  Sprite,
+  SpriteMaterial,
   Vector3,
   WebGLRenderer,
   type AnimationAction,
@@ -30,16 +34,20 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import type { Anchor, CarVisual, Corner } from '../lib/carVisual';
+
+export type { Anchor, Corner };
 
 export interface ViewerOptions {
   url: string;
   paint?: string; // body colour, e.g. '#2c3527'
   paintMaterial?: string; // case-insensitive regex for the body paint material names
+  driverSide?: 'left' | 'right';
   reducedMotion: boolean;
   onProgress?: (fraction: number) => void;
 }
 
-export type Corner = 'FL' | 'FR' | 'RL' | 'RR';
+const CORNERS: Corner[] = ['FL', 'FR', 'RL', 'RR'];
 
 // The parsed model is kept for the session, so reopening the modal doesn't
 // download and decode 8 MB again. GPU copies are freed on close and rebuilt.
@@ -58,6 +66,12 @@ function loadModel(url: string, onProgress?: (f: number) => void): Promise<GLTF>
 // GLTFLoader sanitises names ("00:203 tire FL_438" → "00203_tire_FL_438").
 const TYRE = (c: Corner) => new RegExp(`(^|_)tire_${c}(_|$)`, 'i');
 const DOOR = (c: Corner) => new RegExp(`^\\d*_?door_${c}_\\d+$`, 'i');
+// Lamps come as twins: "<lamp>_Lights_On_<n>" (lit) next to "<lamp>_<n>" (unlit).
+const LIT = /_(Lights_On|Turn_Signal)_\d+$/;
+const FOCUS_TURN_MS = 1600;
+const FOCUS_DWELL_MS = 3500;
+const FOCUS_SPIN_MS = 15000; // free turntable between rounds of issues
+const BLINK_MS = 400;
 
 const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 const OUTSIDE_FOV = 30;
@@ -85,6 +99,15 @@ export class CarViewer {
   private running = false;
   private disposed = false;
   private onFrameCbs = new Set<() => void>();
+  private lamps: { lit: Object3D; unlit: Object3D[]; signal: boolean }[] = [];
+  private glass: { mat: MeshStandardMaterial; rear: boolean; color: Color }[] = [];
+  private glows: { sprite: Sprite; key: string }[] = [];
+  private glowTexture?: CanvasTexture;
+  private visual?: CarVisual;
+  private blinkOn = false;
+  private userHold = false; // a drag happened recently: no turntable or focus
+  private focusList: Anchor[] = [];
+  private focusState?: { i: number; phase: 'turn' | 'dwell' | 'spin'; t0: number; from: number; to: number };
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -101,16 +124,17 @@ export class CarViewer {
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
     this.controls.enablePan = false;
-    this.controls.autoRotate = !opts.reducedMotion;
+    this.controls.autoRotate = false; // driven by schedule() each frame
     this.controls.autoRotateSpeed = 1; // one turn a minute
     this.controls.addEventListener('change', () => (this.dirty = true));
     this.controls.addEventListener('start', () => {
-      this.controls.autoRotate = false;
+      this.userHold = true;
+      this.focusState = undefined;
       window.clearTimeout(this.resumeTimer);
     });
     this.controls.addEventListener('end', () => {
       window.clearTimeout(this.resumeTimer);
-      if (!this.opts.reducedMotion && !this.inside) this.resumeTimer = window.setTimeout(() => (this.controls.autoRotate = true), RESUME_MS);
+      this.resumeTimer = window.setTimeout(() => (this.userHold = false), RESUME_MS);
     });
   }
 
@@ -122,8 +146,11 @@ export class CarViewer {
     this.normalise(root);
     this.paint(root);
     this.prepareDoors(gltf.animations);
+    this.prepareLamps(root);
+    this.prepareGlass(root);
     this.scene.add(root);
     this.addShadow();
+    this.addGlows(root);
     this.placeOutside();
     this.dirty = true;
   }
@@ -309,8 +336,8 @@ export class CarViewer {
   setInside(inside: boolean) {
     if (!this.model || inside === this.inside) return;
     this.inside = inside;
-    window.clearTimeout(this.resumeTimer);
     this.controls.autoRotate = false;
+    this.focusState = undefined;
     const from: [Vector3, Vector3] = [this.camera.position.clone(), this.controls.target.clone()];
     if (inside) {
       const eye = this.frame.cabin.clone();
@@ -332,10 +359,7 @@ export class CarViewer {
       this.controls.maxDistance = Infinity;
       this.camera.fov = OUTSIDE_FOV;
       this.camera.updateProjectionMatrix();
-      this.flyTo(from, this.outsidePose(), () => {
-        this.applyOutsideLimits();
-        this.controls.autoRotate = !this.opts.reducedMotion;
-      });
+      this.flyTo(from, this.outsidePose(), () => this.applyOutsideLimits());
     }
   }
 
@@ -352,22 +376,245 @@ export class CarViewer {
     this.fly = { from, to, t0: performance.now(), ms: 1200, done };
   }
 
-  // Screen position (CSS px within the canvas) of a world point, and whether
-  // it faces the camera (for callouts on the far side).
-  project(p: Vector3, normal?: Vector3): { x: number; y: number; visible: boolean } {
-    const v = p.clone().project(this.camera);
-    const r = this.canvas.getBoundingClientRect();
-    const facing = !normal || normal.dot(this.camera.position.clone().sub(p)) > 0;
-    return { x: ((v.x + 1) / 2) * r.width, y: ((1 - v.y) / 2) * r.height, visible: v.z < 1 && facing && !this.inside };
+  // ---- Car status on the model ----
+
+  private prepareLamps(root: Object3D) {
+    const byName = new Map<string, Object3D>();
+    root.traverse((o) => byName.set(o.name, o));
+    this.lamps = [];
+    for (const [name, lit] of byName) {
+      const m = LIT.exec(name);
+      if (!m) continue;
+      const base = name.slice(0, m.index);
+      const unlit = [...byName.entries()].filter(([n]) => n !== name && n.startsWith(`${base}_`) && /^\d+$/.test(n.slice(base.length + 1))).map(([, o]) => o);
+      this.lamps.push({ lit, unlit, signal: m[1] === 'Turn_Signal' });
+    }
+    this.setLamps();
   }
 
-  tyre(corner: Corner) {
-    return this.tyres.get(corner);
+  private setLamps() {
+    const v = this.visual;
+    for (const l of this.lamps) {
+      const on = l.signal ? !!v?.signals && this.blinkOn : !!v?.headlamps;
+      l.lit.visible = on;
+      l.unlit.forEach((u) => (u.visible = !on));
+    }
+    this.dirty = true;
+  }
+
+  private prepareGlass(root: Object3D) {
+    const seen = new Set<Material>();
+    this.glass = [];
+    root.traverse((o) => {
+      const mesh = o as Mesh;
+      if (!mesh.isMesh) return;
+      for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        if (seen.has(m)) continue;
+        seen.add(m);
+        const front = /front.?glass/i.test(m.name);
+        const rear = /^rear.?glass/i.test(m.name);
+        if (!front && !rear) continue;
+        const std = m as MeshStandardMaterial;
+        // The parsed model is reused across opens: remember the original once.
+        std.userData.baseColor ??= std.color.clone();
+        this.glass.push({ mat: std, rear, color: std.userData.baseColor as Color });
+      }
+    });
+  }
+
+  // Soft additive glows for heaters and climate, placed from the car's frame.
+  private addGlows(root: Object3D) {
+    const c = document.createElement('canvas');
+    c.width = c.height = 64;
+    const g = c.getContext('2d')!;
+    const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255,255,255,1)');
+    grad.addColorStop(0.4, 'rgba(255,255,255,0.45)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 64, 64);
+    this.glowTexture = new CanvasTexture(c);
+    const add = (key: string, pos: Vector3, scale: number, color: string, opacity: number) => {
+      const sprite = new Sprite(new SpriteMaterial({ map: this.glowTexture, color, transparent: true, opacity, blending: AdditiveBlending, depthWrite: false }));
+      sprite.position.copy(pos);
+      sprite.scale.setScalar(scale);
+      sprite.visible = false;
+      this.scene.add(sprite);
+      this.glows.push({ sprite, key });
+    };
+    for (const corner of CORNERS) add(`seat:${corner}`, this.seatPoint(corner), 0.6, '#ff7a1a', 0.75);
+    let wheel: Object3D | undefined;
+    root.traverse((o) => {
+      if (!wheel && /steering_?wheel/i.test(o.name)) wheel = o;
+    });
+    const wheelPos = wheel
+      ? new Box3().setFromObject(wheel).getCenter(new Vector3())
+      : this.seatPoint(this.opts.driverSide === 'right' ? 'FR' : 'FL').addScaledVector(this.frame.forward, 0.45).setY(this.frame.size.y * 0.55);
+    add('steering', wheelPos, 0.5, '#ff7a1a', 0.8);
+    add('ac', this.frame.cabin.clone().setY(this.frame.size.y * 0.55), 1.9, '#38bdf8', 0.35);
+  }
+
+  private axles() {
+    const t = this.tyres;
+    const { center, forward, size } = this.frame;
+    const half = Math.max(size.x, size.z) * 0.3;
+    const front = t.size === 4 ? t.get('FL')!.clone().add(t.get('FR')!).multiplyScalar(0.5) : center.clone().addScaledVector(forward, half);
+    const rear = t.size === 4 ? t.get('RL')!.clone().add(t.get('RR')!).multiplyScalar(0.5) : center.clone().addScaledVector(forward, -half);
+    return { front: front.setY(0), rear: rear.setY(0) };
+  }
+
+  private side(corner: Corner) {
+    return this.frame.left.clone().multiplyScalar(corner[1] === 'L' ? 1 : -1);
+  }
+
+  private seatPoint(corner: Corner) {
+    const { front, rear } = this.axles();
+    return rear
+      .clone()
+      .lerp(front, corner[0] === 'F' ? 0.47 : 0.15)
+      .addScaledVector(this.side(corner), 0.37)
+      .setY(this.frame.size.y * 0.46); // just above the cushion, so it isn't hidden in it
+  }
+
+  // A point on the car for a callout, and the outward direction it faces.
+  anchor(a: Anchor): { pos: Vector3; normal: Vector3 } {
+    const { forward, size, cabin } = this.frame;
+    const { front, rear } = this.axles();
+    const halfW = Math.min(size.x, size.z) * 0.45;
+    const up = new Vector3(0, 1, 0);
+    const [kind, corner] = a.split(':') as [string, Corner | undefined];
+    if (kind === 'tyre' && corner) {
+      const side = this.side(corner);
+      const isFront = corner[0] === 'F';
+      const pos = (this.tyres.get(corner)?.clone() ?? (isFront ? front : rear).clone().addScaledVector(side, halfW).setY(0.35)).addScaledVector(side, 0.12);
+      return { pos, normal: side.clone().addScaledVector(forward, isFront ? 0.6 : -0.6).normalize() };
+    }
+    if (kind === 'door' && corner) {
+      const side = this.side(corner);
+      const pos = rear
+        .clone()
+        .lerp(front, corner[0] === 'F' ? 0.66 : 0.3)
+        .addScaledVector(side, halfW)
+        .setY(size.y * 0.55);
+      return { pos, normal: side.clone().addScaledVector(forward, corner[0] === 'F' ? 0.3 : -0.3).normalize() };
+    }
+    const passenger = this.frame.left.clone().multiplyScalar(this.opts.driverSide === 'right' ? 1 : -1);
+    switch (a) {
+      case 'hood':
+        return { pos: front.clone().addScaledVector(forward, 0.25).setY(size.y * 0.62), normal: forward.clone().addScaledVector(up, 0.5).normalize() };
+      case 'trunk':
+        return { pos: rear.clone().addScaledVector(forward, -0.8).setY(size.y * 0.7), normal: forward.clone().negate().addScaledVector(up, 0.2).normalize() };
+      case 'lampFront':
+        return { pos: front.clone().addScaledVector(forward, 0.8).setY(size.y * 0.47), normal: forward.clone() };
+      case 'lampRear':
+        return { pos: rear.clone().addScaledVector(forward, -0.85).setY(size.y * 0.6), normal: forward.clone().negate() };
+      case 'fuel':
+        return {
+          pos: rear.clone().addScaledVector(forward, 0.05).addScaledVector(passenger, halfW).setY(size.y * 0.6),
+          normal: passenger.clone().addScaledVector(forward, -0.4).normalize(),
+        };
+      default:
+        return { pos: cabin.clone().setY(size.y * 0.95), normal: up };
+    }
+  }
+
+  // Screen position (CSS px within the canvas) of an anchor, and whether it
+  // faces the camera (callouts on the far side hide).
+  project(a: Anchor): { x: number; y: number; visible: boolean } {
+    const { pos, normal } = this.anchor(a);
+    const v = pos.clone().project(this.camera);
+    const r = this.canvas.getBoundingClientRect();
+    const facing = normal.dot(this.camera.position.clone().sub(pos).normalize()) > 0.25;
+    return { x: ((v.x + 1) / 2) * r.width, y: ((1 - v.y) / 2) * r.height, visible: !this.inside && !this.fly && facing && v.z < 1 };
+  }
+
+  setVisual(v: CarVisual) {
+    const first = !this.visual;
+    this.visual = v;
+    for (const c of CORNERS) this.setDoor(c, v.doors[c], first);
+    this.setLamps();
+    for (const g of this.glass) {
+      const on = g.rear ? v.defrostRear : v.defrostFront;
+      g.mat.color.copy(on ? new Color('#7a3008') : g.color);
+    }
+    for (const g of this.glows) {
+      const [kind, corner] = g.key.split(':');
+      g.sprite.visible = kind === 'seat' ? !!v.seatHeat[corner as Corner] : kind === 'steering' ? v.steeringHeat : v.ac;
+    }
+    this.dirty = true;
+  }
+
+  // Swing round to each anchor in turn (between free turntable spins).
+  setFocus(anchors: Anchor[]) {
+    if (anchors.join() === this.focusList.join()) return;
+    this.focusList = anchors;
+    this.focusState = undefined;
+    if (this.opts.reducedMotion && anchors.length && this.model && !this.inside) {
+      this.setAzimuth(this.azimuthOf(anchors[0]));
+      this.dirty = true;
+    }
+  }
+
+  private azimuthOf(a: Anchor) {
+    const n = this.anchor(a).normal;
+    return Math.atan2(n.x, n.z);
+  }
+
+  private spherical() {
+    return new Spherical().setFromVector3(this.camera.position.clone().sub(this.controls.target));
+  }
+
+  private setAzimuth(theta: number) {
+    const s = this.spherical();
+    s.theta = theta;
+    this.camera.position.copy(this.controls.target).add(new Vector3().setFromSpherical(s));
+    this.camera.lookAt(this.controls.target);
+  }
+
+  // Turntable and issue focus, decided each frame.
+  private schedule(now: number) {
+    const idle = !!this.model && !this.inside && !this.userHold && !this.opts.reducedMotion;
+    if (!idle) {
+      this.controls.autoRotate = false;
+      return;
+    }
+    if (!this.focusList.length) {
+      this.controls.autoRotate = true;
+      return;
+    }
+    const st = this.focusState;
+    const startTurn = (i: number) => {
+      const from = this.spherical().theta;
+      let delta = this.azimuthOf(this.focusList[i]) - from;
+      delta = Math.atan2(Math.sin(delta), Math.cos(delta)); // shortest way round
+      this.focusState = { i, phase: 'turn', t0: now, from, to: from + delta };
+    };
+    if (!st) {
+      this.controls.autoRotate = false;
+      startTurn(0);
+      return;
+    }
+    if (st.phase === 'turn') {
+      this.controls.autoRotate = false;
+      const k = Math.min(1, (now - st.t0) / FOCUS_TURN_MS);
+      this.setAzimuth(st.from + (st.to - st.from) * easeInOut(k));
+      this.dirty = true;
+      if (k >= 1) this.focusState = { ...st, phase: 'dwell', t0: now };
+    } else if (st.phase === 'dwell') {
+      if (now - st.t0 < FOCUS_DWELL_MS) return;
+      if (st.i + 1 < this.focusList.length) startTurn(st.i + 1);
+      else this.focusState = { ...st, phase: 'spin', t0: now };
+    } else {
+      this.controls.autoRotate = true;
+      if (now - st.t0 > FOCUS_SPIN_MS) startTurn(0);
+    }
   }
 
   onFrame(cb: () => void) {
     this.onFrameCbs.add(cb);
-    return () => this.onFrameCbs.delete(cb);
+    return () => {
+      this.onFrameCbs.delete(cb);
+    };
   }
 
   invalidate() {
@@ -404,8 +651,16 @@ export class CarViewer {
         this.controls.enabled = true;
         f.done?.();
       }
-    } else if (this.controls.update(dt)) {
-      this.dirty = true;
+    } else {
+      this.schedule(now);
+      if (this.controls.update(dt)) this.dirty = true;
+    }
+    if (this.visual?.signals) {
+      const on = Math.floor(now / BLINK_MS) % 2 === 0;
+      if (on !== this.blinkOn) {
+        this.blinkOn = on;
+        this.setLamps();
+      }
     }
     if (this.mixer) {
       const busy = [...this.doorActions.values()].some((a) => a.isRunning());
@@ -455,6 +710,8 @@ export class CarViewer {
       (this.shadow.material as MeshBasicMaterial).map?.dispose();
       this.scene.remove(this.shadow);
     }
+    this.glows.forEach((g) => g.sprite.material.dispose());
+    this.glowTexture?.dispose();
     if (this.model) this.scene.remove(this.model);
     this.mixer?.stopAllAction(); // also puts the doors back: the parsed model is reused
     this.scene.environment?.dispose();

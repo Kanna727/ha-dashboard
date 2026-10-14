@@ -241,6 +241,37 @@ const config: DashboardConfig = {
     // Optional 3D model in the car modal: an optimised .glb in /config/www/
     // (scripts/car-model). Falls back to `image` when missing.
     model: { url: '../car.glb', paint: '#2c3527' },
+    // Extra entities shown on the 3D car: lamps, heaters, seats.
+    status: {
+      headlamps: 'binary_sensor.car_headlamp_status',
+      turnSignals: [
+        'binary_sensor.car_turn_signal_left_front',
+        'binary_sensor.car_turn_signal_right_front',
+        'binary_sensor.car_turn_signal_left_rear',
+        'binary_sensor.car_turn_signal_right_rear',
+      ],
+      lampFaults: [
+        { entity: 'binary_sensor.car_front_left_lamp_fault', name: 'Front left lamp' },
+        { entity: 'binary_sensor.car_front_right_lamp_fault', name: 'Front right lamp' },
+        { entity: 'binary_sensor.car_headlamp_left_high_fault', name: 'Left high beam' },
+        { entity: 'binary_sensor.car_headlamp_right_high_fault', name: 'Right high beam' },
+        { entity: 'binary_sensor.car_headlamp_left_bifunctional_fault', name: 'Left headlamp' },
+        { entity: 'binary_sensor.car_headlamp_right_bifunctional_fault', name: 'Right headlamp' },
+        { entity: 'binary_sensor.car_rear_left_lamp_fault', name: 'Rear left lamp' },
+        { entity: 'binary_sensor.car_rear_right_lamp_fault', name: 'Rear right lamp' },
+      ],
+      airConditioner: 'binary_sensor.car_air_conditioner',
+      defrost: 'binary_sensor.car_defrost',
+      rearWindowHeater: 'binary_sensor.car_back_window_heater',
+      steeringHeater: 'binary_sensor.car_steering_wheel_heater',
+      seats: {
+        frontLeft: 'sensor.car_front_left_seat',
+        frontRight: 'sensor.car_front_right_seat',
+        rearLeft: 'sensor.car_rear_left_seat',
+        rearRight: 'sensor.car_rear_right_seat',
+      },
+      locationUpdated: 'sensor.car_location_last_updated',
+    },
   },
   // Banners when the washer or dishwasher finishes, or a door stays open.
   ALERTS: { chime: true, doorOpenMinutes: 3 },

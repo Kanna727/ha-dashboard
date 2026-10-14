@@ -689,6 +689,25 @@ button.wide { width: 100%; }
   background: color-mix(in srgb, var(--card-hi) 85%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow);
 }
 @media (max-width: 600px) { .car-stage-btn { top: auto; bottom: 34px; } }
+/* Callouts pinned to parts of the 3D car (positioned per frame by the viewer). */
+.car-callouts { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.car-callout { position: absolute; left: 0; top: 0; transition: opacity 0.3s ease; --dot: var(--warn); }
+.car-callout.info { --dot: var(--accent-fan); }
+.car-callout.hidden { opacity: 0; }
+.car-callout-dot { position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 30%, transparent); }
+.car-callout-dot::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; border: 2px solid var(--dot); animation: callout-ping 2s ease-out infinite; }
+@keyframes callout-ping { from { transform: scale(0.5); opacity: 0.9; } to { transform: scale(1.6); opacity: 0; } }
+.car-callout-body { position: absolute; left: 12px; bottom: 10px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.car-callout.flip .car-callout-body { left: auto; right: 12px; align-items: flex-end; }
+.car-callout-chip {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700;
+  color: var(--text); background: color-mix(in srgb, var(--card-hi) 90%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.car-callout-chip.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
+.car-callout-chip.info, .car-callout-chip.cool { color: var(--accent-fan); }
+.car-callout-chip.heat { color: #fb923c; }
+.car-cabin-chips { position: absolute; left: 16px; right: 120px; bottom: 16px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+@media (max-width: 600px) { .car-cabin-chips { right: 16px; bottom: 82px; } }
 /* Inside the cabin the fuel overlay would sit on the windscreen: hide it. */
 .car-stage .car-hero-nums, .car-stage .progress.thick { transition: opacity 0.4s ease; }
 .car-stage:has(.car-stage-view.inside) .car-hero-nums, .car-stage:has(.car-stage-view.inside) .progress.thick { opacity: 0; }

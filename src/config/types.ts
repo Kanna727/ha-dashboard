@@ -90,6 +90,19 @@ export interface DashboardConfig {
       url: string;
       paint?: string; // body colour, e.g. '#2c3527'
       paintMaterial?: string; // regex for the paint material names (default 'carpaint')
+      driverSide?: 'left' | 'right'; // where "Unlocked" is pinned (default 'left')
+    };
+    // Optional extra car entities drawn on the 3D model (lamps, heaters, seats).
+    status?: {
+      headlamps?: string;
+      turnSignals?: string[];
+      lampFaults?: NamedEntity[];
+      airConditioner?: string;
+      defrost?: string;
+      rearWindowHeater?: string;
+      steeringHeater?: string;
+      seats?: { frontLeft?: string; frontRight?: string; rearLeft?: string; rearRight?: string };
+      locationUpdated?: string;
     };
   };
   NETWORK: { wan: string };
