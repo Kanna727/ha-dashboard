@@ -102,6 +102,8 @@ export interface DashboardConfig {
   // the app.
   // "Done" and "door left open" banners.
   ALERTS?: { chime?: boolean; doorOpenMinutes?: number };
+  // Dim night screen after inactivity (kiosk burn-in and glare).
+  NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
 }
 
 declare global {

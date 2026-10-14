@@ -337,7 +337,7 @@ button.wide { width: 100%; }
 .weather-panel > :not(.wx-bg) { position: relative; z-index: 1; }
 /* Sun / moon arc (components/SkyArc.tsx). The body glides between its
    once-a-minute positions; only transform and opacity animate. */
-.sky-arc { margin: 6px 0 10px; }
+.sky-arc { margin: 6px auto 10px; max-width: 340px; }
 .sky-arc svg { display: block; width: 100%; height: 64px; overflow: visible; }
 .sky-horizon { stroke: var(--border); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .sky-track { fill: none; stroke: var(--muted); stroke-opacity: 0.35; stroke-width: 1.5; stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; }
@@ -734,8 +734,25 @@ button.wide { width: 100%; }
 .eh-picked { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
 .eh-picked strong { font-size: 18px; font-variant-numeric: tabular-nums; }
 
+/* ---------- night mode (components/NightMode.tsx) ---------- */
+.night-screen {
+  position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; cursor: pointer;
+  background: #000; color: #cbd5e1; animation: fade 1.2s ease;
+}
+.night-block { display: grid; justify-items: center; gap: 10px; width: min(560px, 90vw); opacity: 0.7; transition: transform 2s ease; }
+.night-clock { font-size: clamp(96px, 18vw, 180px); font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; color: #e2e8f0; }
+.night-date { font-size: 22px; font-weight: 600; color: #94a3b8; }
+.night-weather { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; }
+.night-sky { width: 100%; margin-top: 8px; }
+.night-sky .sky-labels { color: #64748b; }
+.night-issues { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; text-align: center; font-size: 17px; }
+.night-issues .warn { color: #fdba74; }
+.night-issues .info { color: #93c5fd; }
+/* Pause every other animation while the night screen is up. */
+html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toasts *) { animation-play-state: paused !important; }
+
 /* ---------- toasts (components/Toasts.tsx) ---------- */
-.toasts { position: fixed; top: 16px; right: 16px; z-index: 70; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
+.toasts { position: fixed; top: 16px; right: 16px; z-index: 90; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
 .toast {
   pointer-events: auto; display: flex; align-items: center; gap: 12px; text-align: left; padding: 12px 14px; border-radius: 20px;
   background: var(--panel); border: 1px solid var(--panel-border); box-shadow: var(--shadow); color: var(--text);
