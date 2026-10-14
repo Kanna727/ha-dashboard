@@ -9,53 +9,61 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 const PRIVATE_CONFIG = resolve(__dirname, 'config/dashboard.config.ts');
 const EXAMPLE_CONFIG = resolve(__dirname, 'config/dashboard.config.example.ts');
 
-// The per-home config is compiled to its own config.js (next to index.html) so
-// the release bundle stays generic. Mock builds always use the example config,
-// which matches mock/fixtures.ts. DASHBOARD_CONFIG overrides the path.
+// The per-home config never ships in the release bundle. It is stored in HA
+// (a hidden Lovelace dashboard, readable only after login) and fetched at
+// runtime. `vite build` writes dist/dashboard-config.json for deploys to push;
+// dev and mock builds embed it via `virtual:dashboard-config` instead. Mock
+// builds always use the example config, which matches mock/fixtures.ts.
+// DASHBOARD_CONFIG overrides the path.
 function configSource(): string {
   if (process.env.VITE_MOCK) return EXAMPLE_CONFIG;
   if (process.env.DASHBOARD_CONFIG) return resolve(process.env.DASHBOARD_CONFIG);
   return existsSync(PRIVATE_CONFIG) ? PRIVATE_CONFIG : EXAMPLE_CONFIG;
 }
 
-async function compileConfig(entry: string): Promise<string> {
+// Evaluates the TS config to plain data: { hash, config }. The hash is over the
+// JSON, so it is the same everywhere the config is stored.
+async function loadConfig(entry: string): Promise<{ hash: string; config: unknown }> {
   const out = await esbuild({
     entryPoints: [entry],
     bundle: true,
     write: false,
     format: 'iife',
     globalName: '__dashCfg',
+    platform: 'browser',
     target: 'es2020',
-    minify: true,
-    legalComments: 'none',
   });
-  const code = out.outputFiles[0].text;
-  const hash = createHash('sha256').update(code).digest('hex').slice(0, 8);
-  return `${code}window.__DASHBOARD_CONFIG__=__dashCfg.default;window.__DASHBOARD_CONFIG_HASH__=${JSON.stringify(hash)};\n`;
+  const config: unknown = new Function(`${out.outputFiles[0].text}; return __dashCfg.default;`)();
+  const hash = createHash('sha256').update(JSON.stringify(config)).digest('hex').slice(0, 8);
+  return { hash, config };
 }
+
+const VIRTUAL_ID = 'virtual:dashboard-config';
+const RESOLVED_ID = '\0' + VIRTUAL_ID; // Rollup convention for virtual modules
 
 function dashboardConfig(): Plugin {
   const entry = configSource();
+  let embed = false;
   return {
     name: 'dashboard-config',
     configResolved(cfg) {
+      embed = cfg.command === 'serve' || !!process.env.VITE_MOCK;
       if (entry === EXAMPLE_CONFIG && !process.env.VITE_MOCK) {
-        cfg.logger.warn('config/dashboard.config.ts not found; config.js is built from the example config.');
+        cfg.logger.warn('config/dashboard.config.ts not found; using the example config.');
       }
     },
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith('/config.js')) return next();
-        try {
-          res.setHeader('Content-Type', 'text/javascript');
-          res.end(await compileConfig(entry));
-        } catch (err) {
-          next(err);
-        }
-      });
+    resolveId(id) {
+      return id === VIRTUAL_ID ? RESOLVED_ID : undefined;
+    },
+    async load(id) {
+      if (id !== RESOLVED_ID) return;
+      if (!embed) return 'export default null;';
+      this.addWatchFile(entry);
+      return `export default ${JSON.stringify(await loadConfig(entry))};`;
     },
     async generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'config.js', source: await compileConfig(entry) });
+      if (process.env.VITE_MOCK) return;
+      this.emitFile({ type: 'asset', fileName: 'dashboard-config.json', source: JSON.stringify(await loadConfig(entry)) });
     },
   };
 }

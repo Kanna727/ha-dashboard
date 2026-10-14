@@ -98,7 +98,7 @@ actions:
               overwrite: true
 ```
 
-The helper `input_text.dashboard_build` (max length 64) must exist and already hold `<version>/<config hash>`: do the first deploy with `python scripts/deploy.py`, which also puts `config.js` in place.
+The helper `input_text.dashboard_build` (max length 64) must exist and already hold `<version>/<config hash>`, and the config must be in HA: do the first deploy with `python scripts/deploy.py` (with `HA_URL` and an admin `HA_TOKEN`), which also creates the hidden `dashboard-config` dashboard that holds your config.
 
 To test without CI, POST the same payload from a machine on your LAN: `{"version": "<x.y.z>", "url": "<signed asset URL>"}` to `http://homeassistant.local/api/webhook/<WEBHOOK_ID>`.
 

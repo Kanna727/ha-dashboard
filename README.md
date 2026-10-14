@@ -28,18 +28,18 @@ A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lo
 npm install
 npm run mock     # offline preview with fake data on http://localhost:5173
 npm run dev      # live against HA (set VITE_HA_URL=http://homeassistant.local off-box)
-npm run build    # dist/index.html (the app) + dist/config.js (your config)
+npm run build    # dist/index.html (the app) + dist/dashboard-config.json (your config)
 ```
 
 Each device logs in to HA once through the normal OAuth screen and keeps its own token.
 
 ## Your config
 
-The app itself contains no entity IDs. Everything specific to a home (rooms, devices, names, the meal plan) lives in **`config/dashboard.config.ts`**. That file is gitignored, compiled to a small `config.js`, and deployed next to `index.html`.
+The app itself contains no entity IDs. Everything specific to a home (rooms, devices, names, the meal plan) lives in **`config/dashboard.config.ts`**. That file is gitignored, and it is stored in Home Assistant itself, as a hidden dashboard that only logged-in users can read. The app fetches it after login and keeps a copy on each device, so reloads stay instant.
 
 ```sh
 cp config/dashboard.config.example.ts config/dashboard.config.ts   # then edit
-python scripts/deploy.py --config-only                              # push config.js to HA
+HA_URL=http://homeassistant.local HA_TOKEN=<admin long-lived token>   python scripts/deploy.py --config-only                            # push it to HA
 ```
 
 The schema, with comments, is in [`src/config/types.ts`](src/config/types.ts).
@@ -74,7 +74,7 @@ http://homeassistant.local/local/dashboard/index.html?layout=phone
 
 ## Security and privacy
 
-- HA serves `/local/` without authentication, so neither file holds secrets. Every data call needs the device's own OAuth token. The Google Maps key is read at runtime from your Lovelace config over the authenticated WebSocket.
+- HA serves `/local/` without authentication, so the app file holds no secrets and no personal data; the per-home config is only readable after login. Every data call needs the device's own OAuth token. The Google Maps key is read at runtime from your Lovelace config over the authenticated WebSocket.
 - Personal data stays out of git: your config and owner notes are gitignored, and `scripts/privacy-check.sh` (a pre-commit hook plus a CI step) blocks commits containing private patterns. Enable the hook with `git config core.hooksPath .githooks`.
 
 ## Credits

@@ -1,6 +1,6 @@
-// Shape of the per-home config (config/dashboard.config.ts). The config is
-// compiled to a separate config.js that sits next to index.html, so the
-// release bundle carries no entity IDs or names.
+// Shape of the per-home config (config/dashboard.config.ts). It is stored in
+// Home Assistant (see config/load.ts), so the release bundle carries no entity
+// IDs or names. Keep it plain data: it travels as JSON.
 
 export interface ControlDef {
   entity: string;
