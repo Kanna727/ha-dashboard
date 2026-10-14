@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/Kanna727/ha-dashboard/compare/v1.6.0...v1.7.0) (2026-10-14)
+
+
+### Features
+
+* zoom room cards and panels into their detail view ([#14](https://github.com/Kanna727/ha-dashboard/issues/14)) ([39e41e0](https://github.com/Kanna727/ha-dashboard/commit/39e41e09f3521ac8b99fb617e82e7f59c1a44dec))
+
 # [1.6.0](https://github.com/Kanna727/ha-dashboard/compare/v1.5.0...v1.6.0) (2026-10-14)
 
 
