@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { HassEntity } from 'home-assistant-js-websocket';
 import { CAR, CAR_DETAIL, HOME_ZONE } from '../config/entities';
 import { useHass, type HassApi } from '../ha/api';
@@ -7,6 +7,7 @@ import { isUnavailable, num, relTime } from '../ha/format';
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { CarScene } from '../car3d/CarScene';
+import { carVisual, type CarVisual } from '../lib/carVisual';
 
 export function distanceKm(a: HassEntity | undefined, b: HassEntity | undefined): number | undefined {
   const la1 = a?.attributes.latitude as number | undefined;
@@ -126,6 +127,44 @@ function useCar() {
   };
 }
 
+// What the 3D model should show (lib/carVisual). Memoised on the entity
+// objects, so the viewer only hears about real changes.
+function useCarVisual(offline: boolean, locked: boolean | undefined, tyres: (string | undefined)[]): CarVisual {
+  const st = CAR_DETAIL.status;
+  const openings = useEntities(CAR.doors);
+  const warnings = useEntities(CAR.warnings.map((w) => w.entity));
+  const seats = st?.seats;
+  const singles = useEntities(
+    [CAR_DETAIL.engine, st?.headlamps, st?.airConditioner ?? CAR_DETAIL.climate, st?.defrost, st?.rearWindowHeater, st?.steeringHeater, seats?.frontLeft, seats?.frontRight, seats?.rearLeft, seats?.rearRight].map(
+      (id) => id ?? '',
+    ),
+  );
+  const signals = useEntities(st?.turnSignals ?? []);
+  const faults = useEntities((st?.lampFaults ?? []).map((f) => f.entity));
+  const tyreKey = tyres.join();
+  return useMemo(() => {
+    const [engine, headlamps, ac, defrost, rearHeat, wheelHeat, sFL, sFR, sRL, sRR] = singles.map((e) => e?.state);
+    return carVisual({
+      offline,
+      driverSide: CAR_DETAIL.model?.driverSide,
+      openings: CAR.doors.map((entity, i) => ({ entity, state: openings[i]?.state })),
+      tyres: { FL: tyres[0], FR: tyres[1], RL: tyres[2], RR: tyres[3] },
+      locked,
+      engine,
+      headlamps,
+      signals: signals.map((e) => e?.state),
+      lampFaults: (st?.lampFaults ?? []).map((f, i) => ({ ...f, state: faults[i]?.state })),
+      ac,
+      defrostFront: defrost,
+      defrostRear: rearHeat,
+      steeringHeat: wheelHeat,
+      seats: { FL: sFL, FR: sFR, RL: sRL, RR: sRR },
+      warnings: CAR.warnings.map((w, i) => ({ ...w, state: warnings[i]?.state })),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offline, locked, tyreKey, openings, warnings, singles, signals, faults]);
+}
+
 // Simple top-down silhouette for the tyre diagram.
 function CarTopView() {
   return (
@@ -218,6 +257,7 @@ function CarDetail() {
   const anyTyre = tyres.some((_, i) => tyreState(i) === 'on');
   const tyresFromHistory = car.offline && tyres.some((_, i) => isUnavailable(tyres[i]) && tyreState(i) !== undefined);
   const fuelPct = car.fuelPct;
+  const visual = useCarVisual(car.offline, car.offline ? undefined : car.locked, TYRES().map((_, i) => tyreState(i)));
   const lat = car.tracker?.attributes.latitude as number | undefined;
   const lng = car.tracker?.attributes.longitude as number | undefined;
 
@@ -237,7 +277,7 @@ function CarDetail() {
       {model && (
         <div className="car-hero car-stage">
           {heroNums}
-          <CarScene model={model} fallback={<CarImage className="car-hero-img" />} />
+          <CarScene model={model} fallback={<CarImage className="car-hero-img" />} visual={visual} />
           {fuelBar}
         </div>
       )}
