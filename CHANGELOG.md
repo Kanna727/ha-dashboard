@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/Kanna727/ha-dashboard/compare/v1.14.0...v1.15.0) (2026-10-14)
+
+
+### Features
+
+* **car:** show the car's status on the 3D model ([#26](https://github.com/Kanna727/ha-dashboard/issues/26)) ([2134203](https://github.com/Kanna727/ha-dashboard/commit/2134203feb7e2d21d7d5f89e9d7a38b2d1b919e3))
+
 # [1.14.0](https://github.com/Kanna727/ha-dashboard/compare/v1.13.0...v1.14.0) (2026-10-14)
 
 
