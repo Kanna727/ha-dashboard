@@ -566,7 +566,8 @@ button.wide { width: 100%; }
 .room-row-sub.lit { color: var(--accent-light); font-weight: 600; }
 .presence-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); flex-shrink: 0; }
 .door-warn { color: var(--warn); flex-shrink: 0; }
-.row-buttons { display: flex; gap: 8px; flex-shrink: 0; }
+/* margin-left: auto keeps the buttons right-aligned when the room icon is hidden. */
+.row-buttons { display: flex; gap: 8px; flex-shrink: 0; margin-left: auto; }
 .row-btn {
   --tint: var(--accent-light);
   width: 46px; height: 46px; border-radius: 15px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
