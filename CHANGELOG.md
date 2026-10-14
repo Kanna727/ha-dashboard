@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/Kanna727/ha-dashboard/compare/v1.10.0...v1.11.0) (2026-10-14)
+
+
+### Features
+
+* night screen for the iPad kiosk ([#18](https://github.com/Kanna727/ha-dashboard/issues/18)) ([347ce2d](https://github.com/Kanna727/ha-dashboard/commit/347ce2dfc447ac3817dc97c6ec86047be7aa39f3))
+
 # [1.10.0](https://github.com/Kanna727/ha-dashboard/compare/v1.9.0...v1.10.0) (2026-10-14)
 
 
