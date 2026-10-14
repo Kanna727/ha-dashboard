@@ -1,0 +1,8 @@
+/* Latin subset only; inlined into the single-file bundle by Vite. */
+@font-face {
+  font-family: 'Jakarta';
+  font-style: normal;
+  font-display: block; /* inlined data URL, so no visible wait; avoids a font-swap reflow */
+  font-weight: 200 800;
+  src: url('../../node_modules/@fontsource-variable/plus-jakarta-sans/files/plus-jakarta-sans-latin-wght-normal.woff2') format('woff2-variations');
+}

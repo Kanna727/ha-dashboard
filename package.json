@@ -1,0 +1,32 @@
+{
+  "name": "ha-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "mock": "VITE_MOCK=1 vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@bybas/weather-icons": "^2.0.0",
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
+    "@mdi/js": "^7.4.47",
+    "home-assistant-js-websocket": "^9.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/google.maps": "^3.66.4",
+    "@types/node": "^18.19.130",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.8",
+    "vite-plugin-singlefile": "^2.0.3"
+  }
+}

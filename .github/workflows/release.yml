@@ -1,0 +1,98 @@
+name: Release
+
+# Every merge to main: semantic-release reads the Conventional Commits since the
+# last tag, and if any are feat/fix/perf (or breaking) it tags vX.Y.Z, updates
+# CHANGELOG.md and publishes a GitHub Release with the built index.html.
+# The deploy job then tells Home Assistant to install that release. Running the
+# workflow by hand (Actions → Release → Run workflow) redeploys the latest release
+# when there is nothing new to release.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      published: ${{ steps.semrel.outputs.new_release_published }}
+      version: ${{ steps.semrel.outputs.new_release_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Privacy check
+        env:
+          PRIVACY_PATTERNS: ${{ secrets.PRIVACY_PATTERNS }}
+        run: scripts/privacy-check.sh
+      - name: Semantic release
+        id: semrel
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          semantic_version: 24
+          extra_plugins: |
+            @semantic-release/changelog@6
+            @semantic-release/exec@6
+            @semantic-release/git@10
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    # HA is only reachable on the home network, so the runner joins the tailnet
+    # as a short-lived node (tag:ci) and calls HA's deploy webhook. HA downloads
+    # the release asset itself; no HA credentials are stored in GitHub.
+    needs: release
+    if: needs.release.outputs.published == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+      HA_HOST: ${{ vars.HA_TAILNET_HOST }}
+      HAS_SECRETS: ${{ secrets.TS_OAUTH_CLIENT_ID != '' && secrets.HA_WEBHOOK_ID != '' }}
+    steps:
+      - name: Check deploy setup
+        if: env.HAS_SECRETS != 'true' || env.HA_HOST == ''
+        run: |
+          echo "::warning::Deploy skipped: set TS_OAUTH_CLIENT_ID, TS_OAUTH_SECRET, HA_WEBHOOK_ID secrets and the HA_TAILNET_HOST variable (see README)."
+      - name: Join tailnet
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Trigger HA deploy
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HA_WEBHOOK_ID: ${{ secrets.HA_WEBHOOK_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERSION" ]; then
+            VERSION=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName | sed 's/^v//')
+          fi
+          asset_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION" --jq '.assets[] | select(.name == "index.html") | .id')
+          # The repo is private, so hand HA a short-lived signed download URL
+          # (valid ~5 min) instead of a token.
+          url=$(curl -sS -o /dev/null -w '%{redirect_url}' \
+            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/assets/$asset_id")
+          test -n "$url"
+          jq -n --arg version "$VERSION" --arg url "$url" '{version: $version, url: $url}' |
+            curl -fsS --max-time 20 -X POST -H 'Content-Type: application/json' --data @- \
+              "http://$HA_HOST/api/webhook/$HA_WEBHOOK_ID"
+          echo "Asked Home Assistant to install v$VERSION"

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0b0f17" />
+    <title>Home</title>
+    <script>
+      // Apply the last theme before first paint, so light mode doesn't flash dark.
+      try {
+        var t = new URLSearchParams(location.search).get('theme') || localStorage.getItem('dashTheme') || 'auto';
+        if (t === 'auto') t = localStorage.getItem('dashThemeResolved') || 'dark';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+      // Per-home config (entity IDs, names) lives in config.js next to this file,
+      // not in the bundle. Parser-blocking, so it is defined before the app runs;
+      // the timestamp keeps kiosk WebViews from serving a stale copy.
+      document.write('<script src="./config.js?t=' + Date.now() + '"><\/script>');
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

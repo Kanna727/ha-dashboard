@@ -1,0 +1,10 @@
+node_modules
+dist
+.env*
+
+# Personal, never committed (see README "Your config")
+config/dashboard.config.ts
+CLAUDE.local.md
+.privacy-patterns
+*.local.*
+.DS_Store

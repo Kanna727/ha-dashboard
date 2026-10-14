@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Build (example config)
+        run: npm run build
+      - name: Bundle checks
+        run: |
+          # The mock provider and any Google API key must never ship.
+          test "$(grep -c MockProvider dist/index.html)" = 0
+          test "$(grep -c AIza dist/index.html)" = 0
+          # Entity IDs belong in config.js, not the bundle (the deploy helper is the one exception).
+          ids=$(grep -oE '\b(light|fan|switch|sensor|binary_sensor|media_player|person|lock|climate|weather|device_tracker|input_boolean)\.[a-z0-9_]{3,}' dist/index.html || true)
+          if [ -n "$ids" ]; then echo "Entity IDs in bundle:"; echo "$ids" | sort -u; exit 1; fi
+      - name: Mock build
+        run: VITE_MOCK=1 npx vite build --outDir dist-mock
+      - name: Privacy check
+        env:
+          PRIVACY_PATTERNS: ${{ secrets.PRIVACY_PATTERNS }}
+        run: scripts/privacy-check.sh
+
+  pr-title:
+    # Squash merges use the PR title as the commit message, and semantic-release
+    # reads it to pick the next version, so it must be a Conventional Commit.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
