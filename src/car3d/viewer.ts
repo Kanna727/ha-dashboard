@@ -9,9 +9,11 @@ import {
   AnimationClip,
   AnimationMixer,
   Box3,
+  BufferGeometry,
   CanvasTexture,
   Color,
   LoopOnce,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
@@ -21,6 +23,7 @@ import {
   PlaneGeometry,
   PMREMGenerator,
   Scene,
+  SRGBColorSpace,
   Spherical,
   Sprite,
   SpriteMaterial,
@@ -43,8 +46,20 @@ export interface ViewerOptions {
   paint?: string; // body colour, e.g. '#2c3527'
   paintMaterial?: string; // case-insensitive regex for the body paint material names
   driverSide?: 'left' | 'right';
+  gloss?: number; // 0 (satin) to 1 (wet look); default 0.4
+  rhd?: boolean | RhdOptions;
+  plate?: string; // registration shown on the number plates
   reducedMotion: boolean;
   onProgress?: (fraction: number) => void;
+}
+
+// Right-hand-drive conversion knobs (regexes, case-insensitive). See rhd().
+export interface RhdOptions {
+  include?: string; // extra parts to move (mesh or material names)
+  exclude?: string; // parts to leave alone
+  flip?: string; // materials whose texture text must read the right way round
+  split?: string; // the two-part screen material (default 'display')
+  keep?: string; // parts moved but not mirrored (default the steering-wheel logo)
 }
 
 const CORNERS: Corner[] = ['FL', 'FR', 'RL', 'RR'];
@@ -99,6 +114,7 @@ export class CarViewer {
   private running = false;
   private disposed = false;
   private onFrameCbs = new Set<() => void>();
+  private plateTexture?: Texture;
   private lamps: { lit: Object3D; unlit: Object3D[]; signal: boolean }[] = [];
   private glass: { mat: MeshStandardMaterial; rear: boolean; color: Color }[] = [];
   private glows: { sprite: Sprite; key: string }[] = [];
@@ -119,7 +135,7 @@ export class CarViewer {
     this.renderer.toneMappingExposure = 1.05;
     this.pmrem = new PMREMGenerator(this.renderer);
     this.scene.environment = this.pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.8; // the room's ceiling lights otherwise bleach the roof and bonnet
+    this.scene.environmentIntensity = 0.6; // the room's ceiling lights otherwise bleach the roof and bonnet
 
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
@@ -144,6 +160,8 @@ export class CarViewer {
     const root = gltf.scene;
     this.model = root;
     this.normalise(root);
+    this.rhd(root);
+    this.plates(root);
     this.paint(root);
     this.prepareDoors(gltf.animations);
     this.prepareLamps(root);
@@ -207,13 +225,16 @@ export class CarViewer {
         if (done.has(m) || !re.test(m.name)) continue;
         done.add(m);
         const std = m as MeshStandardMaterial;
+        // gloss 0 = satin, 1 = wet look. Too much clearcoat mirrors the
+        // environment's ceiling lights and the paint reads white.
+        const g = Math.min(1, Math.max(0, this.opts.gloss ?? 0.4));
         std.color = new Color(paint);
-        std.metalness = 0.6;
-        std.roughness = 0.35;
+        std.metalness = 0.25 + 0.35 * g;
+        std.roughness = 0.6 - 0.3 * g;
         if ((m as MeshPhysicalMaterial).isMeshPhysicalMaterial) {
           const phys = m as MeshPhysicalMaterial;
-          phys.clearcoat = 1;
-          phys.clearcoatRoughness = 0.06;
+          phys.clearcoat = 0.15 + 0.85 * g;
+          phys.clearcoatRoughness = 0.4 - 0.34 * g;
         }
         std.needsUpdate = true;
       }
@@ -374,6 +395,245 @@ export class CarViewer {
     }
     this.controls.enabled = false;
     this.fly = { from, to, t0: performance.now(), ms: 1200, done };
+  }
+
+  // ---- Right-hand drive ----
+
+  // Turn a left-hand-drive model into right-hand drive the way the real car
+  // differs: the whole front-interior module (dashboard, screens, steering
+  // wheel and column, pedals, centre stack) is reflected across the car's
+  // centre plane. Exterior, doors and seats stay as they are, so badges read
+  // normally. Text on the moved parts is put right again: textures matching
+  // `flip` are mirrored back, the `split` screen texture has each half flipped
+  // in place (so the cluster ends up in front of the driver), and parts matching
+  // `keep` (the wheel's logo) are reflected again about their own centre.
+  // Baked once into the cached model.
+  private rhd(root: Object3D) {
+    const opt = this.opts.rhd;
+    if (!opt || root.userData.rhdDone) return;
+    root.userData.rhdDone = true;
+    const cfg = typeof opt === 'object' ? opt : {};
+    const rx = (s: string | undefined, def?: string) => (s ?? def ? new RegExp((s ?? def)!, 'i') : undefined);
+    const include = rx(cfg.include);
+    const exclude = rx(cfg.exclude);
+    const flip = rx(cfg.flip);
+    const split = rx(cfg.split, 'display');
+    const keep = rx(cfg.keep, 'steering_?wheel_?logo');
+    const skipMat = new RegExp(`glass|${this.opts.paintMaterial || 'carpaint'}`, 'i');
+
+    const { forward, left, center, size } = this.frame;
+    const { front, rear } = this.axles();
+    const along = (p: Vector3) => p.clone().sub(center).dot(forward);
+    const across = (p: Vector3) => p.clone().sub(center).dot(left);
+    const sF = along(front);
+    const sR = along(rear);
+    const wheelbase = sF - sR;
+    // From the front seat backs to just behind the front axle; inside the body.
+    const sMin = sR + 0.37 * wheelbase;
+    const sMax = sF - 0.08 * wheelbase;
+    const halfW = Math.min(size.x, size.z) * 0.45;
+
+    const doorParts = new Set<Object3D>();
+    root.traverse((o) => {
+      if (CORNERS.some((c) => DOOR(c).test(o.name))) o.traverse((d) => doorParts.add(d));
+    });
+    const keepParts = new Set<Object3D>();
+    if (keep) root.traverse((o) => keep.test(o.name) && o.traverse((d) => keepParts.add(d)));
+
+    root.updateMatrixWorld(true);
+    const picked: Mesh[] = [];
+    const straddling: Mesh[] = [];
+    const corner = new Vector3();
+    // Loose world-space box around the region, for a quick overlap test.
+    const regionBox = new Box3();
+    for (const s of [sMin, sMax]) for (const l of [-halfW, halfW]) for (const y of [size.y * 0.1, size.y * 0.92]) {
+      regionBox.expandByPoint(center.clone().addScaledVector(forward, s).addScaledVector(left, l).setY(y));
+    }
+    root.traverse((o) => {
+      const m = o as Mesh;
+      if (!m.isMesh || doorParts.has(m)) return;
+      const mats = Array.isArray(m.material) ? m.material : [m.material];
+      const named = (re?: RegExp) => !!re && (re.test(m.name) || mats.some((x) => re.test(x.name)));
+      if (named(exclude)) return;
+      if (named(include)) return void picked.push(m);
+      if (mats.some((x) => skipMat.test(x.name))) return;
+      const b = new Box3().setFromObject(m);
+      if (b.isEmpty()) return;
+      let inside = b.min.y > size.y * 0.1 && b.max.y < size.y * 0.92;
+      for (let i = 0; inside && i < 8; i++) {
+        corner.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z);
+        const s = along(corner);
+        inside = s > sMin && s < sMax && Math.abs(across(corner)) < halfW;
+      }
+      if (inside) picked.push(m);
+      else if (!Array.isArray(m.material) && b.intersectsBox(regionBox)) straddling.push(m);
+    });
+
+    // Big meshes that reach into the region (the low-detail body shell carries
+    // a hidden copy of the dashboard and wheel) are split: their triangles
+    // inside the region become a new mesh that moves with the rest.
+    const p = new Vector3();
+    const inRegion = (q: Vector3) => {
+      const s = along(q);
+      return s > sMin && s < sMax && Math.abs(across(q)) < halfW && q.y > size.y * 0.1 && q.y < size.y * 0.92;
+    };
+    for (const m of straddling) {
+      const g = m.geometry;
+      const pos = g.attributes.position;
+      const index = g.index;
+      const tris = (index ? index.count : pos.count) / 3;
+      const keep: number[] = [];
+      const move: number[] = [];
+      for (let t = 0; t < tris; t++) {
+        const ids = [0, 1, 2].map((k) => (index ? index.getX(t * 3 + k) : t * 3 + k));
+        const all = ids.every((id) => inRegion(p.fromBufferAttribute(pos, id).applyMatrix4(m.matrixWorld)));
+        (all ? move : keep).push(...ids);
+      }
+      if (!move.length) continue;
+      const big = pos.count > 65535;
+      const piece = new BufferGeometry();
+      for (const [k, a] of Object.entries(g.attributes)) piece.setAttribute(k, a);
+      piece.setIndex(big ? Array.from(new Uint32Array(move)) : move);
+      g.setIndex(keep);
+      g.computeBoundingBox();
+      g.computeBoundingSphere();
+      piece.computeBoundingBox();
+      piece.computeBoundingSphere();
+      const part = new Mesh(piece, m.material);
+      part.name = `${m.name}_rhd`;
+      part.matrixAutoUpdate = false;
+      part.matrix.copy(m.matrix);
+      m.parent!.add(part);
+      part.updateMatrixWorld(true);
+      picked.push(part);
+    }
+
+    const reflect = (p: Vector3) => {
+      const n = left;
+      const r = new Matrix4().set(
+        1 - 2 * n.x * n.x, -2 * n.x * n.y, -2 * n.x * n.z, 0,
+        -2 * n.y * n.x, 1 - 2 * n.y * n.y, -2 * n.y * n.z, 0,
+        -2 * n.z * n.x, -2 * n.z * n.y, 1 - 2 * n.z * n.z, 0,
+        0, 0, 0, 1,
+      );
+      return new Matrix4().makeTranslation(p.x, p.y, p.z).multiply(r).multiply(new Matrix4().makeTranslation(-p.x, -p.y, -p.z));
+    };
+    // Move only the top-most picked parts; their children come along.
+    const pickedSet = new Set<Object3D>(picked);
+    const hasPickedAncestor = (o: Object3D) => {
+      for (let a = o.parent; a; a = a.parent) if (pickedSet.has(a)) return true;
+      return false;
+    };
+    const mirror = reflect(center); // the car's centre plane
+    for (const m of picked) {
+      if (hasPickedAncestor(m)) continue;
+      m.matrixAutoUpdate = false;
+      m.matrix.copy(m.parent!.matrixWorld.clone().invert().multiply(mirror).multiply(m.matrixWorld));
+    }
+    root.updateMatrixWorld(true);
+
+    const moved = new Set<Object3D>();
+    for (const m of picked) m.traverse((d) => moved.add(d));
+    const flipped = new Map<Material, Material>();
+    const fix = (mat: Material) => {
+      const halves = !!split && split.test(mat.name);
+      if (!halves && !(flip && flip.test(mat.name))) return mat;
+      let out = flipped.get(mat);
+      if (!out) {
+        out = mat.clone();
+        const std = out as MeshStandardMaterial;
+        for (const key of ['map', 'emissiveMap'] as const) {
+          const t = std[key];
+          if (t) std[key] = halves ? flipHalves(t) : flipU(t);
+        }
+        flipped.set(mat, out);
+      }
+      return out;
+    };
+    for (const o of moved) {
+      const m = o as Mesh;
+      if (!m.isMesh) continue;
+      // Logos: reflect again about their own centre, so they're moved, not mirrored.
+      if (keepParts.has(m)) {
+        const c = new Box3().setFromObject(m).getCenter(new Vector3());
+        m.matrixAutoUpdate = false;
+        m.matrix.copy(m.parent!.matrixWorld.clone().invert().multiply(reflect(c)).multiply(m.matrixWorld));
+      }
+      m.material = Array.isArray(m.material) ? m.material.map(fix) : fix(m.material);
+    }
+    root.updateMatrixWorld(true);
+  }
+
+  // ---- Number plates ----
+
+  // Puts `plate` on the car's number plates, found by shape: a thin textured
+  // panel about 52 × 12 cm, centred, at the very front; the rear plate shares
+  // its material. A rear plate that's broken in the source (squashed flat) is
+  // replaced by a copy of the front one.
+  private plates(root: Object3D) {
+    const text = this.opts.plate;
+    if (!text) return;
+    const { forward, left, center } = this.frame;
+    const { front: frontAxle } = this.axles();
+    const along = (p: Vector3) => p.clone().sub(center).dot(forward);
+    const sF = along(frontAxle);
+    root.updateMatrixWorld(true);
+
+    let front: { mesh: Mesh; s: number } | undefined;
+    const boxOf = (m: Object3D) => new Box3().setFromObject(m);
+    // Extent of a box along a horizontal axis (works for any yaw).
+    const extent = (b: Box3, axis: Vector3) => Math.abs((b.max.x - b.min.x) * axis.x) + Math.abs((b.max.z - b.min.z) * axis.z);
+    root.traverse((o) => {
+      const m = o as Mesh;
+      if (!m.isMesh || Array.isArray(m.material) || !(m.material as MeshStandardMaterial).map) return;
+      const b = boxOf(m);
+      const c = b.getCenter(new Vector3());
+      const wide = extent(b, left);
+      const deep = extent(b, forward);
+      const tall = b.max.y - b.min.y;
+      const s = along(c);
+      if (wide > 0.35 && wide < 0.7 && tall > 0.07 && tall < 0.22 && deep < 0.06 && Math.abs(c.clone().sub(center).dot(left)) < 0.1 && s > sF + 0.4) {
+        if (!front || s > front.s) front = { mesh: m, s };
+      }
+    });
+    if (!front) return;
+    const mat = front.mesh.material as MeshStandardMaterial;
+
+    if (!root.userData.platesDone) {
+      root.userData.platesDone = true;
+      const frontC = boxOf(front.mesh).getCenter(new Vector3());
+      root.traverse((o) => {
+        const m = o as Mesh;
+        if (!m.isMesh || m === front!.mesh || m.material !== mat) return;
+        const b = boxOf(m);
+        const c = b.getCenter(new Vector3());
+        if (along(c) > 0 || b.max.y - b.min.y > 0.02) return; // a real rear plate keeps its own geometry
+        // Squashed in the source: hide it and put a copy of the front plate there.
+        m.visible = false;
+        const turn = new Matrix4().makeRotationAxis(new Vector3(0, 1, 0), Math.PI);
+        const at = c.clone().addScaledVector(forward, -0.004);
+        const world = new Matrix4()
+          .makeTranslation(at.x, at.y, at.z)
+          .multiply(turn)
+          .multiply(new Matrix4().makeTranslation(-frontC.x, -frontC.y, -frontC.z))
+          .multiply(front!.mesh.matrixWorld);
+        const copy = new Mesh(front!.mesh.geometry, mat);
+        copy.name = 'rear_plate_copy';
+        copy.matrixAutoUpdate = false;
+        copy.matrix.copy(m.parent!.matrixWorld.clone().invert().multiply(world));
+        m.parent!.add(copy);
+      });
+    }
+
+    const old = mat.map;
+    mat.map = plateTexture(text, old?.flipY ?? false);
+    mat.map.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    mat.color.set('#ffffff');
+    // The model's plate also glows its own text through emissiveMap; drop it.
+    mat.emissiveMap = null;
+    mat.emissive.set(0x000000);
+    mat.needsUpdate = true;
+    this.plateTexture = mat.map;
   }
 
   // ---- Car status on the model ----
@@ -710,6 +970,7 @@ export class CarViewer {
       (this.shadow.material as MeshBasicMaterial).map?.dispose();
       this.scene.remove(this.shadow);
     }
+    this.plateTexture?.dispose();
     this.glows.forEach((g) => g.sprite.material.dispose());
     this.glowTexture?.dispose();
     if (this.model) this.scene.remove(this.model);
@@ -719,4 +980,96 @@ export class CarViewer {
     this.renderer.dispose();
     this.renderer.forceContextLoss();
   }
+}
+
+// A texture mirrored left-right (u → 1 − u), sharing the image.
+function flipU(t: Texture): Texture {
+  const f = t.clone();
+  f.repeat.x = -1;
+  f.offset.x = 1;
+  f.needsUpdate = true;
+  return f;
+}
+
+// The same image with its left and right halves each mirrored in place. On a
+// mirrored screen this keeps both halves readable and swaps their sides.
+function flipHalves(t: Texture): Texture {
+  const img = t.image as CanvasImageSource & { width: number; height: number };
+  const c = document.createElement('canvas');
+  c.width = img.width;
+  c.height = img.height;
+  const g = c.getContext('2d')!;
+  const half = img.width / 2;
+  for (const x0 of [0, half]) {
+    g.save();
+    g.translate(x0 + half, 0);
+    g.scale(-1, 1);
+    g.drawImage(img, x0, 0, half, img.height, 0, 0, half, img.height);
+    g.restore();
+  }
+  const out = new CanvasTexture(c);
+  out.flipY = t.flipY;
+  out.colorSpace = t.colorSpace;
+  out.wrapS = t.wrapS;
+  out.wrapT = t.wrapT;
+  return out;
+}
+
+// An Indian high-security registration plate: white, black border, a
+// hologram disc and "IND" on the left, the number in bold condensed type.
+function plateTexture(text: string, flipY: boolean): CanvasTexture {
+  const W = 1024;
+  const H = 256;
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#f6f6f3';
+  g.fillRect(0, 0, W, H);
+  g.strokeStyle = '#111';
+  g.lineWidth = 10;
+  g.beginPath();
+  g.roundRect(14, 14, W - 28, H - 28, 22);
+  g.stroke();
+  // Hologram disc (chakra-like spokes) and IND.
+  const cx = 82;
+  const cy = 92;
+  const disc = g.createRadialGradient(cx - 10, cy - 10, 4, cx, cy, 40);
+  disc.addColorStop(0, '#e8eef8');
+  disc.addColorStop(0.6, '#9fb3d6');
+  disc.addColorStop(1, '#5d77a8');
+  g.fillStyle = disc;
+  g.beginPath();
+  g.arc(cx, cy, 38, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = '#2f4a80';
+  g.lineWidth = 2;
+  for (let i = 0; i < 24; i++) {
+    const a = (i / 24) * Math.PI * 2;
+    g.beginPath();
+    g.moveTo(cx, cy);
+    g.lineTo(cx + Math.cos(a) * 30, cy + Math.sin(a) * 30);
+    g.stroke();
+  }
+  g.fillStyle = '#1d3f9a';
+  g.font = 'bold 46px Arial, Helvetica, sans-serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('IND', cx, 182);
+  // Registration, squeezed to fit the space right of the hologram.
+  g.fillStyle = '#111';
+  g.font = 'bold 168px "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial, sans-serif';
+  const left = 150;
+  const room = W - left - 40;
+  const w = g.measureText(text).width;
+  const k = Math.min(1, room / w);
+  g.save();
+  g.translate(left + room / 2, H / 2 + 6);
+  g.scale(k, 1);
+  g.fillText(text, 0, 0);
+  g.restore();
+  const t = new CanvasTexture(c);
+  t.flipY = flipY;
+  t.colorSpace = SRGBColorSpace;
+  return t;
 }

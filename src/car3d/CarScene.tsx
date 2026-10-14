@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Icon, type IconName } from '../components/Icon';
 import { focusAnchors, type Anchor, type CarVisual, type Corner } from '../lib/carVisual';
-import type { CarViewer } from './viewer';
+import type { CarViewer, RhdOptions } from './viewer';
 
 export interface CarModelConfig {
   url: string;
   paint?: string;
   paintMaterial?: string;
   driverSide?: 'left' | 'right';
+  gloss?: number;
+  rhd?: boolean | RhdOptions;
+  plate?: string;
 }
 
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -62,7 +65,8 @@ export function CarScene({ model, fallback, visual }: { model: CarModelConfig; f
       document.removeEventListener('visibilitychange', onVisibility);
       v?.dispose();
     };
-  }, [model.url, model.paint, model.paintMaterial, model.driverSide]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model.url, model.paint, model.paintMaterial, model.driverSide, model.gloss, model.plate, JSON.stringify(model.rhd)]);
 
   useEffect(() => {
     if (!viewer || !visual) return;
