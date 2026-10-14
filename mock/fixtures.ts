@@ -189,6 +189,10 @@ const list: HassEntity[] = [
   e('sensor.car_front_right_seat', 'Off'),
   e('sensor.car_rear_left_seat', 'Off'),
   e('sensor.car_rear_right_seat', 'Off'),
+  e('button.car_force_refresh', 'unknown'),
+  e('button.car_start_hazard_lights', 'unknown'),
+  e('button.car_start_hazard_lights_and_horn', 'unknown'),
+  e('climate.car_climate_control', 'off', { hvac_modes: ['off', 'auto'], min_temp: 14, max_temp: 30, target_temp_step: 0.5, temperature: 22, unit_of_measurement: '°C' }),
   e('sensor.car_location_last_updated', new Date(Date.now() - 3 * 3600_000).toISOString()),
   e('sensor.car_last_updated_at', new Date(Date.now() - 40 * 60_000).toISOString()),
 

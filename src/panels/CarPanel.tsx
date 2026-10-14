@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { CarScene } from '../car3d/CarScene';
 import { carVisual, type CarVisual } from '../lib/carVisual';
+import { ClimateControl, RemoteActions } from './CarActions';
 
 export function distanceKm(a: HassEntity | undefined, b: HassEntity | undefined): number | undefined {
   const la1 = a?.attributes.latitude as number | undefined;
@@ -252,6 +253,8 @@ function CarDetail() {
   const hass = useHass();
   const car = useCar();
   const climate = useEntity(CAR_DETAIL.climate);
+  const updated = useEntity(CAR_DETAIL.lastUpdated);
+  const locationAt = useEntity(CAR_DETAIL.status?.locationUpdated);
   const tyres = useEntities(TYRES());
   const tyreState = (i: number) => (isUnavailable(tyres[i]) ? car.lastTyres?.[TYRES()[i]] : tyres[i]?.state);
   const anyTyre = tyres.some((_, i) => tyreState(i) === 'on');
@@ -299,17 +302,22 @@ function CarDetail() {
             <h3>Comfort</h3>
             <span className="muted small">Remote climate runs for a limited time, then the car switches it off</span>
           </div>
-          <button
-            className={`action ${climate?.state === 'on' ? 'active' : ''}`}
-            style={{ ['--tint' as string]: 'var(--accent-fan)' }}
-            disabled={isUnavailable(climate)}
-            onClick={() => hass.callService('switch', 'toggle', {}, { entity_id: CAR_DETAIL.climate })}
-          >
-            <span className="action-icon"><Icon name="ac" size={24} /></span>
-            <span className="action-label">Climate</span>
-            <span className="action-sub">{isUnavailable(climate) ? 'Unavailable' : climate?.state === 'on' ? 'Running' : 'Pre-cool the cabin'}</span>
-          </button>
+          {CAR_DETAIL.actions?.climate ? (
+            <ClimateControl />
+          ) : (
+            <button
+              className={`action ${climate?.state === 'on' ? 'active' : ''}`}
+              style={{ ['--tint' as string]: 'var(--accent-fan)' }}
+              disabled={isUnavailable(climate)}
+              onClick={() => hass.callService('switch', 'toggle', {}, { entity_id: CAR_DETAIL.climate })}
+            >
+              <span className="action-icon"><Icon name="ac" size={24} /></span>
+              <span className="action-label">Climate</span>
+              <span className="action-sub">{isUnavailable(climate) ? 'Unavailable' : climate?.state === 'on' ? 'Running' : 'Pre-cool the cabin'}</span>
+            </button>
+          )}
         </div>
+        <RemoteActions updatedState={updated?.state} />
       </div>
 
       <div className="car-right">
@@ -346,6 +354,7 @@ function CarDetail() {
           >
             <Icon name="pin" size={24} />
             Find car
+            {relTime(locationAt?.state) && <span className="find-age">{relTime(locationAt?.state)}</span>}
           </button>
           <LockButton locked={car.locked} disabled={car.offline} />
         </div>

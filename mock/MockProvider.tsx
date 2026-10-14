@@ -46,7 +46,8 @@ function applyService(domain: string, service: string, data: Record<string, unkn
         patch(id, { state: 'on', attributes: { percentage: data.percentage } });
         break;
       case 'set_temperature':
-        patch(id, { attributes: { temperature: data.temperature } });
+        // HA applies an hvac_mode passed with the temperature first.
+        patch(id, { ...(data.hvac_mode ? { state: data.hvac_mode as string } : {}), attributes: { temperature: data.temperature } });
         break;
       case 'set_hvac_mode':
         patch(id, { state: data.hvac_mode as string });
@@ -154,6 +155,10 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       async callService(domain, service, data = {}, target) {
         console.info('[mock] %s.%s', domain, service, data, target);
         applyService(domain, service, data, ids(target));
+        // A forced car refresh lands a few seconds later.
+        if (domain === 'button' && ids(target).includes('button.car_force_refresh')) {
+          window.setTimeout(() => patch('sensor.car_last_updated_at', { state: new Date().toISOString() }), 3000);
+        }
         // Pretend a restarted Echo comes back a couple of seconds later.
         if (domain === 'button' && ids(target).includes('button.work_room_dot_restart')) {
           window.setTimeout(() => patch('media_player.work_room_dot', { state: 'idle' }), 2000);

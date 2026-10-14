@@ -715,6 +715,16 @@ button.wide { width: 100%; }
 .comfort { display: grid; gap: 12px; }
 .comfort-head h3 { font-size: 20px; font-weight: 800; }
 .comfort .action { max-width: 220px; }
+/* Remote climate: the action tile plus a target-temperature stepper. */
+.climate-ctl { display: flex; align-items: stretch; gap: 12px; flex-wrap: wrap; }
+.temp-stepper { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 22px; background: var(--card); border: 1px solid var(--border); }
+.temp-stepper button { width: 48px; height: 48px; border-radius: 16px; display: flex; align-items: center; justify-content: center; background: var(--tile-hover); }
+.temp-stepper button:disabled { opacity: 0.4; }
+.temp-val { min-width: 64px; text-align: center; font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.car-remote { display: grid; gap: 12px; }
+.car-remote h3 { font-size: 20px; font-weight: 800; }
+.car-remote-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.find-age { font-size: 11px; font-weight: 600; color: var(--muted); }
 .car-status { margin: 0; padding: 18px; }
 .tyre-grid { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto; align-items: center; gap: 16px 20px; padding: 10px 0; }
 .tyre-grid .car-top { grid-row: 1 / span 2; grid-column: 2; color: var(--muted); display: flex; justify-content: center; }
