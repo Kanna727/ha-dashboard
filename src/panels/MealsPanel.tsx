@@ -6,7 +6,7 @@ import { PanelHead, useModal } from '../components/Modal';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const { people: MEAL_PEOPLE, slots: MEAL_SLOTS, plan: MEAL_PLAN, notes: KITCHEN_NOTES } = MEALS;
 
-const minutes = (hhmm: string) => {
+export const minutes = (hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + (m || 0);
 };
@@ -14,10 +14,10 @@ const minutes = (hhmm: string) => {
 // The meal to eat next: the first slot whose eating window hasn't ended (each
 // slot's `end` in config), else tomorrow's first slot (offset 1). Once the last
 // window has passed the panel defaults to tomorrow's plan until midnight.
-function upcoming(now: Date): { offset: 0 | 1; slot: MealSlot } {
+export function upcoming(now: Date, slots = MEAL_SLOTS): { offset: 0 | 1; slot: MealSlot } {
   const m = now.getHours() * 60 + now.getMinutes();
-  const next = MEAL_SLOTS.find((s) => m < minutes(s.end));
-  return next ? { offset: 0, slot: next.id } : { offset: 1, slot: MEAL_SLOTS[0]?.id ?? 'breakfast' };
+  const next = slots.find((s) => m < minutes(s.end));
+  return next ? { offset: 0, slot: next.id } : { offset: 1, slot: slots[0]?.id ?? 'breakfast' };
 }
 
 function useNow() {

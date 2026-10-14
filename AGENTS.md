@@ -60,6 +60,7 @@ src/theme/useSunTheme.ts   auto (sun.sun) / dark / light; ?theme= override; loca
 src/update/useSelfUpdate.ts reloads when input_text.dashboard_build != "<version>/<config hash>"
 mock/fixtures.ts           state snapshot matching the example config
 mock/MockProvider.tsx      fake HassApi that applies service calls locally and jitters power sensors
+src/lib/fanSpeed.ts        fan percentage snapping / what to send to HA (unit-tested)
 scripts/deploy.py          manual deploy: build, copy index.html to the share, push config, set helper
 scripts/push-config.mjs    saves dist/dashboard-config.json into HA and updates the helper (HA_URL + HA_TOKEN)
 scripts/privacy-check.sh   blocks personal data in tracked files
@@ -74,6 +75,7 @@ npm install
 npm run mock        # offline preview on :5173 with fake data (service calls logged to console)
 npm run dev         # live; set VITE_HA_URL=http://homeassistant.local when running off-box
 npm run typecheck
+npm test            # vitest unit tests (src/**/*.test.ts)
 npm run build       # tsc + vite build -> dist/index.html + dist/dashboard-config.json
 python3 scripts/deploy.py                # manual deploy: app + config
 python3 scripts/deploy.py --config-only  # after editing config/dashboard.config.ts
@@ -180,7 +182,8 @@ The panel shows a tree: Home total on the left, with a branch to each of the top
 
 ## Verifying UI changes
 
-- Always run `npm run typecheck` and `npm run build`.
+- Always run `npm run typecheck`, `npm test` and `npm run build`. CI and the Release workflow run all three.
+- **Unit tests** (`vitest`, config in `vitest.config.ts`) cover pure logic: fan-speed snapping (`src/lib/fanSpeed.ts`), meal "Next up", plug discovery, `relTime`/`num`, weather hours/night, car distance, commute card extraction. They run in plain Node; `src/test/setup.ts` sets `window` to the global object and loads the example config, as `main.tsx` does. Put new pure helpers somewhere importable without React rendering and add a test beside them (`*.test.ts`, never imported by the app, so never bundled). vitest stays on 3.x: 4.x needs Vite 6+ and Node 20+.
 - Take visual checks against a **production-mode mock build**, not the dev server. The dev server loads `@mdi/js` slowly, and headless screenshots then capture half-loaded pages.
   ```sh
   VITE_MOCK=1 npx vite build --outDir <scratch>/dist-mock --emptyOutDir

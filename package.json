@@ -8,7 +8,8 @@
     "mock": "VITE_MOCK=1 vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@bybas/weather-icons": "^2.0.0",
@@ -28,6 +29,7 @@
     "typescript": "^5.5.4",
     "vite": "^5.4.8",
     "vite-plugin-singlefile": "^2.0.3",
+    "vitest": "^3.2.4",
     "ws": "^8.22.0"
   }
 }

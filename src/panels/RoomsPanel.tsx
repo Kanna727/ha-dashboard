@@ -9,6 +9,7 @@ import { EntityTile } from '../components/EntityTile';
 import { Icon, type IconName } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { useSlide } from '../hooks/useSlide';
+import { percentToSend, speedCount, speedOf } from '../lib/fanSpeed';
 import type { HassEntities } from 'home-assistant-js-websocket';
 
 const lightsOf = (r: RoomDef) => r.controls.filter((c) => c.entity.startsWith('light.')).map((c) => c.entity);
@@ -102,14 +103,11 @@ function RoomRow({ room }: { room: RoomDef }) {
     onCommit: (v) => {
       const target = { entity_id: room.quick!.entity };
       if (v <= 0) hass.callService('fan', 'turn_off', {}, target);
-      // Round down: HA maps a percentage to speed ceil(pct * speeds / 100), so
-      // rounding 16.67 up to 17 would land on speed 2 (and 66.67 -> 67 on 5).
-      // Floor gives 16/33/50/66/83/100, the same values HA reports per speed.
-      else hass.callService('fan', 'set_percentage', { percentage: Math.floor(v + 1e-6) }, target);
+      else hass.callService('fan', 'set_percentage', { percentage: percentToSend(v) }, target);
     },
   });
-  const fanSpeeds = Math.round(100 / fanStep);
-  const fanSpeed = Math.round(fanSlide.value / fanStep);
+  const fanSpeeds = speedCount(fanStep);
+  const fanSpeed = speedOf(fanSlide.value, fanStep);
 
   // Climate first, then what's running: lights, running appliances, else the first other device that's on.
   const status: string[] = [];
