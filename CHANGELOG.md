@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/Kanna727/ha-dashboard/compare/v1.3.0...v1.3.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* fan slide picks speed 2 for 1 and 5 for 4 ([#8](https://github.com/Kanna727/ha-dashboard/issues/8)) ([ceb9c69](https://github.com/Kanna727/ha-dashboard/commit/ceb9c69e22b8eedc18257cba4e6e5d8fe647203a))
+
 # [1.3.0](https://github.com/Kanna727/ha-dashboard/compare/v1.2.0...v1.3.0) (2026-10-14)
 
 
