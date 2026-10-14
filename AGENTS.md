@@ -209,7 +209,8 @@ The panel shows a tree: Home total on the left, with a branch to each of the top
 
 ## Gotchas
 
-- Car entities are often `unavailable`; `CarPanel` then shows "Offline · Updated Xh ago", which is expected. A sleeping dishwasher shows "Asleep".
+- **Car offline:** when the car's lock and fuel entities are both `unavailable` (the Kia Connect integration isn't returning data, typically an expired login; HA raises no repair or reauth flow for it), `CarPanel` treats the car as offline. It fetches the last numeric fuel/range/odometer readings from 14 days of history (`useLastKnown`) and shows them dimmed with "Offline · <age>"; the panel gets a "Kia Connect not responding" chip instead of the lock chip, and the detail modal a `.notice-banner` telling the owner to reconfigure the integration in HA. Lock is disabled and lock/door state reads "unknown"; never present an unavailable lock as "Unlocked". In the mock, `__mockPatch` the lock, fuel, range and odometer to `unavailable` to see it (mock history returns fixed car readings from 3 h ago).
+- `relTime()` returns '' for missing or unparseable times, so an unavailable timestamp sensor never renders as "NaNd ago". A sleeping dishwasher shows "Asleep".
 - The theme is applied in a layout effect. The body background transition only switches on after the first second (`html.theme-anim`), to avoid a dark flash on load.
 - The AC setpoint is clamped to 16–30 °C in the UI, even though devices may report a wider range.
 - Fan tile icons (`mdiCeilingFan`, a side view) spin around the vertical axis (`spin-y`), not in a flat circle. That's what the owner asked for.

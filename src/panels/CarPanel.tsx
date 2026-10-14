@@ -20,6 +20,43 @@ function distanceKm(a: HassEntity | undefined, b: HassEntity | undefined): numbe
   return 6371 * 2 * Math.asin(Math.sqrt(h));
 }
 
+// When Kia Connect stops answering (expired login, API outage) every car
+// entity goes `unavailable` and HA has no current value to show. Fall back to
+// the last readings in HA's history, clearly marked as such, instead of blanks.
+interface LastKnown {
+  fuel?: number;
+  range?: number;
+  odo?: number;
+  at?: number; // epoch ms of the newest reading
+}
+
+function useLastKnown(offline: boolean): LastKnown | null {
+  const hass = useHass();
+  const [last, setLast] = useState<LastKnown | null>(null);
+  useEffect(() => {
+    if (!offline) {
+      setLast(null);
+      return;
+    }
+    let alive = true;
+    hass
+      .fetchHistory([CAR.fuel, CAR.range, CAR.odometer], 24 * 14)
+      .then((h) => {
+        const latest = (id: string) => h[id]?.[h[id].length - 1];
+        const [fuel, range, odo] = [latest(CAR.fuel), latest(CAR.range), latest(CAR.odometer)];
+        const times = [fuel, range, odo].flatMap((pt) => (pt ? [pt.t] : []));
+        if (alive) setLast({ fuel: fuel?.v, range: range?.v, odo: odo?.v, at: times.length ? Math.max(...times) : undefined });
+      })
+      .catch(() => alive && setLast({}));
+    return () => {
+      alive = false;
+    };
+  }, [offline, hass]);
+  return last;
+}
+
+const fmtInt = (n: number | undefined) => (n === undefined ? '–' : Math.round(n).toString());
+
 function useCar() {
   const lock = useEntity(CAR.lock);
   const fuel = useEntity(CAR.fuel);
@@ -33,12 +70,28 @@ function useCar() {
   const warnings = useEntities(CAR.warnings.map((w) => w.entity));
 
   const offline = isUnavailable(lock) && isUnavailable(fuel);
+  const last = useLastKnown(offline);
   const openCount = doors.filter((d) => d?.state === 'on').length;
   const activeWarnings = CAR.warnings.filter((_, i) => warnings[i]?.state === 'on');
   const km = distanceKm(tracker, home);
   const where = km === undefined ? undefined : km < 0.2 ? 'At home' : `${km < 10 ? km.toFixed(1) : Math.round(km)} km away`;
   const moving = engine?.state === 'on';
-  return { lock, fuel, range, odo, tracker, updated, offline, openCount, activeWarnings, where, moving, locked: lock?.state === 'locked' };
+  return {
+    lock,
+    tracker,
+    offline,
+    openCount,
+    activeWarnings,
+    where,
+    moving,
+    locked: lock?.state === 'locked',
+    // Live values, or the last known ones while offline.
+    fuelPct: num(fuel) ?? last?.fuel,
+    rangeKm: num(range) ?? last?.range,
+    odoKm: num(odo) ?? last?.odo,
+    // When the shown values were last fresh: the car's own timestamp, else history.
+    seenAgo: relTime(updated?.state) || relTime(last?.at),
+  };
 }
 
 // Simple top-down silhouette for the tyre diagram.
@@ -63,7 +116,7 @@ function CarImage({ className }: { className?: string }) {
   return <img src={CAR_DETAIL.image} alt="" className={className} onError={() => setOk(false)} draggable={false} />;
 }
 
-function LockButton({ locked }: { locked: boolean }) {
+function LockButton({ locked, disabled }: { locked: boolean; disabled: boolean }) {
   const hass = useHass();
   const [confirm, setConfirm] = useState(false);
   useEffect(() => {
@@ -79,7 +132,7 @@ function LockButton({ locked }: { locked: boolean }) {
     hass.callService('lock', locked ? 'unlock' : 'lock', {}, { entity_id: CAR.lock });
   };
   return (
-    <button className={`big-btn ${confirm ? 'confirm' : ''}`} onClick={onClick}>
+    <button className={`big-btn ${confirm ? 'confirm' : ''}`} onClick={onClick} disabled={disabled}>
       <Icon name={locked ? 'unlock' : 'lock'} size={24} />
       {confirm ? 'Tap again to unlock' : locked ? 'Unlock' : 'Lock'}
     </button>
@@ -108,6 +161,19 @@ function Opening({ entities, name }: { entities: string[]; name: string }) {
   );
 }
 
+function OfflineNotice({ seenAgo }: { seenAgo: string }) {
+  return (
+    <div className="notice-banner">
+      <Icon name="alert" size={18} />
+      <span>
+        <strong>Kia Connect isn't responding.</strong> {seenAgo ? `Showing the last readings, from ${seenAgo}. ` : ''}
+        This usually means the integration needs signing in again: in Home Assistant, open Settings → Devices &amp; services → Kia
+        Connect and reconfigure it.
+      </span>
+    </div>
+  );
+}
+
 function CarDetail() {
   const hass = useHass();
   const car = useCar();
@@ -116,24 +182,25 @@ function CarDetail() {
   const tyreWarn = [CAR_DETAIL.tyres.frontLeft, CAR_DETAIL.tyres.frontRight, CAR_DETAIL.tyres.rearLeft, CAR_DETAIL.tyres.rearRight];
   const tyres = useEntities(tyreWarn);
   const anyTyre = tyres.some((t) => t?.state === 'on');
-  const fuelPct = num(car.fuel);
+  const fuelPct = car.fuelPct;
   const lat = car.tracker?.attributes.latitude as number | undefined;
   const lng = car.tracker?.attributes.longitude as number | undefined;
 
   return (
     <div className="car-detail">
+      {car.offline && <OfflineNotice seenAgo={car.seenAgo} />}
       <div className="car-left">
         <div className="car-hero">
           <div className="car-hero-nums">
-            <span className="hero-pct">{fmtNum(car.fuel)}<sup>%</sup></span>
-            <span className="hero-range"><strong>{fmtNum(car.range)}</strong><span className="muted">km range</span></span>
+            <span className="hero-pct">{fmtInt(car.fuelPct)}<sup>%</sup></span>
+            <span className="hero-range"><strong>{fmtInt(car.rangeKm)}</strong><span className="muted">km range</span></span>
           </div>
           <CarImage className="car-hero-img" />
           <div className="progress thick"><i className={fuelPct !== undefined && fuelPct <= 15 ? 'low' : ''} style={{ width: `${fuelPct ?? 0}%` }} /></div>
         </div>
         <div className="stat-tiles three">
-          <div className="stat-tile"><div className="label">Fuel</div><div className="stat-val">{fmtNum(car.fuel)}<small>%</small></div></div>
-          <div className="stat-tile"><div className="label">Odometer</div><div className="stat-val">{num(car.odo)?.toLocaleString() ?? '–'}<small>km</small></div></div>
+          <div className="stat-tile"><div className="label">Fuel</div><div className="stat-val">{fmtInt(car.fuelPct)}<small>%</small></div></div>
+          <div className="stat-tile"><div className="label">Odometer</div><div className="stat-val">{car.odoKm !== undefined ? Math.round(car.odoKm).toLocaleString() : '–'}<small>km</small></div></div>
           <div className="stat-tile"><div className="label">12V battery</div><div className="stat-val">{fmtNum(battery)}<small>%</small></div></div>
         </div>
         <div className="comfort">
@@ -174,9 +241,11 @@ function CarDetail() {
         </div>
         <div className="car-actions">
           <div>
-            <div className="label">{car.moving ? 'Driving' : 'Parked'}</div>
+            <div className="label">{car.offline ? 'Status' : car.moving ? 'Driving' : 'Parked'}</div>
             <div className="car-lock-state">{car.offline ? 'Offline' : car.locked ? 'Locked' : 'Unlocked'}</div>
-            <div className="muted small">{car.openCount ? `${car.openCount} opening${car.openCount > 1 ? 's' : ''} open` : 'Everything is closed'}</div>
+            <div className="muted small">
+              {car.offline ? 'Lock and doors unknown' : car.openCount ? `${car.openCount} opening${car.openCount > 1 ? 's' : ''} open` : 'Everything is closed'}
+            </div>
           </div>
           <button
             className="big-btn square"
@@ -186,7 +255,7 @@ function CarDetail() {
             <Icon name="pin" size={24} />
             Find car
           </button>
-          <LockButton locked={car.locked} />
+          <LockButton locked={car.locked} disabled={car.offline} />
         </div>
       </div>
     </div>
@@ -196,7 +265,7 @@ function CarDetail() {
 export function CarPanel() {
   const modal = useModal();
   const car = useCar();
-  const fuelPct = num(car.fuel);
+  const fuelPct = car.fuelPct;
   const status = car.offline ? 'Offline' : car.moving ? 'Driving' : 'Parked';
 
   const openDetail = () =>
@@ -208,13 +277,15 @@ export function CarPanel() {
       subtitle: (
         <span>
           <span className={`dot ${car.offline ? 'off' : 'on'}`} /> <strong>{status}</strong>
-          <span className="muted"> · {car.locked ? 'Locked' : 'Unlocked'}, {car.openCount ? `${car.openCount} open` : 'all closed'}</span>
+          <span className="muted">
+            {car.offline ? ' · lock and doors unknown' : ` · ${car.locked ? 'Locked' : 'Unlocked'}, ${car.openCount ? `${car.openCount} open` : 'all closed'}`}
+          </span>
         </span>
       ),
       aside: (
         <span className="pill small-pill">
           <span className={`dot ${car.offline ? 'off' : 'on'}`} />
-          {car.offline ? `Last seen ${relTime(car.updated?.state)}` : `Connected${car.where ? ` · ${car.where}` : ''}`}
+          {car.offline ? (car.seenAgo ? `Last data ${car.seenAgo}` : 'No data') : `Connected${car.where ? ` · ${car.where}` : ''}`}
         </span>
       ),
       body: <CarDetail />,
@@ -222,19 +293,27 @@ export function CarPanel() {
 
   return (
     <section className={`panel car-panel ${car.offline ? 'offline' : ''}`}>
-      <PanelHead label={CAR.name} summary={car.offline ? `Updated ${relTime(car.updated?.state)}` : car.where ?? status} onMore={openDetail} />
+      <PanelHead label={CAR.name} summary={car.offline ? (car.seenAgo ? `Offline · ${car.seenAgo}` : 'Offline') : car.where ?? status} onMore={openDetail} />
       <div className="car-summary" onClick={openDetail} role="button" tabIndex={0}>
         <div>
-          <div className="hero-pct">{fmtNum(car.fuel)}<sup>%</sup></div>
-          <div className="muted">{fmtNum(car.range)} km range</div>
+          <div className="hero-pct">{fmtInt(car.fuelPct)}<sup>%</sup></div>
+          <div className="muted">{fmtInt(car.rangeKm)} km range</div>
         </div>
         <CarImage className="car-thumb" />
       </div>
       <div className="progress thick"><i className={fuelPct !== undefined && fuelPct <= 15 ? 'low' : ''} style={{ width: `${fuelPct ?? 0}%` }} /></div>
       <div className="chips-row">
-        <span className={`chip big ${car.locked ? 'ok' : 'warn'}`}><Icon name={car.locked ? 'lock' : 'unlock'} size={16} /> {car.locked ? 'Locked' : 'Unlocked'}</span>
-        {car.activeWarnings.length > 0 && <span className="chip big warn"><Icon name="alert" size={16} /> {car.activeWarnings[0].name}</span>}
-        {car.activeWarnings.length === 0 && car.odo && <span className="chip big">{num(car.odo)?.toLocaleString() ?? '–'} km</span>}
+        {car.offline ? (
+          <span className="chip big warn" onClick={openDetail} role="button" tabIndex={0}>
+            <Icon name="alert" size={16} /> Kia Connect not responding
+          </span>
+        ) : (
+          <>
+            <span className={`chip big ${car.locked ? 'ok' : 'warn'}`}><Icon name={car.locked ? 'lock' : 'unlock'} size={16} /> {car.locked ? 'Locked' : 'Unlocked'}</span>
+            {car.activeWarnings.length > 0 && <span className="chip big warn"><Icon name="alert" size={16} /> {car.activeWarnings[0].name}</span>}
+            {car.activeWarnings.length === 0 && car.odoKm !== undefined && <span className="chip big">{Math.round(car.odoKm).toLocaleString()} km</span>}
+          </>
+        )}
       </div>
     </section>
   );
