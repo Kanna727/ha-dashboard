@@ -1,0 +1,33 @@
+name: Update visual baselines
+
+# Regenerates tests/visual/__screenshots__ on Linux (where CI compares them) and
+# commits them to the branch it runs on. Run it on a PR branch after an
+# intended visual change, then re-run CI on that branch.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Mock build
+        run: VITE_MOCK=1 npx vite build --outDir dist-mock
+      - run: npx playwright test --update-snapshots
+      - name: Commit baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/visual/__screenshots__
+          if git diff --cached --quiet; then echo "Baselines unchanged"; exit 0; fi
+          git commit -m "test: update visual baselines"
+          git push

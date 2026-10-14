@@ -46,3 +46,29 @@ jobs:
       - uses: amannn/action-semantic-pull-request@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  visual:
+    # Screenshots of the deterministic mock compared with tests/visual baselines.
+    # After an intended visual change, run "Update visual baselines" on the PR's
+    # branch, then re-run CI.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Mock build
+        run: VITE_MOCK=1 npx vite build --outDir dist-mock
+      - run: npx playwright test
+      - name: Upload diffs
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-diffs
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
