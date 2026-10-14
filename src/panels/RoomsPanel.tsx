@@ -102,7 +102,10 @@ function RoomRow({ room }: { room: RoomDef }) {
     onCommit: (v) => {
       const target = { entity_id: room.quick!.entity };
       if (v <= 0) hass.callService('fan', 'turn_off', {}, target);
-      else hass.callService('fan', 'set_percentage', { percentage: Math.round(v) }, target);
+      // Round down: HA maps a percentage to speed ceil(pct * speeds / 100), so
+      // rounding 16.67 up to 17 would land on speed 2 (and 66.67 -> 67 on 5).
+      // Floor gives 16/33/50/66/83/100, the same values HA reports per speed.
+      else hass.callService('fan', 'set_percentage', { percentage: Math.floor(v + 1e-6) }, target);
     },
   });
   const fanSpeeds = Math.round(100 / fanStep);
