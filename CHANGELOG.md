@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/Kanna727/ha-dashboard/compare/v1.15.0...v1.16.0) (2026-10-14)
+
+
+### Features
+
+* **car:** remote climate temperature, refresh, hazards and horn ([#27](https://github.com/Kanna727/ha-dashboard/issues/27)) ([7c0c990](https://github.com/Kanna727/ha-dashboard/commit/7c0c990105e6a89c1132fa6febd1c850663c599b))
+
 # [1.15.0](https://github.com/Kanna727/ha-dashboard/compare/v1.14.0...v1.15.0) (2026-10-14)
 
 
