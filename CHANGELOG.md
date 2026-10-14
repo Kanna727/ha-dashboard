@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/Kanna727/ha-dashboard/compare/v1.2.0...v1.3.0) (2026-10-14)
+
+
+### Features
+
+* show and set room fan speed by sliding across the room card ([#7](https://github.com/Kanna727/ha-dashboard/issues/7)) ([d7d0d3f](https://github.com/Kanna727/ha-dashboard/commit/d7d0d3fce79e0ec193942d1aeed4bf6b21a65984))
+
 # [1.2.0](https://github.com/Kanna727/ha-dashboard/compare/v1.1.2...v1.2.0) (2026-10-14)
 
 
