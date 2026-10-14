@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/Kanna727/ha-dashboard/compare/v1.11.0...v1.12.0) (2026-10-14)
+
+
+### Features
+
+* install the dashboard as an app on the phone ([#19](https://github.com/Kanna727/ha-dashboard/issues/19)) ([71a9711](https://github.com/Kanna727/ha-dashboard/commit/71a9711f86687f154437a0f97b40532142e95360))
+
 # [1.11.0](https://github.com/Kanna727/ha-dashboard/compare/v1.10.0...v1.11.0) (2026-10-14)
 
 
