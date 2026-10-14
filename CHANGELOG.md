@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/Kanna727/ha-dashboard/compare/v1.12.0...v1.12.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **energy:** particle speed from each plug's own watts ([#22](https://github.com/Kanna727/ha-dashboard/issues/22)) ([85da51c](https://github.com/Kanna727/ha-dashboard/commit/85da51cdc0b7a959bf5d78ed105a327c2e1b47ab))
+
 # [1.12.0](https://github.com/Kanna727/ha-dashboard/compare/v1.11.0...v1.12.0) (2026-10-14)
 
 
