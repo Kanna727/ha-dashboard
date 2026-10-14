@@ -6,8 +6,16 @@ import { useNow } from '../hooks/useNow';
 import { Icon } from './Icon';
 import { Sparkline } from './Sparkline';
 import { usePurifier } from './usePurifier';
+import { chartStart } from '../lib/purifier';
 
 const HOURS = 24 * 7;
+
+// "1:05 AM" today, else "Mon 1:05 AM".
+function sinceLabel(t: number) {
+  const d = new Date(t);
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`;
+}
 
 // Water purifier section of the Appliances card (APPLIANCES.purifier): TDS,
 // tank, faults, a 7-day TDS chart, the purification mode (changed with two
@@ -22,7 +30,7 @@ export function PurifierRow({ showName = true }: { showName?: boolean }) {
   const last = useEntity(cfg?.lastReported);
   useNow(60_000); // keeps "Updated Xm ago" current
 
-  const [history, setHistory] = useState<HistoryPoint[]>([]);
+  const [history, setHistory] = useState<HistoryPoint[]>();
   useEffect(() => {
     if (!cfg) return;
     let live = true;
@@ -72,6 +80,8 @@ export function PurifierRow({ showName = true }: { showName?: boolean }) {
   const options = (p.mode?.attributes.options as string[] | undefined) ?? [];
   const tankText = tankFull?.state === 'on' ? 'Tank full' : tankFull?.state === 'off' ? 'Tank not full' : '';
   const ago = relTime(last?.state);
+  const since = history ? chartStart(history, HOURS, Date.now()) : undefined;
+  const sinceText = since === undefined ? '' : sinceLabel(since);
   const rangeChip =
     p.inRange && p.target ? (
       <span className={`chip ${p.inRange === 'ok' ? 'ok' : 'warn'}`} title={`Target ${p.target.min}–${p.target.max} ppm`}>
@@ -108,10 +118,16 @@ export function PurifierRow({ showName = true }: { showName?: boolean }) {
         </div>
       </div>
 
-      <div className="purifier-chart">
-        <Sparkline points={history} hours={HOURS} height={48} color="var(--accent-fan)" />
-        <div className="muted small">Drinking water TDS, last 7 days</div>
-      </div>
+      {/* Hidden once loaded if the recorder has no readings at all. */}
+      {(!history || history.length > 0) && (
+        <div className="purifier-chart">
+          <Sparkline points={history ?? []} hours={HOURS} start={since} height={48} color="var(--accent-fan)" />
+          <div className="muted small">
+            {sinceText ? `Drinking water TDS since ${sinceText}` : 'Drinking water TDS, last 7 days'}
+            {history?.length === 1 && ' · no change yet'}
+          </div>
+        </div>
+      )}
 
       {cfg.mode && options.length > 0 && (
         <>

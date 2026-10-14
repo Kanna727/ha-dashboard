@@ -213,10 +213,10 @@ The car modal can show a 3D model of the owner's car instead of the photo (`CAR_
 Optional `APPLIANCES.purifier` (an Atomberg-style RO purifier with TDS sensors), shown in the room that lists `'purifier'` in `appliances`.
 - `components/usePurifier.ts` reads the entities; the maths is in `src/lib/purifier.ts` (unit-tested): `% removed` = 1 − tank/input TDS, and "In/Above/Below target" against the range in the mode's name (`TasteTune 50-100 ppm`; RO only, Adaptive and Vacation have none).
 - Room card: a water-drop button (title "Water 85 ppm") that turns amber while any `faults` entity is on; the subtitle then shows "Purifier: <fault>".
-- Modal (`components/PurifierRow.tsx`): fault banners, drinking-water TDS, input TDS and % removed, tank full / not full, a 7-day TDS sparkline (`fetchHistory`, the `Sparkline` takes a `color` and uses a `useId` gradient id so two can share a page), mode chips, "Updated Xh ago" from `lastReported`, and Refresh (`button.press`; "Refreshing…" until `lastReported` changes or 60 s).
+- Modal (`components/PurifierRow.tsx`): fault banners, drinking-water TDS, input TDS and % removed, tank full / not full, a 7-day TDS sparkline (`fetchHistory`, the `Sparkline` takes a `color` and uses a `useId` gradient id so two can share a page). A purifier that reports rarely may have a single reading in the recorder: the chart then starts at the first reading (`chartStart`, captioned "since 1:05 AM", "· no change yet" for one point) instead of drawing nothing, and is hidden if there are no readings at all, mode chips, "Updated Xh ago" from `lastReported`, and Refresh (`button.press`; "Refreshing…" until `lastReported` changes or 60 s).
 - **Mode changes need two taps** (the first arms the chip as "Tap again", the second within 4 s calls `select.select_option`), so a stray tap can't put it in Vacation mode. While the mode is Adaptive, the fallback mode is shown.
 - `useIssues` adds a `warn` issue "Purifier: <fault>" per active fault, so faults reach the top bar and the night screen.
-- Mock: `__mockPatch('binary_sensor.water_purifier_no_water', { state: 'on' })` shows a fault; the mock handles `select_option` and simulates the refresh (new report after 3 s); TDS history is seeded readings every 3 h.
+- Mock: `__mockPatch('binary_sensor.water_purifier_no_water', { state: 'on' })` shows a fault; the mock handles `select_option` and simulates the refresh (new report after 3 s); TDS history is seeded readings every 3 h over the last 2 days (so the chart shows "since …").
 
 ## Forecast sharing and the rain nudge
 

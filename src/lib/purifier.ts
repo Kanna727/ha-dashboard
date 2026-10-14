@@ -26,6 +26,15 @@ export function targetRange(mode: string | undefined): { min: number; max: numbe
   return min < max ? { min, max } : undefined;
 }
 
+// Left edge for the TDS chart: the first reading when the recorder holds less
+// than the window (a newly added purifier), so the line isn't a sliver at the
+// right edge. Undefined means "use the full window".
+export function chartStart(points: { t: number }[], hours: number, now: number): number | undefined {
+  const windowStart = now - hours * 3600_000;
+  const first = points[0]?.t;
+  return first !== undefined && first > windowStart + 3600_000 ? Math.min(first, now - 60_000) : undefined;
+}
+
 export function purifierSummary({ tankTds, inputTds, mode, faults }: PurifierInput): PurifierSummary {
   const removedPct =
     tankTds !== undefined && inputTds !== undefined && inputTds > 0
