@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/Kanna727/ha-dashboard/compare/v1.4.0...v1.5.0) (2026-10-14)
+
+
+### Features
+
+* flowing energy particles and gliding power numbers ([#12](https://github.com/Kanna727/ha-dashboard/issues/12)) ([fb539ec](https://github.com/Kanna727/ha-dashboard/commit/fb539ecad4326f1ed234726c6823ff090ec222c9))
+
 # [1.4.0](https://github.com/Kanna727/ha-dashboard/compare/v1.3.1...v1.4.0) (2026-10-14)
 
 
