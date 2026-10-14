@@ -4,6 +4,8 @@ Guide for AI agents (and humans) working on this repo. Read this before changing
 
 **Owner-specific facts** (the HA instance, household, device quirks, local paths) live in `CLAUDE.local.md`, which is gitignored. Read it if it exists. Never copy anything from it, or from `config/dashboard.config.ts`, into tracked files.
 
+**Keep this file current.** Any PR that changes behaviour, architecture, the build/deploy workflow, or uncovers a gotcha updates AGENTS.md in the same PR. Facts about the owner's own setup go in `CLAUDE.local.md` instead.
+
 ## What this is
 
 A custom Home Assistant dashboard written in React. It is **not** Lovelace. It builds to a single self-contained `index.html`, served from HA's `/config/www/dashboard/` (URL `/local/dashboard/index.html`). The per-home config is stored in HA behind its login (see Config below). It talks to HA over the WebSocket API using `home-assistant-js-websocket`.
@@ -25,7 +27,7 @@ Targets:
 ## Stack and constraints
 
 - **Vite is pinned to 5.x**, so the project still builds on Node 18. CI uses Node 22.
-- React 18, TypeScript (strict), `@mdi/js` icons, `vite-plugin-singlefile`, esbuild (evaluates the TS config at build time).
+- React 18, TypeScript (strict), `@mdi/js` icons, `vite-plugin-singlefile`, esbuild (evaluates the TS config at build time). `ws` is a dev dependency only so `scripts/push-config.mjs` runs on Node < 22 (no global `WebSocket`).
 - No UI library and no CSS framework. Plain CSS with custom properties lives in `src/styles/app.css`.
 - `.npmrc` in the repo pins the public npm registry on purpose. Don't delete it.
 
@@ -41,9 +43,10 @@ src/main.tsx               boot: gets the config (embedded, device cache, or HA)
 src/App.tsx                layout detection (?layout= or viewport), theme, self-update
 src/config/types.ts        DashboardConfig schema (rooms, controls, energy, climate, car, media, meals, ...)
 src/config/load.ts         config storage: CONFIG_DASHBOARD, device cache (dashConfig), fetchConfig
-src/config/entities.ts     reads window.__DASHBOARD_CONFIG__ and re-exports ROOMS, ENERGY, ...; RECOVERY rules
+src/config/entities.ts     reads window.__DASHBOARD_CONFIG__ (EMPTY fallback) and re-exports ROOMS, ENERGY, ...; RECOVERY rules
 src/ha/api.ts              HassApi interface + context (callService, fetchHistory, subscribeForecast, fetchTodo)
-src/ha/HaProvider.tsx      real connection: OAuth via getAuth, subscribeEntities, history/forecast/todo WS calls
+src/ha/HaProvider.tsx      real connection: OAuth via getAuth, subscribeEntities, history/forecast/todo WS calls;
+                           exports haApi so main.tsx can fetch the config before React renders
 src/ha/store.ts            external store; useEntity(id) / useEntities(ids) via useSyncExternalStore
 src/ha/format.ts           isOn / num / fmtWatts / stateLabel helpers
 src/panels/*               the dashboard panels: TopBar, EnergyPanel (flow diagram), WeatherPanel,
@@ -82,7 +85,8 @@ python3 scripts/deploy.py --build-only   # build with the real version, no copy
 - The release bundle is generic. All per-home data is in `config/dashboard.config.ts`, typed by `DashboardConfig` in `src/config/types.ts`. Keep it plain data: it travels as JSON.
 - The `dashboard-config` Vite plugin evaluates it to `{ hash, config }` (hash = sha256 of the JSON, 8 chars). Dev and mock builds embed that via `virtual:dashboard-config` (mock always uses the example). Production builds embed `null` and write `dist/dashboard-config.json`. `DASHBOARD_CONFIG=<path>` overrides the source.
 - In HA the `{ hash, config }` object is the whole config of a hidden storage-mode Lovelace dashboard, `dashboard-config` (not in the sidebar, `require_admin: false`). Unlike `/local/`, `lovelace/config` needs a logged-in user. `scripts/push-config.mjs` creates the dashboard if missing.
-- Boot (`main.tsx`): embedded config, else the device cache (`localStorage.dashConfig`), else connect (OAuth if needed), fetch with `lovelace/config`, and cache. Only then is `App` imported, because `entities.ts` reads the config at module load. Reloads therefore paint from cache; only a device's first load waits for HA.
+- Boot (`main.tsx`): use the embedded config, else the device cache (`localStorage.dashConfig`). With one, set `window.__DASHBOARD_CONFIG__` **synchronously, before any `await`**, then render. Without one (a device's first visit), connect (OAuth if needed), fetch with `lovelace/config`, cache it, and **reload**; the next load starts from the cache. If caching fails (storage blocked) it shows a message instead of looping.
+- **Why the reload:** `vite-plugin-singlefile` inlines dynamic imports, so `import('./App')` is not lazy. Every app module runs as soon as `main.tsx` yields (its first `await`), whether or not the config has arrived. `entities.ts` therefore falls back to a complete `EMPTY` config so that module-level code (`TopBar`'s `LEAVE_ROOMS`, `MealsPanel`'s destructure) can't crash, and the app is never rendered with it. Don't add module-level code that assumes real config values, and don't move the window assignment after an `await`. The mock can't catch this (its config is embedded and set synchronously), so test the production boot as described under Verifying UI changes.
 - When the helper's config half changes, `useSelfUpdate` fetches the new config into the cache before reloading.
 - When adding a config key: update `types.ts`, both config files, the export list in `entities.ts`, and `mock/fixtures.ts` if it needs states.
 
@@ -91,6 +95,8 @@ python3 scripts/deploy.py --build-only   # build with the real version, no copy
 - **Conventional Commits.** PRs are squash-merged and the PR title becomes the commit message, so the title must be `feat: …`, `fix: …`, `perf: …`, `docs: …`, `chore: …` and so on (CI checks it). `feat!:` or a `BREAKING CHANGE:` footer bumps the major version.
 - On every merge to `main`, `release.yml` runs semantic-release. If there are `feat`/`fix`/`perf` commits since the last tag, it bumps the version, tags `vX.Y.Z`, commits `CHANGELOG.md` and `package.json` back (`chore(release)`, `[skip ci]`), and publishes a GitHub Release with `index.html` built from the example config. `docs`/`chore`-only merges make no release and deploy nothing.
 - The deploy job joins the owner's tailnet (`tailscale/github-action`, OAuth client, `tag:ci`) and POSTs `{version, url}` to an HA webhook. `url` is a ~5-minute signed download link for the release asset (the repo is private). An HA automation checks the URL belongs to this repo, downloads it with the Downloader integration into `www/dashboard/`, and sets the helper. See `docs/home-assistant.md`.
+- In that automation the wait for `downloader_download_completed` runs **in parallel** with the download: `downloader.download_file` can block until the file is saved, so a wait started afterwards misses the event and times out.
+- Running the Release workflow by hand (Actions → Release → Run workflow) redeploys the latest release when there is nothing new to release.
 - **Helper format:** `input_text.dashboard_build` holds `"<app version>/<config hash>"`. The release automation replaces the first half; `deploy.py --config-only` replaces the second. Open pages reload when it differs from what they run. The `'dev'` version turns self-update off.
 - The config is never deployed by CI (CI doesn't have it). Push it with `deploy.py --config-only` (needs `HA_URL` + an admin `HA_TOKEN`), or, as an agent with the HA MCP server, save `dist/dashboard-config.json` as the `dashboard-config` dashboard's config and update the helper's second half.
 - Secrets/vars in GitHub: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `HA_WEBHOOK_ID`, `PRIVACY_PATTERNS`; variable `HA_TAILNET_HOST`. The deploy job skips with a warning if they are missing.
@@ -168,6 +174,8 @@ The panel shows a tree: Home total on the left, with a branch to each of the top
 - The live provider uses HA's OAuth flow (`getAuth`). Each device logs in once, and tokens are stored in that device's `localStorage` under `hassTokens`. `cleanAuthParams()` strips `auth_callback/code/state` after login.
 - `deploy.py` reads `HA_TOKEN` from the environment only. It never writes the token to disk or into the build.
 - Whoever can write `www/dashboard/index.html` can run code next to every device's HA tokens. That's why the deploy webhook only accepts download URLs of this repo's release assets, and its ID is a secret.
+- Any public HA URL (Nabu Casa remote UI, Tailscale Funnel) exposes `/local/` to the internet, and such hostnames show up in certificate-transparency logs. That is why the per-home config lives behind the login and not in `/local/`.
+- HA's HTTP server settings (port, reverse proxy, IP ban) are UI-managed since 2026.8 (Settings → System → Network → HTTP server), not `configuration.yaml`. Behind a reverse proxy such as Funnel, "Trust X-Forwarded-For" must be on with the proxy's address trusted; a request carrying `X-Forwarded-For` from any other address gets HTTP 400.
 
 ## Verifying UI changes
 
@@ -180,6 +188,8 @@ The panel shows a tree: Home total on the left, with a branch to each of the top
 - `page.setViewport` gives exact phone sizes; or wrap the page in an HTML file with a 412×915 iframe.
 - Sizes checked so far: 1180×820 (iPad landscape), 412/600 wide (phone), 1920×1080 (desktop), in both themes.
 - README screenshots live in `docs/screenshots/` and come from the mock build only.
+- **Test the production boot before releasing** anything that touches `main.tsx`, `config/load.ts`, `entities.ts`, `HaProvider` or `useSelfUpdate`: build with `BUILD_HASH=dev` (turns self-update off), copy `dist/index.html` to `www/dashboard-test/index.html` on the share, and have the owner open `/local/dashboard-test/index.html?layout=phone&v=<anything>` while logged in. Delete the folder afterwards. An agent can't log in, so the owner has to check it; an agent can still read the console in its own browser for errors before the login redirect.
+- HA serves `/local/` with `Cache-Control: public, max-age=2678400` (31 days). A re-copied test page needs a fresh `?v=` or the browser keeps the old file. Kiosks are covered: self-update reloads with `?v=<helper value>`.
 
 ## HA MCP notes (for agents with the home-assistant MCP server)
 
