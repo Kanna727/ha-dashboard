@@ -97,6 +97,7 @@ python3 scripts/deploy.py --build-only   # build with the real version, no copy
 - **Conventional Commits.** PRs are squash-merged and the PR title becomes the commit message, so the title must be `feat: …`, `fix: …`, `perf: …`, `docs: …`, `chore: …` and so on (CI checks it). `feat!:` or a `BREAKING CHANGE:` footer bumps the major version.
 - On every merge to `main`, `release.yml` runs semantic-release. If there are `feat`/`fix`/`perf` commits since the last tag, it bumps the version, tags `vX.Y.Z`, commits `CHANGELOG.md` and `package.json` back (`chore(release)`, `[skip ci]`), and publishes a GitHub Release with `index.html` built from the example config. `docs`/`chore`-only merges make no release and deploy nothing.
 - The deploy job joins the owner's tailnet (`tailscale/github-action`, OAuth client, `tag:ci`) and POSTs `{version, url}` to an HA webhook. `url` is a ~5-minute signed download link for the release asset (the repo is private). An HA automation checks the URL belongs to this repo, downloads it with the Downloader integration into `www/dashboard/`, and sets the helper. See `docs/home-assistant.md`.
+- The release attaches `index.html` plus the app-install files from `public/` (`manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`), and the deploy job sends `{version, url, files: [{name, url}]}` with `index.html` last (`url` = index.html, for older automations). The automation only accepts those five names and this repo's asset URLs, downloads each in turn, and sets the helper only if every file arrived (a `failed` variable updated from inside the loop; else a persistent notification).
 - In that automation the wait for `downloader_download_completed` runs **in parallel** with the download: `downloader.download_file` can block until the file is saved, so a wait started afterwards misses the event and times out.
 - Running the Release workflow by hand (Actions → Release → Run workflow) redeploys the latest release when there is nothing new to release.
 - **Helper format:** `input_text.dashboard_build` holds `"<app version>/<config hash>"`. The release automation replaces the first half; `deploy.py --config-only` replaces the second. Open pages reload when it differs from what they run. The `'dev'` version turns self-update off.
@@ -144,6 +145,10 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - Tweaks: raindrops are thickened (they almost vanish at 36–44 px); `cloudy` uses grey-recoloured overcast art; `pouring` gets a grey cloud with fatter drops, to tell it apart from `rainy`.
 - The URI cache is keyed by the **full SVG string**. Recoloured variants share length and suffix with their source, and an earlier shorter key made them collide.
 - On the light theme, `.wx-img` gets a soft drop shadow so white clouds stay visible.
+
+## Phone app install
+
+`public/manifest.webmanifest` (start URL `./index.html?layout=phone`, standalone) and icons, linked from `index.html`; Vite copies `public/` into `dist/` next to the single-file bundle. Chrome only offers "Install app" on HTTPS, so install from the Funnel/HTTPS address; on plain `http://homeassistant.local` it can only add a home-screen shortcut. iOS uses `apple-touch-icon.png` and the `apple-mobile-web-app-*` meta tags. The icons were rendered from the `homePower` MDI glyph on the dark tile (maskable-safe padding); re-render with headless Chrome if the look changes.
 
 ## Night mode
 

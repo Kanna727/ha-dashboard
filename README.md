@@ -21,6 +21,7 @@ A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lo
 - **Weather** with animated skies, plus a car card, commute traffic (Google Routes), media, appliances and a meal plan.
 - **Instant loads**: a single self-contained file that paints from a cached snapshot in ~80 ms, then syncs live over the HA WebSocket API.
 - **Themes** follow the sun (`?theme=auto|dark|light`).
+- **Installable on the phone**: open it over HTTPS and choose "Install app" / "Add to Home Screen" for a full-screen app.
 
 ## Quick start
 

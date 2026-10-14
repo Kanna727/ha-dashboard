@@ -86,14 +86,24 @@ jobs:
           if [ -z "$VERSION" ]; then
             VERSION=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName | sed 's/^v//')
           fi
-          asset_id=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION" --jq '.assets[] | select(.name == "index.html") | .id')
-          # The repo is private, so hand HA a short-lived signed download URL
-          # (valid ~5 min) instead of a token.
-          url=$(curl -sS -o /dev/null -w '%{redirect_url}' \
-            -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" \
-            "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/assets/$asset_id")
+          assets=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v$VERSION" --jq '.assets')
+          # The repo is private, so hand HA short-lived signed download URLs
+          # (valid ~5 min) instead of a token. index.html goes last, so the app
+          # never references a file that isn't there yet.
+          files='[]'
+          for name in manifest.webmanifest icon-192.png icon-512.png apple-touch-icon.png index.html; do
+            id=$(jq -r --arg n "$name" '.[] | select(.name == $n) | .id' <<<"$assets")
+            [ -n "$id" ] || continue
+            u=$(curl -sS -o /dev/null -w '%{redirect_url}' \
+              -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" \
+              "https://api.github.com/repos/$GITHUB_REPOSITORY/releases/assets/$id")
+            test -n "$u"
+            files=$(jq --arg n "$name" --arg u "$u" '. + [{name: $n, url: $u}]' <<<"$files")
+          done
+          url=$(jq -r '.[] | select(.name == "index.html") | .url' <<<"$files")
           test -n "$url"
-          jq -n --arg version "$VERSION" --arg url "$url" '{version: $version, url: $url}' |
+          # `url` keeps older automations (index.html only) working.
+          jq -n --arg version "$VERSION" --arg url "$url" --argjson files "$files" '{version: $version, url: $url, files: $files}' |
             curl -fsS --max-time 20 -X POST -H 'Content-Type: application/json' --data @- \
               "http://$HA_HOST/api/webhook/$HA_WEBHOOK_ID"
           echo "Asked Home Assistant to install v$VERSION"
