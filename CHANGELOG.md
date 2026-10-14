@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/Kanna727/ha-dashboard/compare/v1.1.2...v1.2.0) (2026-10-14)
+
+
+### Features
+
+* show last known tyre pressure while the car is offline ([#6](https://github.com/Kanna727/ha-dashboard/issues/6)) ([7e1393e](https://github.com/Kanna727/ha-dashboard/commit/7e1393e100509d84bb9dfc9d1b1a40d8e19a2d59))
+
 ## [1.1.2](https://github.com/Kanna727/ha-dashboard/compare/v1.1.1...v1.1.2) (2026-10-14)
 
 
