@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/Kanna727/ha-dashboard/compare/v1.7.0...v1.8.0) (2026-10-14)
+
+
+### Features
+
+* rain-coming nudge from the hourly forecast ([#15](https://github.com/Kanna727/ha-dashboard/issues/15)) ([a7a8857](https://github.com/Kanna727/ha-dashboard/commit/a7a8857038e16ac97d6a28c360ca2250b5bcbb57))
+
 # [1.7.0](https://github.com/Kanna727/ha-dashboard/compare/v1.6.0...v1.7.0) (2026-10-14)
 
 
