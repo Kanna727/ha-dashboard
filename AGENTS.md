@@ -144,6 +144,10 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - The URI cache is keyed by the **full SVG string**. Recoloured variants share length and suffix with their source, and an earlier shorter key made them collide.
 - On the light theme, `.wx-img` gets a soft drop shadow so white clouds stay visible.
 
+## Sun and moon arc
+
+`src/components/SkyArc.tsx` (in the Weather card, under the current conditions; it replaced the sunrise/sunset chip) draws the sun's arc from sunrise to sunset by day and the moon's from sunset to sunrise by night, with a dot for "now" that glides between once-a-minute positions. The maths is in `src/lib/sky.ts` (unit-tested): `sun.sun` only gives the *next* rising/setting, so today's sunrise is `next_rising − 24 h` by day and the last sunset `next_setting − 24 h` by night. HA has no moon sensor, so the phase is computed from the synodic month against a reference new moon, and `moonLitPath` draws the lit part (right while waxing, left while waning). Night mode reuses the component.
+
 ## Weather backdrop
 
 `src/components/WeatherBackdrop.tsx` animates the Weather card's background from the weather entity's state plus `sun.sun` (day or night). Scenes: clear (sun rays, or stars and a moon glow), partly cloudy, cloudy, rain (heavy for `pouring`), storm (rain plus flashes), fog, snow and wind.
