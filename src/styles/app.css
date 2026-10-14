@@ -335,6 +335,23 @@ button.wide { width: 100%; }
 /* ---------- live weather backdrop ---------- */
 .weather-panel { position: relative; overflow: hidden; isolation: isolate; }
 .weather-panel > :not(.wx-bg) { position: relative; z-index: 1; }
+/* Sun / moon arc (components/SkyArc.tsx). The body glides between its
+   once-a-minute positions; only transform and opacity animate. */
+.sky-arc { margin: 6px 0 10px; }
+.sky-arc svg { display: block; width: 100%; height: 64px; overflow: visible; }
+.sky-horizon { stroke: var(--border); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.sky-track { fill: none; stroke: var(--muted); stroke-opacity: 0.35; stroke-width: 1.5; stroke-dasharray: 3 5; vector-effect: non-scaling-stroke; }
+.sky-done { fill: none; stroke-width: 2.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sky-arc.day .sky-done { stroke: var(--accent-light); }
+.sky-arc.night .sky-done { stroke: #c7d2fe; stroke-opacity: 0.7; }
+.sky-body { transition: transform 1.2s ease; }
+.sun-disc { fill: var(--accent-light); }
+.sun-halo { fill: var(--accent-light); opacity: 0.25; transform-box: fill-box; transform-origin: center; animation: sun-halo 4s ease-in-out infinite; }
+@keyframes sun-halo { 50% { transform: scale(1.35); opacity: 0.1; } }
+.moon-dark { fill: color-mix(in srgb, var(--muted) 30%, transparent); stroke: color-mix(in srgb, #f1f5f9 35%, transparent); stroke-width: 1; }
+.moon-lit { fill: #f1f5f9; }
+.sky-labels { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 2px; }
+.sky-phase { color: var(--text); opacity: 0.75; }
 .weather-panel .wx-day, .weather-panel .wx-hour.now, .weather-panel .sun-chip { background: color-mix(in srgb, var(--card) 72%, transparent); }
 .wx-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; border-radius: inherit;
   --cloud: rgba(255, 255, 255, 0.16); --drop: rgba(170, 205, 255, 0.5); }

@@ -3,9 +3,9 @@ import { OUTDOOR_TEMP, SUN, WEATHER } from '../config/entities';
 import { useHass, type ForecastDay } from '../ha/api';
 import { useEntity } from '../ha/store';
 import { num } from '../ha/format';
-import { Icon } from '../components/Icon';
 import { WeatherIcon } from '../components/WeatherIcon';
 import { WeatherBackdrop } from '../components/WeatherBackdrop';
+import { SkyArc } from '../components/SkyArc';
 import { PanelHead } from '../components/Modal';
 import { conditionLabel } from './TopBar';
 
@@ -34,7 +34,6 @@ export function nightAt(t: number, rising?: string, setting?: string) {
   return t < r || t >= s; // currently night: until sunrise, and again after the next sunset
 }
 
-const hhmm = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
 export function WeatherPanel({ days = 5 }: { days?: number }) {
   const hass = useHass();
@@ -51,9 +50,6 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
   const temp = num(outdoor) ?? (a.temperature as number | undefined);
   const today = forecast[0];
   const night = sun?.state === 'below_horizon';
-  const sunEvent = night
-    ? { icon: 'sunrise' as const, text: `Sunrise ${sun?.attributes.next_rising ? hhmm(sun.attributes.next_rising as string) : '–'}` }
-    : { icon: 'sunset' as const, text: `Sunset ${sun?.attributes.next_setting ? hhmm(sun.attributes.next_setting as string) : '–'}` };
 
   return (
     <section className="panel weather-panel">
@@ -73,8 +69,8 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
             </div>
           )}
         </div>
-        <span className="chip sun-chip"><Icon name={sunEvent.icon} size={14} /> {sunEvent.text}</span>
       </div>
+      <SkyArc sun={sun} />
       {hourly.length > 0 && (
         <div className="wx-hours" aria-label="Hourly forecast">
           {hoursForToday(hourly).map((h, i, all) => {
