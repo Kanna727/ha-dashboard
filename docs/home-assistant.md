@@ -61,36 +61,46 @@ conditions:
          and (trigger.json.version | default('')) is match('^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')
          and (trigger.json.url | default('')) is match('^https://[a-z-]+\.githubusercontent\.com/[^/]+/<REPO_ID>/') }}
 actions:
-  - action: downloader.download_file
-    data:
-      url: "{{ trigger.json.url }}"
-      filename: index.html
-      overwrite: true
-  - wait_for_trigger:
-      - trigger: event
-        event_type: downloader_download_completed
-      - trigger: event
-        event_type: downloader_download_failed
-    timeout: "00:02:00"
-    continue_on_timeout: true
-  - if:
-      - condition: template
-        value_template: "{{ wait.trigger is not none and wait.trigger.event.event_type == 'downloader_download_completed' }}"
-    then:
-      # Keep the config half of "<version>/<config hash>"; only the app changed.
-      - action: input_text.set_value
-        target:
-          entity_id: input_text.dashboard_build
-        data:
-          value: "{{ trigger.json.version }}/{{ (states('input_text.dashboard_build').split('/'))[1] | default('none') }}"
-    else:
-      - action: persistent_notification.create
-        data:
-          title: Dashboard deploy failed
-          message: "Release v{{ trigger.json.version }} could not be downloaded."
+  # download_file may block until the file is saved, so listen for the result
+  # in parallel; a wait started afterwards would miss the event.
+  - parallel:
+      - sequence:
+          - wait_for_trigger:
+              - trigger: event
+                event_type: downloader_download_completed
+                event_data: { filename: index.html }
+              - trigger: event
+                event_type: downloader_download_failed
+                event_data: { filename: index.html }
+            timeout: "00:02:00"
+            continue_on_timeout: true
+          - if:
+              - condition: template
+                value_template: "{{ wait.trigger is not none and wait.trigger.event.event_type == 'downloader_download_completed' }}"
+            then:
+              # Keep the config half of "<version>/<config hash>"; only the app changed.
+              - action: input_text.set_value
+                target:
+                  entity_id: input_text.dashboard_build
+                data:
+                  value: "{{ trigger.json.version }}/{{ (states('input_text.dashboard_build').split('/'))[1] | default('none') }}"
+            else:
+              - action: persistent_notification.create
+                data:
+                  title: Dashboard deploy failed
+                  message: "Release v{{ trigger.json.version }} could not be downloaded."
+      - sequence:
+          - delay: { milliseconds: 500 }
+          - action: downloader.download_file
+            data:
+              url: "{{ trigger.json.url }}"
+              filename: index.html
+              overwrite: true
 ```
 
-The helper `input_text.dashboard_build` (max length 64) must exist.
+The helper `input_text.dashboard_build` (max length 64) must exist and already hold `<version>/<config hash>`: do the first deploy with `python scripts/deploy.py`, which also puts `config.js` in place.
+
+To test without CI, POST the same payload from a machine on your LAN: `{"version": "<x.y.z>", "url": "<signed asset URL>"}` to `http://homeassistant.local/api/webhook/<WEBHOOK_ID>`.
 
 ## 5. GitHub secrets
 
