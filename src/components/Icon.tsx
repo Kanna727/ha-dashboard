@@ -69,6 +69,19 @@ import {
   mdiCarTireAlert,
   mdiNavigationVariant,
   mdiRefresh,
+  mdiCarSeat,
+  mdiCarSeatHeater,
+  mdiSteering,
+  mdiHazardLights,
+  mdiBullhorn,
+  mdiCarDefrostFront,
+  mdiCarDefrostRear,
+  mdiCarLightHigh,
+  mdiEngine,
+  mdiCarLightAlert,
+  mdiCarBrakeFluidLevel,
+  mdiWiperWash,
+  mdiKeyAlert,
 } from '@mdi/js';
 
 export const ICONS = {
@@ -143,6 +156,19 @@ export const ICONS = {
   tyre: mdiCarTireAlert,
   navigate: mdiNavigationVariant,
   refresh: mdiRefresh,
+  seat: mdiCarSeat,
+  seatHeater: mdiCarSeatHeater,
+  steering: mdiSteering,
+  hazard: mdiHazardLights,
+  horn: mdiBullhorn,
+  defrostFront: mdiCarDefrostFront,
+  defrostRear: mdiCarDefrostRear,
+  headlight: mdiCarLightHigh,
+  engine: mdiEngine,
+  lampFault: mdiCarLightAlert,
+  brakeFluid: mdiCarBrakeFluidLevel,
+  washerFluid: mdiWiperWash,
+  keyAlert: mdiKeyAlert,
 } as const;
 
 export type IconName = keyof typeof ICONS;

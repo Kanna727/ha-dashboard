@@ -6,6 +6,7 @@ import { useEntities, useEntity } from '../ha/store';
 import { isUnavailable, num, relTime } from '../ha/format';
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
+import { CarScene } from '../car3d/CarScene';
 
 export function distanceKm(a: HassEntity | undefined, b: HassEntity | undefined): number | undefined {
   const la1 = a?.attributes.latitude as number | undefined;
@@ -220,18 +221,34 @@ function CarDetail() {
   const lat = car.tracker?.attributes.latitude as number | undefined;
   const lng = car.tracker?.attributes.longitude as number | undefined;
 
+  const model = CAR_DETAIL.model;
+  const heroNums = (
+    <div className="car-hero-nums">
+      <span className="hero-pct">{fmtInt(car.fuelPct)}<sup>%</sup></span>
+      <span className="hero-range"><strong>{fmtInt(car.rangeKm)}</strong><span className="muted">km range</span></span>
+    </div>
+  );
+  const fuelBar = <div className="progress thick"><i className={fuelPct !== undefined && fuelPct <= 15 ? 'low' : ''} style={{ width: `${fuelPct ?? 0}%` }} /></div>;
+
   return (
     <div className="car-detail">
       {car.offline && <OfflineNotice seenAgo={car.seenAgo} />}
-      <div className="car-left">
-        <div className="car-hero">
-          <div className="car-hero-nums">
-            <span className="hero-pct">{fmtInt(car.fuelPct)}<sup>%</sup></span>
-            <span className="hero-range"><strong>{fmtInt(car.rangeKm)}</strong><span className="muted">km range</span></span>
-          </div>
-          <CarImage className="car-hero-img" />
-          <div className="progress thick"><i className={fuelPct !== undefined && fuelPct <= 15 ? 'low' : ''} style={{ width: `${fuelPct ?? 0}%` }} /></div>
+      {/* With a 3D model the hero becomes a full-width stage above both columns. */}
+      {model && (
+        <div className="car-hero car-stage">
+          {heroNums}
+          <CarScene model={model} fallback={<CarImage className="car-hero-img" />} />
+          {fuelBar}
         </div>
+      )}
+      <div className="car-left">
+        {!model && (
+          <div className="car-hero">
+            {heroNums}
+            <CarImage className="car-hero-img" />
+            {fuelBar}
+          </div>
+        )}
         <div className="stat-tiles three">
           <div className="stat-tile"><div className="label">Fuel</div><div className="stat-val">{fmtInt(car.fuelPct)}<small>%</small></div></div>
           <div className="stat-tile"><div className="label">Odometer</div><div className="stat-val">{car.odoKm !== undefined ? Math.round(car.odoKm).toLocaleString() : '–'}<small>km</small></div></div>

@@ -84,6 +84,13 @@ export interface DashboardConfig {
     tyres: { frontLeft: string; frontRight: string; rearLeft: string; rearRight: string };
     openings: { entities: string[]; name: string }[];
     engine: string;
+    // Optional 3D model for the car modal (a .glb relative to /local/dashboard/,
+    // never committed: see AGENTS.md "3D car model"). Without it the photo shows.
+    model?: {
+      url: string;
+      paint?: string; // body colour, e.g. '#2c3527'
+      paintMaterial?: string; // regex for the paint material names (default 'carpaint')
+    };
   };
   NETWORK: { wan: string };
   FRIDGE: { power: string; door: string };
