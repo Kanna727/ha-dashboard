@@ -1,3 +1,10 @@
+# [1.14.0](https://github.com/Kanna727/ha-dashboard/compare/v1.13.0...v1.14.0) (2026-10-14)
+
+
+### Features
+
+* **car:** 3D car model in the car modal ([#25](https://github.com/Kanna727/ha-dashboard/issues/25)) ([f67bf19](https://github.com/Kanna727/ha-dashboard/commit/f67bf19be2cc406b2c316b5e40fb65a4a53ec0a5))
+
 # [1.13.0](https://github.com/Kanna727/ha-dashboard/compare/v1.12.1...v1.13.0) (2026-10-14)
 
 
