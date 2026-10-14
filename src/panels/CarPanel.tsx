@@ -7,7 +7,7 @@ import { isUnavailable, num, relTime } from '../ha/format';
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 
-function distanceKm(a: HassEntity | undefined, b: HassEntity | undefined): number | undefined {
+export function distanceKm(a: HassEntity | undefined, b: HassEntity | undefined): number | undefined {
   const la1 = a?.attributes.latitude as number | undefined;
   const lo1 = a?.attributes.longitude as number | undefined;
   const la2 = b?.attributes.latitude as number | undefined;

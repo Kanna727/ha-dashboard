@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react';
+import { snapPercent } from '../lib/fanSpeed';
 
 const MOVE_THRESHOLD = 10; // px before a press counts as a slide (or a scroll)
 const SETTLE_MS = 4000; // how long a committed value is shown while HA catches up
-
-const clamp = (v: number) => Math.min(100, Math.max(0, v));
 
 interface SlideOptions {
   value: number; // current value, 0–100
@@ -22,7 +21,7 @@ export function useSlide({ value, step, enabled, onCommit }: SlideOptions) {
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ x: number; y: number; start: number; width: number; active: boolean; id: number } | null>(null);
   const swallowClick = useRef(false);
-  const snap = (v: number) => clamp(Math.round(v / step) * step);
+  const snap = (v: number) => snapPercent(v, step);
 
   // Once HA reports the new value (or after a while), drop the preview.
   useEffect(() => {

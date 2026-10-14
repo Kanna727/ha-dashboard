@@ -33,7 +33,7 @@ const PLUG_GUESSES: [RegExp, IconName, string][] = [
 ];
 const SPARE_COLORS = ['#a78bfa', '#fb7185', '#4ade80', '#e879f9', '#fcd34d', '#93c5fd'];
 
-function plugLook(entity: string, state: HassEntity | undefined) {
+export function plugLook(entity: string, state: HassEntity | undefined) {
   const o = ENERGY.plugs[entity] ?? {};
   const friendly = String(state?.attributes.friendly_name ?? entity.replace(/^sensor\.|_power$/g, '').replace(/_/g, ' '));
   const name = o.name ?? (friendly.replace(/\s*power$/i, '').trim() || friendly);
@@ -49,12 +49,12 @@ function plugLook(entity: string, state: HassEntity | undefined) {
 // Same rule as the sensor.home_power template in HA: a power reading on a
 // device that also has a switch. Bulbs (no switch), Zwift (no state_class) and
 // the totals (no device) fall out.
-const isPlugPower = (e: HassEntity | undefined) => {
+export const isPlugPower = (e: HassEntity | undefined) => {
   const a = e?.attributes;
   return a?.device_class === 'power' && a.state_class === 'measurement' && (a.unit_of_measurement === 'W' || a.unit_of_measurement === 'kW');
 };
 
-function plugCandidates(r: RegistrySnapshot): string[] {
+export function plugCandidates(r: RegistrySnapshot): string[] {
   const withSwitch = new Set(r.entities.filter((e) => e.entityId.startsWith('switch.')).map((e) => e.deviceId));
   return r.entities
     .filter((e) => e.entityId.startsWith('sensor.') && !e.category && withSwitch.has(e.deviceId))

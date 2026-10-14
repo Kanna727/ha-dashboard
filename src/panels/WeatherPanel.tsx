@@ -12,7 +12,7 @@ import { conditionLabel } from './TopBar';
 const MIN_HOURS = 6; // late evening: spill into tomorrow so the strip isn't nearly empty
 
 // Rest of today's hourly forecast (from the current hour), at least MIN_HOURS long.
-function hoursForToday(hourly: ForecastDay[], now = new Date()) {
+export function hoursForToday(hourly: ForecastDay[], now = new Date()) {
   const start = new Date(now);
   start.setMinutes(0, 0, 0);
   const midnight = new Date(now);
@@ -23,7 +23,7 @@ function hoursForToday(hourly: ForecastDay[], now = new Date()) {
 }
 
 // Night for an hour, from sun.sun's next rising/setting (works either side of sunset).
-function nightAt(t: number, rising?: string, setting?: string) {
+export function nightAt(t: number, rising?: string, setting?: string) {
   if (!rising || !setting) {
     const h = new Date(t).getHours();
     return h < 6 || h >= 18;
