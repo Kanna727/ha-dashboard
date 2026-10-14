@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/Kanna727/ha-dashboard/compare/v1.12.1...v1.13.0) (2026-10-14)
+
+
+### Features
+
+* **rooms:** softer, more natural fan breeze ([#23](https://github.com/Kanna727/ha-dashboard/issues/23)) ([7b7ce67](https://github.com/Kanna727/ha-dashboard/commit/7b7ce6769ab049a390a9f4306d32dac8effe37a8))
+
 ## [1.12.1](https://github.com/Kanna727/ha-dashboard/compare/v1.12.0...v1.12.1) (2026-10-14)
 
 
