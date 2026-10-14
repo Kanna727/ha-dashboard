@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { purifierSummary, targetRange } from './purifier';
+import { chartStart, purifierSummary, targetRange } from './purifier';
 
 const noFaults = [
   { name: 'No water', on: false },
@@ -17,6 +17,24 @@ describe('purifier target range', () => {
     expect(targetRange('Adaptive')).toBeUndefined();
     expect(targetRange('Vacation')).toBeUndefined();
     expect(targetRange(undefined)).toBeUndefined();
+  });
+});
+
+describe('purifier chart start', () => {
+  const now = Date.parse('2026-10-15T01:00:00Z');
+  const H = 3_600_000;
+
+  it('starts at the first reading when history is shorter than the window', () => {
+    expect(chartStart([{ t: now - 2 * H }], 168, now)).toBe(now - 2 * H);
+  });
+
+  it('uses the full window when history covers it', () => {
+    expect(chartStart([{ t: now - 168 * H }, { t: now - H }], 168, now)).toBeUndefined();
+    expect(chartStart([], 168, now)).toBeUndefined();
+  });
+
+  it('keeps at least a minute of width for a reading taken just now', () => {
+    expect(chartStart([{ t: now }], 168, now)).toBe(now - 60_000);
   });
 });
 

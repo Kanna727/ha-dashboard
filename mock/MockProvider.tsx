@@ -113,13 +113,14 @@ const CAR_HISTORY: Record<string, number> = {
 };
 const carHistory = (v: number): HistoryPoint[] => [{ t: Date.now() - 3 * 3600_000, v }];
 
-// Water purifier TDS (ppm): a reading every few hours, wandering around the base.
+// Water purifier TDS (ppm): a reading every few hours, wandering around the
+// base. The purifier was "added" 2 days ago, so the chart shows "since …".
 const TDS_HISTORY: Record<string, number> = { 'sensor.water_purifier_tank_tds': 85, 'sensor.water_purifier_input_tds': 245 };
 function tdsHistory(base: number, hours: number): HistoryPoint[] {
   const rand = seeded(base + hours);
   const end = Math.floor(Date.now() / 600_000) * 600_000;
   const pts: HistoryPoint[] = [];
-  for (let t = end - hours * 3600_000; t <= end; t += 3 * 3600_000) pts.push({ t, v: Math.round(base * (0.85 + rand() * 0.3)) });
+  for (let t = end - Math.min(hours, 48) * 3600_000; t <= end; t += 3 * 3600_000) pts.push({ t, v: Math.round(base * (0.85 + rand() * 0.3)) });
   return pts;
 }
 // Last known tyre warnings (front left low), for the same offline state.
