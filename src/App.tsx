@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { ModalProvider } from './components/Modal';
 import { SheetProvider } from './components/Sheet';
+import { ToastProvider } from './components/Toasts';
+import { Alerts } from './components/Alerts';
 import { DesktopLayout, PhoneLayout, TabletLayout } from './layout/Layouts';
 import { useSunTheme } from './theme/useSunTheme';
 import { useSelfUpdate } from './update/useSelfUpdate';
@@ -32,7 +34,10 @@ export function App() {
   return (
     <SheetProvider>
       <ModalProvider>
-      {layout === 'phone' ? <PhoneLayout {...props} /> : layout === 'tablet' ? <TabletLayout {...props} /> : <DesktopLayout {...props} />}
+        <ToastProvider>
+          <Alerts />
+          {layout === 'phone' ? <PhoneLayout {...props} /> : layout === 'tablet' ? <TabletLayout {...props} /> : <DesktopLayout {...props} />}
+        </ToastProvider>
       </ModalProvider>
     </SheetProvider>
   );

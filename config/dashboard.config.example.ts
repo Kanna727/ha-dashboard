@@ -239,6 +239,8 @@ const config: DashboardConfig = {
     ],
     engine: 'binary_sensor.car_engine',
   },
+  // Banners when the washer or dishwasher finishes, or a door stays open.
+  ALERTS: { chime: true, doorOpenMinutes: 3 },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {

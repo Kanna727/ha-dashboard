@@ -97,6 +97,11 @@ export interface DashboardConfig {
     windowEndHour: number;
   };
   MEALS: MealsConfig;
+  // Optional: settings added after the config moved into HA must be optional
+  // with defaults in entities.ts, because the stored config can be older than
+  // the app.
+  // "Done" and "door left open" banners.
+  ALERTS?: { chime?: boolean; doorOpenMinutes?: number };
 }
 
 declare global {
