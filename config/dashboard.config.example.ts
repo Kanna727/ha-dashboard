@@ -240,7 +240,9 @@ const config: DashboardConfig = {
     engine: 'binary_sensor.car_engine',
     // Optional 3D model in the car modal: an optimised .glb in /config/www/
     // (scripts/car-model). Falls back to `image` when missing.
-    model: { url: '../car.glb', paint: '#2c3527' },
+    // rhd: true converts a left-hand-drive model to right-hand drive; plate is
+    // shown on the number plates (made up here).
+    model: { url: '../car.glb', paint: '#2c3527', gloss: 0.4, plate: 'AB12 CD 3456' },
     // Extra entities shown on the 3D car: lamps, heaters, seats.
     status: {
       headlamps: 'binary_sensor.car_headlamp_status',

@@ -91,6 +91,11 @@ export interface DashboardConfig {
       paint?: string; // body colour, e.g. '#2c3527'
       paintMaterial?: string; // regex for the paint material names (default 'carpaint')
       driverSide?: 'left' | 'right'; // where "Unlocked" is pinned (default 'left')
+      gloss?: number; // paint finish, 0 (satin) to 1 (wet look); default 0.4
+      // Convert a left-hand-drive model to right-hand drive (true, or regex
+      // knobs: include / exclude / flip / split / keep; see car3d/viewer.ts).
+      rhd?: boolean | { include?: string; exclude?: string; flip?: string; split?: string; keep?: string };
+      plate?: string; // registration shown on the number plates
     };
     // Optional extra car entities drawn on the 3D model (lamps, heaters, seats).
     status?: {

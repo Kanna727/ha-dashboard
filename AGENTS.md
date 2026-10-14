@@ -162,6 +162,24 @@ The car modal can show a 3D model of the owner's car instead of the photo (`CAR_
   - **Paint:** materials matching `CAR_DETAIL.model.paintMaterial` (default `carpaint`) get `color` = `paint`, metalness 0.6, roughness 0.35, plus clearcoat on physical materials. The owner's colour is in the private config; dark olives need a darker albedo than the photo's lit panels, because the environment adds a lot.
   - **Doors:** the model's single "Doors_Open" clip is split per door, by the tracks under each `door_XX_<n>` hinge node (`setDoor(corner, open)`).
   - **Mock builds** expose `window.__carViewer` for console poking. The example config points at `../car.glb`; drop a model at the mock site root to see it, and without one the photo fallback shows (so the visual baselines don't depend on a model).
+- **Right-hand drive** (`model.rhd`, `CarViewer.rhd()`, baked once into the cached model via `root.userData.rhdDone`):
+  - **What moves:** the front-interior module is reflected across the car's centre plane (normal `frame.left`), the way a real RHD car differs. Exterior, doors and seats stay put, so badges read normally.
+    - Selection is a region symmetric left/right, so paired parts swap together: from 0.37 of the wheelbase ahead of the rear axle to 0.08 short of the front axle, within 45% of the width, 10–92% of the height.
+    - Excluded: door subtrees and paint/glass materials.
+    - Meshes fully inside the region move whole (only the top-most picked node, so children aren't reflected twice).
+    - Meshes that straddle it are split by triangle: the inside triangles become a `<name>_rhd` mesh that moves. Needed because the low-detail body shell (`Object_37`) carries a hidden copy of the dashboard and steering wheel, which showed as a ghost on the passenger side.
+  - **Keeping text readable:**
+    - `split` (default `display`): the screen texture with each half flipped in place, so the cluster lands in front of the driver and both halves read correctly.
+    - `keep` (default the steering-wheel logo): reflected again about its own centre, so it moves but isn't mirrored.
+    - `flip`: materials whose texture text must be un-mirrored (u → 1 − u).
+    - `include` / `exclude`: overrides for the selection.
+  - **Passenger-side opening:** the model leaves the passenger kick area open (the wheel shows through). It was hidden on the right before; after mirroring it's covered, because the shell triangles move too.
+- **Paint finish:** `model.gloss` (0 satin to 1 wet, default 0.4) maps to clearcoat 0.15→1, clearcoat roughness 0.4→0.06, roughness 0.6→0.3, metalness 0.25→0.6. `environmentIntensity` is 0.6. The owner found the earlier full clearcoat (metal 0.6) read white at some angles.
+- **Number plates** (`model.plate`, `CarViewer.plates()`):
+  - **Finding them:** the front plate is found by shape (thin textured panel ~0.35–0.7 × 0.07–0.22 m, centred, ahead of the front axle). The rear plate is any other mesh with that material.
+  - **Broken rear plate:** in this model it's squashed flat (the source glTF has a stray vertex at x = 509503), so it is hidden and a copy of the front plate geometry (`rear_plate_copy`, added once) is placed at its centre, turned 180°.
+  - **Texture:** the plate material gets a canvas texture in Indian high-security plate style (white, black border, hologram disc and "IND", bold condensed number; `flipY` false for glTF UVs). Its `emissiveMap` is dropped, because the model's plate also glows its placeholder text (the model name) through it.
+  - **Privacy:** the owner's number lives only in the private config and HA. `.privacy-patterns` and the CI secret block it.
 - **Car status on the model** (`src/lib/carVisual.ts`, pure and unit-tested → `CarViewer.setVisual` + `setFocus`): `useCarVisual` in `CarPanel.tsx` reads the openings (`CAR.doors`), the per-corner tyre states (last known while offline), the lock, `CAR.warnings`, the engine and the optional `CAR_DETAIL.status` entities (headlamps, turn signals, lamp faults, A/C, defrost, rear window heater, steering heater, seats).
   - **Doors:** the model's door clips open and close (instant on first sync and under reduced motion).
   - **Lamps:** headlamps swap each lamp's lit/unlit twin nodes (`<lamp>_Lights_On_<n>` next to `<lamp>_<n>`); any turn signal blinks the `_Turn_Signal_` twins (400 ms).
