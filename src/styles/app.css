@@ -718,6 +718,22 @@ button.wide { width: 100%; }
 .media-info { gap: 2px; font-size: 15px; font-weight: 600; }
 .wobble { animation: wobble 0.5s ease-in-out infinite; }
 
+/* ---------- energy history (EnergyCard) ---------- */
+.energy-history { margin: 14px 0 6px; }
+.eh-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.eh-bars { display: flex; align-items: flex-end; gap: 3px; height: 96px; }
+.eh-bar { flex: 1; height: 100%; display: flex; align-items: flex-end; padding: 0; background: none; border: 0; cursor: pointer; min-width: 0; }
+.eh-bar i {
+  display: block; width: 100%; height: var(--h); min-height: 2px; border-radius: 4px 4px 2px 2px;
+  background: color-mix(in srgb, var(--accent-energy) 55%, transparent);
+  transform-origin: bottom; animation: bar-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; animation-delay: calc(var(--i) * 18ms);
+}
+.eh-bar.picked i { background: var(--accent-energy); }
+.eh-bar.partial i { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent-energy) 45%, transparent) 0 4px, transparent 4px 7px); outline: 1px dashed color-mix(in srgb, var(--accent-energy) 70%, transparent); }
+@keyframes bar-grow { from { transform: scaleY(0); } }
+.eh-picked { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+.eh-picked strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+
 /* ---------- toasts (components/Toasts.tsx) ---------- */
 .toasts { position: fixed; top: 16px; right: 16px; z-index: 70; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
 .toast {

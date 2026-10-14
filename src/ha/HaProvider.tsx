@@ -17,6 +17,7 @@ import {
   type HassApi,
   type HistoryPoint,
   type LastState,
+  type StatPoint,
   type TodoItem,
 } from './api';
 import { loadSnapshot, persistSnapshots } from './snapshot';
@@ -117,6 +118,26 @@ export const haApi: HassApi = {
       const rows = (res[id] ?? []).filter((r) => r.s !== 'unavailable' && r.s !== 'unknown');
       const r = rows[rows.length - 1];
       out[id] = r ? { state: r.s, t: r.lu * 1000 } : undefined;
+    }
+    return out;
+  },
+  async fetchStatistics(ids, days, period) {
+    const conn = await getConnection();
+    const start = new Date(Date.now() - days * 86_400_000);
+    start.setHours(0, 0, 0, 0);
+    const res = await conn.sendMessagePromise<Record<string, { start: number | string; mean?: number | null }[]>>({
+      type: 'recorder/statistics_during_period',
+      start_time: start.toISOString(),
+      statistic_ids: ids,
+      period,
+      types: ['mean'],
+    });
+    const out: Record<string, StatPoint[]> = {};
+    for (const id of ids) {
+      out[id] = (res[id] ?? []).map((r) => ({
+        start: typeof r.start === 'number' ? r.start : Date.parse(r.start),
+        mean: r.mean ?? undefined,
+      }));
     }
     return out;
   },

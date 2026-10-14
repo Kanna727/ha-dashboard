@@ -59,6 +59,12 @@ export interface RegistrySnapshot {
   entities: RegistryEntity[];
 }
 
+// One long-term statistics bucket (recorder/statistics_during_period).
+export interface StatPoint {
+  start: number; // epoch ms
+  mean?: number;
+}
+
 export interface LastState {
   state: string;
   t: number;
@@ -80,6 +86,8 @@ export interface HassApi {
   // Each entity's newest state in the window that isn't unavailable/unknown, with
   // its time in ms. For last-known values of non-numeric entities (e.g. binary sensors).
   fetchLastStates(entityIds: string[], hours: number): Promise<Record<string, LastState | undefined>>;
+  // Long-term statistics (kept beyond the recorder's ~10 days), mean per period.
+  fetchStatistics(ids: string[], days: number, period: 'hour' | 'day'): Promise<Record<string, StatPoint[]>>;
   subscribeForecast(entityId: string, type: 'daily' | 'hourly', cb: (days: ForecastDay[]) => void): () => void;
   fetchTodo(entityId: string): Promise<TodoItem[]>;
   // Raw Lovelace config of a storage dashboard (authenticated WS call).
