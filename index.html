@@ -14,10 +14,6 @@
         if (t === 'auto') t = localStorage.getItem('dashThemeResolved') || 'dark';
         document.documentElement.dataset.theme = t;
       } catch (e) {}
-      // Per-home config (entity IDs, names) lives in config.js next to this file,
-      // not in the bundle. Parser-blocking, so it is defined before the app runs;
-      // the timestamp keeps kiosk WebViews from serving a stale copy.
-      document.write('<script src="./config.js?t=' + Date.now() + '"><\/script>');
     </script>
   </head>
   <body>

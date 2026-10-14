@@ -79,8 +79,9 @@ function getConnection(): Promise<Connection> {
 }
 
 // Methods wait for the connection, so the UI can render (from the snapshot)
-// before it exists. The object itself never changes.
-const api: HassApi = {
+// before it exists. The object itself never changes. Exported for main.tsx,
+// which fetches the config through it before the app renders.
+export const haApi: HassApi = {
   callService: async (domain, service, data, target) => callService(await getConnection(), domain, service, data, target),
   async fetchHistory(entityIds, hours) {
     const conn = await getConnection();
@@ -209,7 +210,7 @@ export function HaProvider({ children }: { children: ReactNode }) {
     );
   }
   return (
-    <HassContext.Provider value={api}>
+    <HassContext.Provider value={haApi}>
       <HassStatusContext.Provider value={statusValue}>{children}</HassStatusContext.Provider>
     </HassContext.Provider>
   );

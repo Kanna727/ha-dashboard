@@ -6,7 +6,7 @@ Guide for AI agents (and humans) working on this repo. Read this before changing
 
 ## What this is
 
-A custom Home Assistant dashboard written in React. It is **not** Lovelace. It builds to a single self-contained `index.html` plus a small per-home `config.js`, both served from HA's `/config/www/dashboard/` (URL `/local/dashboard/index.html`). It talks to HA over the WebSocket API using `home-assistant-js-websocket`.
+A custom Home Assistant dashboard written in React. It is **not** Lovelace. It builds to a single self-contained `index.html`, served from HA's `/config/www/dashboard/` (URL `/local/dashboard/index.html`). The per-home config is stored in HA behind its login (see Config below). It talks to HA over the WebSocket API using `home-assistant-js-websocket`.
 
 The idea came from a Reddit post about a custom HTML dashboard with kiosk self-update, sun-following themes and a separate phone layout. The owner asked for React specifically, so unlike that post this project uses npm.
 
@@ -25,21 +25,22 @@ Targets:
 ## Stack and constraints
 
 - **Vite is pinned to 5.x**, so the project still builds on Node 18. CI uses Node 22.
-- React 18, TypeScript (strict), `@mdi/js` icons, `vite-plugin-singlefile`, esbuild (compiles `config.js`).
+- React 18, TypeScript (strict), `@mdi/js` icons, `vite-plugin-singlefile`, esbuild (evaluates the TS config at build time).
 - No UI library and no CSS framework. Plain CSS with custom properties lives in `src/styles/app.css`.
 - `.npmrc` in the repo pins the public npm registry on purpose. Don't delete it.
 
 ## Layout
 
 ```
-index.html                 Vite entry; loads ./config.js (cache-busted) before the app
-vite.config.ts             singlefile plugin; dashboard-config plugin compiles config/*.ts -> config.js;
+index.html                 Vite entry
+vite.config.ts             singlefile plugin; dashboard-config plugin (virtual:dashboard-config, dist/dashboard-config.json);
                            defines __BUILD_HASH__ (the release version) from env BUILD_HASH
 config/dashboard.config.example.ts   committed example (fictional home)
 config/dashboard.config.ts           the real config, gitignored
-src/main.tsx               picks HaProvider, or MockProvider when VITE_MOCK=1; shows an error if config.js is missing
+src/main.tsx               boot: gets the config (embedded, device cache, or HA), then picks HaProvider or MockProvider
 src/App.tsx                layout detection (?layout= or viewport), theme, self-update
 src/config/types.ts        DashboardConfig schema (rooms, controls, energy, climate, car, media, meals, ...)
+src/config/load.ts         config storage: CONFIG_DASHBOARD, device cache (dashConfig), fetchConfig
 src/config/entities.ts     reads window.__DASHBOARD_CONFIG__ and re-exports ROOMS, ENERGY, ...; RECOVERY rules
 src/ha/api.ts              HassApi interface + context (callService, fetchHistory, subscribeForecast, fetchTodo)
 src/ha/HaProvider.tsx      real connection: OAuth via getAuth, subscribeEntities, history/forecast/todo WS calls
@@ -56,7 +57,8 @@ src/theme/useSunTheme.ts   auto (sun.sun) / dark / light; ?theme= override; loca
 src/update/useSelfUpdate.ts reloads when input_text.dashboard_build != "<version>/<config hash>"
 mock/fixtures.ts           state snapshot matching the example config
 mock/MockProvider.tsx      fake HassApi that applies service calls locally and jitters power sensors
-scripts/deploy.py          manual deploy: build, copy index.html + config.js to the share, set helper
+scripts/deploy.py          manual deploy: build, copy index.html to the share, push config, set helper
+scripts/push-config.mjs    saves dist/dashboard-config.json into HA and updates the helper (HA_URL + HA_TOKEN)
 scripts/privacy-check.sh   blocks personal data in tracked files
 .github/workflows/         ci.yml (PRs), release.yml (semantic-release + deploy over Tailscale)
 docs/home-assistant.md     HA-side setup for automatic deploys
@@ -69,17 +71,19 @@ npm install
 npm run mock        # offline preview on :5173 with fake data (service calls logged to console)
 npm run dev         # live; set VITE_HA_URL=http://homeassistant.local when running off-box
 npm run typecheck
-npm run build       # tsc + vite build -> dist/index.html + dist/config.js
+npm run build       # tsc + vite build -> dist/index.html + dist/dashboard-config.json
 python3 scripts/deploy.py                # manual deploy: app + config
 python3 scripts/deploy.py --config-only  # after editing config/dashboard.config.ts
 python3 scripts/deploy.py --build-only   # build with the real version, no copy
 ```
 
-## Config (`config.js`)
+## Config (stored in HA)
 
-- The release bundle is generic. All per-home data is in `config/dashboard.config.ts`, typed by `DashboardConfig` in `src/config/types.ts`, and compiled by the `dashboard-config` Vite plugin. In dev it is served at `/config.js`; `vite build` writes `dist/config.js`. Mock builds always use the example config. `DASHBOARD_CONFIG=<path>` overrides the source.
-- `index.html` `document.write`s `<script src="./config.js?t=<now>">` before the module script, so the config is defined (and fresh) before the app runs. `main.tsx` imports `App` only after confirming `window.__DASHBOARD_CONFIG__` exists.
-- `config.js` also sets `window.__DASHBOARD_CONFIG_HASH__` (sha256 of the compiled code, 8 chars).
+- The release bundle is generic. All per-home data is in `config/dashboard.config.ts`, typed by `DashboardConfig` in `src/config/types.ts`. Keep it plain data: it travels as JSON.
+- The `dashboard-config` Vite plugin evaluates it to `{ hash, config }` (hash = sha256 of the JSON, 8 chars). Dev and mock builds embed that via `virtual:dashboard-config` (mock always uses the example). Production builds embed `null` and write `dist/dashboard-config.json`. `DASHBOARD_CONFIG=<path>` overrides the source.
+- In HA the `{ hash, config }` object is the whole config of a hidden storage-mode Lovelace dashboard, `dashboard-config` (not in the sidebar, `require_admin: false`). Unlike `/local/`, `lovelace/config` needs a logged-in user. `scripts/push-config.mjs` creates the dashboard if missing.
+- Boot (`main.tsx`): embedded config, else the device cache (`localStorage.dashConfig`), else connect (OAuth if needed), fetch with `lovelace/config`, and cache. Only then is `App` imported, because `entities.ts` reads the config at module load. Reloads therefore paint from cache; only a device's first load waits for HA.
+- When the helper's config half changes, `useSelfUpdate` fetches the new config into the cache before reloading.
 - When adding a config key: update `types.ts`, both config files, the export list in `entities.ts`, and `mock/fixtures.ts` if it needs states.
 
 ## Releases and deploys
@@ -88,7 +92,7 @@ python3 scripts/deploy.py --build-only   # build with the real version, no copy
 - On every merge to `main`, `release.yml` runs semantic-release. If there are `feat`/`fix`/`perf` commits since the last tag, it bumps the version, tags `vX.Y.Z`, commits `CHANGELOG.md` and `package.json` back (`chore(release)`, `[skip ci]`), and publishes a GitHub Release with `index.html` built from the example config. `docs`/`chore`-only merges make no release and deploy nothing.
 - The deploy job joins the owner's tailnet (`tailscale/github-action`, OAuth client, `tag:ci`) and POSTs `{version, url}` to an HA webhook. `url` is a ~5-minute signed download link for the release asset (the repo is private). An HA automation checks the URL belongs to this repo, downloads it with the Downloader integration into `www/dashboard/`, and sets the helper. See `docs/home-assistant.md`.
 - **Helper format:** `input_text.dashboard_build` holds `"<app version>/<config hash>"`. The release automation replaces the first half; `deploy.py --config-only` replaces the second. Open pages reload when it differs from what they run. The `'dev'` version turns self-update off.
-- `config.js` is never deployed by CI (CI doesn't have it). Deploy it with `deploy.py --config-only` over Samba.
+- The config is never deployed by CI (CI doesn't have it). Push it with `deploy.py --config-only` (needs `HA_URL` + an admin `HA_TOKEN`), or, as an agent with the HA MCP server, save `dist/dashboard-config.json` as the `dashboard-config` dashboard's config and update the helper's second half.
 - Secrets/vars in GitHub: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `HA_WEBHOOK_ID`, `PRIVACY_PATTERNS`; variable `HA_TAILNET_HOST`. The deploy job skips with a warning if they are missing.
 
 ## Design
@@ -160,7 +164,7 @@ The panel shows a tree: Home total on the left, with a branch to each of the top
 
 ## Auth and security
 
-- HA serves `/local/` **without authentication**. Never put tokens, API keys or secrets in the bundle or `config.js`.
+- HA serves `/local/` **without authentication**. Never put tokens, API keys, secrets or personal data in the bundle.
 - The live provider uses HA's OAuth flow (`getAuth`). Each device logs in once, and tokens are stored in that device's `localStorage` under `hassTokens`. `cleanAuthParams()` strips `auth_callback/code/state` after login.
 - `deploy.py` reads `HA_TOKEN` from the environment only. It never writes the token to disk or into the build.
 - Whoever can write `www/dashboard/index.html` can run code next to every device's HA tokens. That's why the deploy webhook only accepts download URLs of this repo's release assets, and its ID is a secret.

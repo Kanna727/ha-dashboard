@@ -4,12 +4,14 @@ r"""Build the dashboard and push it to Home Assistant by hand.
 Releases normally deploy themselves (see .github/workflows/release.yml). Use
 this script for config changes, or as a fallback when CI can't reach HA.
 
-1. npm run build -> dist/index.html (generic app) + dist/config.js (your config).
-2. Copy them to <HA config>/www/dashboard/ (Samba share by default).
-3. Set input_text.dashboard_build = "<version>/<config hash>" so open kiosks reload.
+1. npm run build -> dist/index.html (generic app) + dist/dashboard-config.json (your config).
+2. Copy index.html to <HA config>/www/dashboard/ (Samba share by default).
+3. Save the config into HA's hidden "dashboard-config" dashboard (login-only,
+   unlike /local/) and set input_text.dashboard_build = "<version>/<config hash>"
+   so open kiosks reload (scripts/push-config.mjs, needs HA_URL + HA_TOKEN).
 
   python scripts/deploy.py                # app + config
-  python scripts/deploy.py --config-only  # just config.js (after editing config/dashboard.config.ts)
+  python scripts/deploy.py --config-only  # just the config (after editing config/dashboard.config.ts)
   python scripts/deploy.py --build-only   # build, don't copy
 
 Env:
@@ -17,18 +19,16 @@ Env:
             /Volumes/config/www/dashboard elsewhere)
   BUILD_DIR local dir to build in (needed on Windows when the repo is on Google Drive)
   HA_URL    e.g. http://homeassistant.local  (for step 3)
-  HA_TOKEN  long-lived access token (for step 3; never baked into the build)
+  HA_TOKEN  admin long-lived access token (for step 3; never baked into the build)
 """
 
 import argparse
 import hashlib
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
-import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -97,10 +97,7 @@ def build(version: str) -> Path:
 
 
 def config_hash(dist: Path) -> str:
-    m = re.search(r'__DASHBOARD_CONFIG_HASH__="([0-9a-f]+)"', (dist / "config.js").read_text(encoding="utf-8"))
-    if not m:
-        sys.exit("config hash missing from config.js")
-    return m.group(1)
+    return json.loads((dist / "dashboard-config.json").read_text(encoding="utf-8"))["hash"]
 
 
 def copy(src: Path, target_dir: Path) -> Path:
@@ -119,59 +116,46 @@ def copy(src: Path, target_dir: Path) -> Path:
     return dest
 
 
-def ha_request(path: str, body: dict | None = None):
-    url, token = os.environ.get("HA_URL"), os.environ.get("HA_TOKEN")
-    if not (url and token):
-        return None
-    req = urllib.request.Request(
-        f"{url.rstrip('/')}{path}",
-        data=json.dumps(body).encode() if body is not None else None,
-        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        method="POST" if body is not None else "GET",
-    )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        return json.load(resp)
-
-
-def current_app_version() -> str | None:
-    state = ha_request(f"/api/states/{HELPER}")
-    return state["state"].split("/")[0] if state else None
-
-
-def push_deploy_id(value: str) -> bool:
-    return ha_request("/api/services/input_text/set_value", {"entity_id": HELPER, "value": value}) is not None
+def push_config(work: Path, dist: Path, version: str | None) -> bool:
+    """Save the config into HA and update the helper. False if HA_URL/HA_TOKEN are missing."""
+    if not (os.environ.get("HA_URL") and os.environ.get("HA_TOKEN")):
+        return False
+    cmd = ["node", "scripts/push-config.mjs", str(dist / "dashboard-config.json")]
+    if version:
+        cmd += ["--app-version", version]
+    subprocess.run(cmd, cwd=work, check=True)
+    return True
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--target", default=os.environ.get("HA_WWW", DEFAULT_TARGET))
     ap.add_argument("--build-only", action="store_true", help="build, skip copy and push")
-    ap.add_argument("--config-only", action="store_true", help="deploy config.js only, keep the deployed app")
+    ap.add_argument("--config-only", action="store_true", help="deploy the config only, keep the deployed app")
     args = ap.parse_args()
 
     version = app_version()
     print(f"version {version}")
     dist = build(version)
+    work = dist.parent
     cfg = config_hash(dist)
     if args.build_only:
         print(f"built {dist} (config {cfg})")
         return
 
     target = Path(args.target)
-    files = ["config.js"] if args.config_only else ["config.js", "index.html"]
-    for name in files:  # config first: the old app ignores it, the new app needs it
-        print(f"copied -> {copy(dist / name, target)}")
+    if not args.config_only:
+        print(f"copied -> {copy(dist / 'index.html', target)}")
+        # Older versions served the config publicly as config.js; it lives in HA now.
+        (target / "config.js").unlink(missing_ok=True)
 
-    if args.config_only:
-        version = current_app_version()
-        if version is None:
-            print(f"HA_URL/HA_TOKEN not set; set {HELPER} to '<deployed version>/{cfg}' to reload kiosks")
-            return
-    deploy_id = f"{version}/{cfg}"
-    if push_deploy_id(deploy_id):
-        print(f"{HELPER} = {deploy_id}; kiosks will reload")
-    else:
-        print(f"HA_URL/HA_TOKEN not set; set {HELPER} to {deploy_id} to reload kiosks")
+    if push_config(work, dist, None if args.config_only else version):
+        return
+    print(
+        "HA_URL/HA_TOKEN not set, so the config was not pushed. Either export them and rerun, or\n"
+        f"save {dist / 'dashboard-config.json'} as the config of HA's \"dashboard-config\" dashboard\n"
+        f"and set {HELPER} to '<app version>/{cfg}' (an agent with the HA MCP server can do both)."
+    )
 
 
 if __name__ == "__main__":

@@ -26,7 +26,7 @@ jobs:
           # The mock provider and any Google API key must never ship.
           test "$(grep -c MockProvider dist/index.html)" = 0
           test "$(grep -c AIza dist/index.html)" = 0
-          # Entity IDs belong in config.js, not the bundle (the deploy helper is the one exception).
+          # Entity IDs belong in the per-home config (stored in HA), not the bundle (the deploy helper is the one exception).
           ids=$(grep -oE '\b(light|fan|switch|sensor|binary_sensor|media_player|person|lock|climate|weather|device_tracker|input_boolean)\.[a-z0-9_]{3,}' dist/index.html || true)
           if [ -n "$ids" ]; then echo "Entity IDs in bundle:"; echo "$ids" | sort -u; exit 1; fi
       - name: Mock build

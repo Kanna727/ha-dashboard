@@ -1,13 +1,13 @@
-// Which HA entities the dashboard shows. The values come from config.js
-// (compiled from config/dashboard.config.ts), loaded by index.html before the
-// app. main.tsx refuses to start the app without it, so `!` is safe here.
+// Which HA entities the dashboard shows. The values come from the per-home
+// config (config/dashboard.config.ts), which main.tsx loads from HA (or the
+// device cache) before it imports the app, so `!` is safe here.
 import type { DashboardConfig } from './types';
 
 export type { ControlDef, RoomDef } from './types';
 
 const cfg: DashboardConfig = window.__DASHBOARD_CONFIG__!;
 
-// Hash of the loaded config.js; part of the self-update version check.
+// Hash of the loaded config; part of the self-update version check.
 export const CONFIG_HASH = window.__DASHBOARD_CONFIG_HASH__ ?? 'none';
 
 export const {
