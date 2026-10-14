@@ -30,6 +30,7 @@ const config: DashboardConfig = {
     {
       id: 'kitchen',
       quick: { entity: 'fan.kitchen_fan', kind: 'fan' },
+      appliances: ['purifier'],
       name: 'Kitchen',
       icon: 'utensils',
       presence: [
@@ -167,6 +168,22 @@ const config: DashboardConfig = {
       running: 'input_boolean.washing_machine_running',
       power: 'sensor.utility_washing_machine_power',
       door: 'binary_sensor.utility_washing_machine_door_sensor_door',
+    },
+    // Optional. Mode changes need two taps; faults also show as top-bar issues.
+    purifier: {
+      tankTds: 'sensor.water_purifier_tank_tds',
+      inputTds: 'sensor.water_purifier_input_tds',
+      tankFull: 'binary_sensor.water_purifier_tank_full',
+      mode: 'select.water_purifier_purification_mode',
+      fallbackMode: 'select.water_purifier_fallback_mode',
+      refresh: 'button.water_purifier_refresh',
+      lastReported: 'sensor.water_purifier_last_reported',
+      faults: [
+        { entity: 'binary_sensor.water_purifier_no_water', name: 'No water' },
+        { entity: 'binary_sensor.water_purifier_filter_choked', name: 'Filter choked' },
+        { entity: 'binary_sensor.water_purifier_valve_fault', name: 'Valve fault' },
+        { entity: 'binary_sensor.water_purifier_system_fault', name: 'System fault' },
+      ],
     },
   },
   MEDIA: [

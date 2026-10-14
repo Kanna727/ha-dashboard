@@ -67,6 +67,9 @@ function applyService(domain: string, service: string, data: Record<string, unkn
       case 'set_value':
         patch(id, { state: String(data.value) });
         break;
+      case 'select_option':
+        patch(id, { state: String(data.option) });
+        break;
     }
   }
 }
@@ -109,6 +112,16 @@ const CAR_HISTORY: Record<string, number> = {
   'sensor.car_car_battery_level': 82,
 };
 const carHistory = (v: number): HistoryPoint[] => [{ t: Date.now() - 3 * 3600_000, v }];
+
+// Water purifier TDS (ppm): a reading every few hours, wandering around the base.
+const TDS_HISTORY: Record<string, number> = { 'sensor.water_purifier_tank_tds': 85, 'sensor.water_purifier_input_tds': 245 };
+function tdsHistory(base: number, hours: number): HistoryPoint[] {
+  const rand = seeded(base + hours);
+  const end = Math.floor(Date.now() / 600_000) * 600_000;
+  const pts: HistoryPoint[] = [];
+  for (let t = end - hours * 3600_000; t <= end; t += 3 * 3600_000) pts.push({ t, v: Math.round(base * (0.85 + rand() * 0.3)) });
+  return pts;
+}
 // Last known tyre warnings (front left low), for the same offline state.
 const CAR_LAST_STATES: Record<string, string> = {
   'binary_sensor.car_tire_pressure_front_left': 'on',
@@ -159,6 +172,10 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         if (domain === 'button' && ids(target).includes('button.car_force_refresh')) {
           window.setTimeout(() => patch('sensor.car_last_updated_at', { state: new Date().toISOString() }), 3000);
         }
+        // A purifier refresh brings a new report a few seconds later.
+        if (domain === 'button' && ids(target).includes('button.water_purifier_refresh')) {
+          window.setTimeout(() => patch('sensor.water_purifier_last_reported', { state: new Date().toISOString() }), 3000);
+        }
         // Pretend a restarted Echo comes back a couple of seconds later.
         if (domain === 'button' && ids(target).includes('button.work_room_dot_restart')) {
           window.setTimeout(() => patch('media_player.work_room_dot', { state: 'idle' }), 2000);
@@ -169,7 +186,10 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         // The car's 14-day history query is slow on a real Pi; mimic it.
         if (entityIds.some((id) => CAR_HISTORY[id])) if (!FROZEN) await new Promise((r) => setTimeout(r, 1500));
         return Object.fromEntries(
-          entityIds.map((id) => [id, CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : fakeHistory(1400, hours)]),
+          entityIds.map((id) => [
+            id,
+            CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : TDS_HISTORY[id] ? tdsHistory(TDS_HISTORY[id], hours) : fakeHistory(1400, hours),
+          ]),
         );
       },
       async fetchStatistics(ids, days) {

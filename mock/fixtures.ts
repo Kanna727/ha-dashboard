@@ -102,6 +102,22 @@ const list: HassEntity[] = [
   e('sensor.dishwasher_program_progress', '42'),
   e('sensor.dishwasher_program_finish_time', new Date(Date.now() + 65 * 60_000).toISOString()),
   e('binary_sensor.dishwasher_connectivity', 'on'),
+  // Water purifier (Kitchen). __mockPatch('binary_sensor.water_purifier_no_water', { state: 'on' }) shows a fault.
+  e('sensor.water_purifier_tank_tds', '85.42', { unit_of_measurement: 'ppm', state_class: 'measurement' }),
+  e('sensor.water_purifier_input_tds', '247.19', { unit_of_measurement: 'ppm', state_class: 'measurement' }),
+  e('binary_sensor.water_purifier_tank_full', 'on'),
+  e('select.water_purifier_purification_mode', 'TasteTune 50-100 ppm', {
+    options: ['RO only', 'Adaptive', 'TasteTune 50-100 ppm', 'TasteTune 75-125 ppm', 'TasteTune 100-150 ppm', 'Vacation'],
+  }),
+  e('select.water_purifier_fallback_mode', 'TasteTune 50-100 ppm', {
+    options: ['RO only', 'TasteTune 50-100 ppm', 'TasteTune 75-125 ppm', 'TasteTune 100-150 ppm'],
+  }),
+  e('button.water_purifier_refresh', 'unknown'),
+  e('sensor.water_purifier_last_reported', new Date(Date.now() - 95 * 60_000).toISOString(), { device_class: 'timestamp' }),
+  e('binary_sensor.water_purifier_no_water', 'off', { device_class: 'problem' }),
+  e('binary_sensor.water_purifier_filter_choked', 'off', { device_class: 'problem' }),
+  e('binary_sensor.water_purifier_valve_fault', 'off', { device_class: 'problem' }),
+  e('binary_sensor.water_purifier_system_fault', 'off', { device_class: 'problem' }),
 
   // Climate
   e('climate.ac', 'cool', {

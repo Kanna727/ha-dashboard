@@ -1,4 +1,4 @@
-import { FRIDGE, NETWORK, ROOMS, WEATHER } from '../config/entities';
+import { APPLIANCES, FRIDGE, NETWORK, ROOMS, WEATHER } from '../config/entities';
 import { useHass } from '../ha/api';
 import { useForecast } from '../ha/forecast';
 import { useNow } from '../hooks/useNow';
@@ -32,6 +32,11 @@ export function useIssues(): Issue[] {
 
   for (const id of new Set([...ROOMS.flatMap((r) => r.doors), FRIDGE.door])) {
     if (all[id]?.state === 'on') issues.push({ id, text: `${doorName(id)} open`, severity: 'warn' });
+  }
+
+  // Water purifier faults (no water, filter choked, ...).
+  for (const f of APPLIANCES.purifier?.faults ?? []) {
+    if (all[f.entity]?.state === 'on') issues.push({ id: f.entity, text: `Purifier: ${f.name}`, severity: 'warn' });
   }
 
   // Heads-up from the hourly forecast, e.g. to bring the washing in.

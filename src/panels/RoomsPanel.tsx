@@ -3,6 +3,7 @@ import { useHass } from '../ha/api';
 import { useAllEntities, useEntities, useEntity } from '../ha/store';
 import { fmtNum, fmtWatts, isOn, isUnavailable, num } from '../ha/format';
 import { AppliancesCard } from '../components/AppliancesCard';
+import { usePurifier } from '../components/usePurifier';
 import { ClimateCard } from '../components/ClimateCard';
 import { MediaCard } from '../components/MediaCard';
 import { EntityTile } from '../components/EntityTile';
@@ -45,12 +46,13 @@ function RoomDetail({ room }: { room: RoomDef }) {
       <div className="tiles roomy">{room.controls.map((c) => <EntityTile key={c.entity} {...c} />)}</div>
       {room.detailCards?.includes('climate') && <div className="detail-card"><ClimateCard /></div>}
       {room.detailCards?.includes('media') && <div className="detail-card"><MediaCard /></div>}
-      {room.appliances && <div className="detail-card"><AppliancesCard /></div>}
+      {room.appliances && <div className="detail-card"><AppliancesCard kinds={room.appliances} /></div>}
     </div>
   );
 }
 
-// Washer / dishwasher status, shared by the room card buttons and subtitle.
+// Appliance status, shared by the room card buttons and subtitle. The purifier
+// never "runs"; its button turns amber on a fault instead.
 function useApplianceStatus() {
   const washer = useEntity(APPLIANCES.washer.running);
   const washerPower = useEntity(APPLIANCES.washer.power);
@@ -58,6 +60,7 @@ function useApplianceStatus() {
   const dwProgress = useEntity(APPLIANCES.dishwasher.progress);
   const pct = num(dwProgress);
   const dwRunning = pct !== undefined && pct > 0 && pct < 100;
+  const purifier = usePurifier();
   return {
     washer: { running: washer?.state === 'on', text: washer?.state === 'on' ? `Washer ${fmtWatts(num(washerPower))}` : 'Washer idle' },
     dishwasher: {
@@ -65,6 +68,7 @@ function useApplianceStatus() {
       pct: dwRunning ? pct! : undefined,
       text: dwRunning ? `Dishwasher ${Math.round(pct!)}%` : isUnavailable(dwState) ? 'Dishwasher asleep' : 'Dishwasher idle',
     },
+    purifier: { running: false, fault: purifier.activeFaults.length > 0, present: !!purifier.cfg, text: purifier.text },
   };
 }
 
@@ -113,7 +117,9 @@ function RoomRow({ room }: { room: RoomDef }) {
   const status: string[] = [];
   if (lit) status.push(`${lit} light${lit > 1 ? 's' : ''}`);
   runningApps.forEach((a) => status.push(appStatus[a].text));
-  if (!status.length) status.push(others.length && !room.appliances ? `${others[0].name} on` : 'Off');
+  if (room.appliances?.includes('purifier') && appStatus.purifier.fault) status.push(appStatus.purifier.text);
+  // The washer's plug is always on, so a room with the washer never says "Washer on".
+  if (!status.length) status.push(others.length && !room.appliances?.includes('washer') ? `${others[0].name} on` : 'Off');
   const parts: string[] = [];
   if (temp) parts.push(`${fmtNum(temp, 0)}°`);
   if (hum) parts.push(`${fmtNum(hum)}%`);
@@ -168,10 +174,10 @@ function RoomRow({ room }: { room: RoomDef }) {
       <div className="room-row-top">
         <span className="room-row-icon"><Icon name={room.icon as IconName} size={22} /></span>
         <span className="row-buttons">
-          {room.appliances?.map((a) => (
+          {room.appliances?.filter((a) => a !== 'purifier' || appStatus.purifier.present).map((a) => (
             <button
               key={a}
-              className={`row-btn ${a} ${appStatus[a].running ? 'on' : ''}`}
+              className={`row-btn ${a} ${appStatus[a].running ? 'on' : ''} ${a === 'purifier' && appStatus.purifier.fault ? 'fault' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 openDetail();
