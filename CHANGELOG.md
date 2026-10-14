@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/Kanna727/ha-dashboard/compare/v1.5.0...v1.6.0) (2026-10-14)
+
+
+### Features
+
+* sun and moon arc in the weather card ([#13](https://github.com/Kanna727/ha-dashboard/issues/13)) ([6b0f901](https://github.com/Kanna727/ha-dashboard/commit/6b0f90165dc6750ebff8d631e837a86e20898128))
+
 # [1.5.0](https://github.com/Kanna727/ha-dashboard/compare/v1.4.0...v1.5.0) (2026-10-14)
 
 
