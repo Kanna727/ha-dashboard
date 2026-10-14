@@ -27,9 +27,13 @@ export function domainOf(entityId: string) {
   return entityId.split('.')[0];
 }
 
-export function relTime(iso: string | undefined): string {
-  if (!iso) return '';
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+// Accepts an ISO string or epoch ms; '' for missing or unparseable values
+// (e.g. the state of an unavailable timestamp sensor).
+export function relTime(when: string | number | undefined): string {
+  if (when === undefined || when === '') return '';
+  const t = typeof when === 'number' ? when : new Date(when).getTime();
+  if (!Number.isFinite(t)) return '';
+  const diff = (Date.now() - t) / 1000;
   if (diff < 60) return 'just now';
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;

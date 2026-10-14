@@ -561,6 +561,11 @@ button.wide { width: 100%; }
 .car-thumb { width: 52%; max-width: 230px; height: auto; object-fit: contain; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45)); }
 .car-fallback { color: var(--muted); }
 .car-panel.offline .hero-pct, .car-panel.offline .car-thumb { opacity: 0.55; }
+/* Car data unavailable (integration not responding); spans the whole detail grid. */
+.notice-banner { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
+.notice-banner svg { flex-shrink: 0; margin-top: 2px; }
+.notice-banner span { color: var(--text); }
+.notice-banner strong { color: var(--warn); }
 
 .car-detail { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px; }
 .car-left, .car-right { display: grid; gap: 16px; align-content: start; min-width: 0; }

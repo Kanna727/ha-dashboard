@@ -82,6 +82,16 @@ function fakeHistory(base: number, hours: number): HistoryPoint[] {
   return pts;
 }
 
+// Last car readings, for the "Kia Connect not responding" state:
+// __mockPatch('lock.car_door_lock', { state: 'unavailable' }) plus the same for
+// sensor.car_fuel_level shows them as last known values from 3 hours ago.
+const CAR_HISTORY: Record<string, number> = {
+  'sensor.car_fuel_level': 38,
+  'sensor.car_fuel_driving_range': 312,
+  'sensor.car_odometer': 18452,
+};
+const carHistory = (v: number): HistoryPoint[] => [{ t: Date.now() - 3 * 3600_000, v }];
+
 // ?mockSync=<ms> simulates a slow connect (status 'connecting' -> 'live');
 // ?mockSync=reconnect stays in 'reconnecting'. Lets the sync indicator be tested.
 function useMockStatus() {
@@ -126,7 +136,9 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         return {};
       },
       async fetchHistory(entityIds, hours) {
-        return Object.fromEntries(entityIds.map((id) => [id, fakeHistory(1400, hours)]));
+        return Object.fromEntries(
+          entityIds.map((id) => [id, CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : fakeHistory(1400, hours)]),
+        );
       },
       subscribeForecast(_id, type, cb) {
         let live = true;
