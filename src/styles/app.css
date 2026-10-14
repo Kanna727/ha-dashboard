@@ -264,6 +264,17 @@ button.wide { width: 100%; }
 /* energy tree (home -> live consumers) */
 .ef { position: relative; margin-top: 4px; }
 .ef-lines { position: absolute; inset: 0; overflow: visible; }
+/* Energy branches: faint track + flowing round particles. The dash pattern is
+   0-length dashes with round caps; each density bucket shifts by exactly one gap
+   per cycle so the loop is seamless. Small SVG, few lines: cheap to repaint. */
+.flow-track { stroke-width: 3; stroke-opacity: 0.28; vector-effect: non-scaling-stroke; }
+.flow-particles { stroke-width: 6; stroke-linecap: round; vector-effect: non-scaling-stroke; animation-timing-function: linear; animation-iteration-count: infinite; }
+.flow-particles.light { stroke-dasharray: 0 26; animation-name: particles-light; }
+.flow-particles.medium { stroke-dasharray: 0 18; animation-name: particles-medium; }
+.flow-particles.heavy { stroke-dasharray: 0 12; animation-name: particles-heavy; }
+@keyframes particles-light { to { stroke-dashoffset: -26; } }
+@keyframes particles-medium { to { stroke-dashoffset: -18; } }
+@keyframes particles-heavy { to { stroke-dashoffset: -12; } }
 .ef-home {
   position: absolute; left: 18%; transform: translate(-50%, -50%);
   width: 112px; height: 112px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center;

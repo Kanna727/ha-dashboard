@@ -5,11 +5,25 @@ import { OfflinePlugsNote } from '../components/OfflinePlugsNote';
 import { fetchHomePowerHistory, useHomePower } from '../components/useHomePower';
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
+import { useTweenedNumber } from '../hooks/useTweenedNumber';
+import { flowDensity, flowDuration } from '../lib/energyFlow';
 
 function splitWatts(w: number | undefined): [string, string] {
   if (w === undefined) return ['–', ''];
   if (w >= 1000) return [(w / 1000).toFixed(w >= 10_000 ? 0 : 1), 'kW'];
   return [String(Math.round(w)), 'W'];
+}
+
+// A watt value that glides to new readings instead of jumping. Its own tiny
+// component, so the per-frame re-render during a glide stays local.
+function Watts({ w, className }: { w: number | undefined; className: string }) {
+  const [v, u] = splitWatts(useTweenedNumber(w));
+  return (
+    <span className={className}>
+      {v}
+      <small>{u}</small>
+    </span>
+  );
 }
 
 // Tree layout: home on the left, one branch per live consumer on the right.
@@ -47,8 +61,8 @@ export function EnergyPanel() {
     .filter((c) => c.w >= 5)
     .sort((a, b) => b.w - a.w);
   const top = drawing.slice(0, 4);
-  const [tv, tu] = splitWatts(totalW);
   const [pv, pu] = splitWatts(peak);
+  const maxW = top.reduce((m, c) => Math.max(m, c.w), 0);
 
   const rowsH = top.length ? top.length * ROW_H + (top.length - 1) * ROW_GAP : 0;
   const height = Math.max(rowsH, MIN_H);
@@ -64,26 +78,29 @@ export function EnergyPanel() {
       />
       <div className="ef" style={{ height }}>
         <svg className="ef-lines" width="100%" height={height} aria-hidden="true">
+          {/* Each branch: a faint track plus round particles flowing home → consumer.
+              Faster for bigger draws; denser in three buckets (see lib/energyFlow.ts). */}
           {top.map((c, i) => (
-            <line
-              key={c.entity}
-              x1={HOME_X}
-              y1={height / 2}
-              x2={ROWS_X}
-              y2={rowY(i)}
-              className="flow-line live"
-              style={{ stroke: c.color }}
-            />
+            <g key={c.entity} style={{ stroke: c.color }}>
+              <line x1={HOME_X} y1={height / 2} x2={ROWS_X} y2={rowY(i)} className="flow-track" />
+              <line
+                x1={HOME_X}
+                y1={height / 2}
+                x2={ROWS_X}
+                y2={rowY(i)}
+                className={`flow-particles ${flowDensity(c.w)}`}
+                style={{ animationDuration: `${flowDuration(c.w, maxW).toFixed(2)}s` }}
+              />
+            </g>
           ))}
         </svg>
         <div className="ef-home" style={{ top: height / 2 }}>
           <Icon name="homePower" size={22} />
-          <div className="ef-home-val">{tv}<small>{tu}</small></div>
+          <Watts w={totalW} className="ef-home-val" />
           <div className="flow-label">Home</div>
         </div>
         <ul className="ef-rows" style={{ top: offset }}>
           {top.map((c) => {
-            const [v, u] = splitWatts(c.w);
             const share = totalW ? Math.min(100, (c.w / totalW) * 100) : 0;
             return (
               <li key={c.entity} style={{ ['--ring' as string]: c.color, height: ROW_H }}>
@@ -92,7 +109,7 @@ export function EnergyPanel() {
                   <span className="ef-name">{c.name}</span>
                   <span className="ef-bar"><i style={{ width: `${share}%` }} /></span>
                 </span>
-                <span className="ef-val">{v}<small>{u}</small></span>
+                <Watts w={c.w} className="ef-val" />
               </li>
             );
           })}
