@@ -465,6 +465,42 @@ button.wide { width: 100%; }
 .room-row-progress.fan > span { background: color-mix(in srgb, var(--accent-fan) 18%, transparent); border-right-color: color-mix(in srgb, var(--accent-fan) 70%, transparent); transition: width 0.35s ease; }
 .room-row.sliding .room-row-progress.fan > span { transition: none; background: color-mix(in srgb, var(--accent-fan) 28%, transparent); }
 .room-row.sliding { border-color: color-mix(in srgb, var(--accent-fan) 60%, transparent); }
+
+/* Living room cards: ambient layers under the content. Only transform and
+   opacity animate (compositor-only), so the kiosk can run them all day. */
+.room-glow {
+  position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
+  background: radial-gradient(110% 90% at 88% 0%, color-mix(in srgb, var(--accent-light) 32%, transparent), transparent 62%);
+  animation: glow-breathe 5s ease-in-out infinite;
+}
+@keyframes glow-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+/* Fan airflow: skewed vertical stripes sliding right inside the speed fill. */
+.room-row-progress.fan > span { overflow: hidden; }
+.room-row-progress.fan > span::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: -40px; right: -40px;
+  background: repeating-linear-gradient(90deg, transparent 0 14px, color-mix(in srgb, var(--accent-fan) 18%, transparent) 14px 20px);
+  animation: airflow var(--fan-dur, 2s) linear infinite;
+}
+@keyframes airflow { from { transform: skewX(-24deg) translateX(-20px); } to { transform: skewX(-24deg) translateX(0); } }
+/* Geyser heating: warm wash from the bottom with faint ripples rising. */
+.room-heat {
+  position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none;
+  background: linear-gradient(to top, color-mix(in srgb, var(--warn) 22%, transparent), transparent 72%);
+  -webkit-mask-image: linear-gradient(to top, #000 20%, transparent 85%); mask-image: linear-gradient(to top, #000 20%, transparent 85%);
+}
+.room-heat::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: calc(100% + 14px);
+  background: repeating-linear-gradient(0deg, transparent 0 12px, color-mix(in srgb, var(--warn) 14%, transparent) 12px 14px);
+  animation: heat-rise 1.8s linear infinite;
+}
+@keyframes heat-rise { from { transform: translateY(0); } to { transform: translateY(-14px); } }
+/* Presence: a soft ping around the green dot. */
+.presence-dot { position: relative; }
+.presence-dot::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--ok);
+  animation: presence-ping 2.6s ease-out infinite;
+}
+@keyframes presence-ping { from { transform: scale(0.6); opacity: 0.8; } to { transform: scale(1.9); opacity: 0; } }
 .hold-badge { position: absolute; top: -5px; right: -5px; width: 19px; height: 19px; border-radius: 50%; display: grid; place-items: center; background: var(--danger); color: #fff; border: 2px solid var(--card); }
 .hold-banner { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; padding: 12px 14px; border-radius: 16px; font-size: 14px; line-height: 1.35; color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
 .hold-banner svg { flex-shrink: 0; margin-top: 1px; }

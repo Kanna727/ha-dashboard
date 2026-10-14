@@ -148,6 +148,9 @@ function RoomRow({ room }: { room: RoomDef }) {
       title={isFan ? `Slide across to set the ${fanLabel.toLowerCase()} speed` : undefined}
       {...(isFan ? fanSlide.handlers : {})}
     >
+      {/* Ambient state layers behind the content (transform/opacity animations only). */}
+      {lit > 0 && <span className="room-glow" aria-hidden="true" />}
+      {room.quick?.kind === 'geyser' && quickOn && <span className="room-heat" aria-hidden="true" />}
       {progress !== undefined && (
         <span className="room-row-progress" aria-hidden="true">
           <span style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
@@ -155,7 +158,8 @@ function RoomRow({ room }: { room: RoomDef }) {
       )}
       {isFan && fanSlide.value > 0 && (
         <span className="room-row-progress fan" aria-hidden="true">
-          <span style={{ width: `${fanSlide.value}%` }} />
+          {/* Airflow stripes speed up with the fan: ~3 s per cycle at speed 1, ~0.5 s at 6. */}
+          <span style={{ width: `${fanSlide.value}%`, ['--fan-dur' as string]: `${(3.2 / Math.max(1, fanSpeed)).toFixed(2)}s` }} />
         </span>
       )}
       <div className="room-row-top">
