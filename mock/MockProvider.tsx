@@ -167,6 +167,17 @@ export default function MockProvider({ children }: { children: ReactNode }) {
           entityIds.map((id) => [id, CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : fakeHistory(1400, hours)]),
         );
       },
+      async fetchStatistics(ids, days) {
+        // Seeded daily means (W) for the example home's totals, older days on the legacy sensor.
+        const rand = seeded(days * 7 + 1);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const series = Array.from({ length: days + 1 }, (_, i) => ({
+          start: today.getTime() - (days - i) * 86_400_000,
+          mean: 1300 + rand() * 1100,
+        }));
+        return Object.fromEntries(ids.map((id, n) => [id, n === 0 ? series.slice(-3) : series.slice(0, -3)]));
+      },
       async fetchLastStates(entityIds) {
         if (entityIds.some((id) => CAR_LAST_STATES[id])) if (!FROZEN) await new Promise((r) => setTimeout(r, 1500));
         return Object.fromEntries(
