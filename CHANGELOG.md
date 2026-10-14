@@ -1,3 +1,10 @@
+## [1.18.1](https://github.com/Kanna727/ha-dashboard/compare/v1.18.0...v1.18.1) (2026-10-14)
+
+
+### Bug Fixes
+
+* **purifier:** draw the TDS chart from the first reading ([#30](https://github.com/Kanna727/ha-dashboard/issues/30)) ([48e78ca](https://github.com/Kanna727/ha-dashboard/commit/48e78caaaa7fe0c67095c53ce73a7cf1a88974b2))
+
 # [1.18.0](https://github.com/Kanna727/ha-dashboard/compare/v1.17.0...v1.18.0) (2026-10-14)
 
 
