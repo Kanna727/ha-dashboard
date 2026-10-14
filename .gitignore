@@ -1,5 +1,8 @@
 node_modules
 dist
+dist-mock
+test-results
+playwright-report
 .env*
 
 # Personal, never committed (see README "Your config")
