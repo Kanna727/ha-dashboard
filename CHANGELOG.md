@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/Kanna727/ha-dashboard/compare/v1.18.3...v1.19.0) (2026-10-15)
+
+
+### Features
+
+* **rooms:** natural animations for fans, lights, geysers and the dishwasher ([#33](https://github.com/Kanna727/ha-dashboard/issues/33)) ([3eaab73](https://github.com/Kanna727/ha-dashboard/commit/3eaab7351ce4e58507771c68d875bed8e99e08d4))
+
 ## [1.18.3](https://github.com/Kanna727/ha-dashboard/compare/v1.18.2...v1.18.3) (2026-10-15)
 
 
