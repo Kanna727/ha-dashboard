@@ -1,3 +1,10 @@
+## [1.18.2](https://github.com/Kanna727/ha-dashboard/compare/v1.18.1...v1.18.2) (2026-10-15)
+
+
+### Bug Fixes
+
+* **rooms:** remove the purifier button from the Kitchen card ([#31](https://github.com/Kanna727/ha-dashboard/issues/31)) ([39b8951](https://github.com/Kanna727/ha-dashboard/commit/39b8951ffd586edd8ca8b6a05fd373a6d8126306))
+
 ## [1.18.1](https://github.com/Kanna727/ha-dashboard/compare/v1.18.0...v1.18.1) (2026-10-14)
 
 
