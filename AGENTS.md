@@ -318,7 +318,7 @@ Fans can have an `input_boolean.*_fan_manual_off` flag (map: `FAN_MANUAL_OFF` in
 
 ## Meals panel
 
-`panels/MealsPanel.tsx` shows the day's delivered meals per person from `MEALS` in the config (days without a plan show "No delivery planned"). Today/Tomorrow toggle, and the next meal is highlighted with a "Next up" tag: the first slot whose `end` (HH:MM) hasn't passed, else tomorrow's first slot, at which point the panel defaults to the Tomorrow tab. Each row shows the eating window (`time`); `delivery` is informational. The chevron opens the whole week plus the kitchen notes. It sits last in tablet column 3, column 3 on desktop, and the phone's More tab. `fetchTodo` in the API is left unused.
+`panels/MealsPanel.tsx` shows the day's delivered meals per person from `MEALS` in the config (days without a plan show "No delivery planned"). Today/Tomorrow toggle, and the next meal is highlighted with a "Next up" tag: the first slot whose `end` (HH:MM) hasn't passed, else tomorrow's first slot, at which point the panel defaults to the Tomorrow tab. Each row shows the eating window (`time`); `delivery` is informational. The chevron opens the week: only the days that have a plan (Monday first, Sunday last; `plannedDays`), plus the kitchen notes when `notes` isn't empty. It sits last in tablet column 3, column 3 on desktop, and the phone's More tab. `fetchTodo` in the API is left unused.
 
 ## Building on Windows
 

@@ -20,6 +20,11 @@ export function upcoming(now: Date, slots = MEAL_SLOTS): { offset: 0 | 1; slot: 
   return next ? { offset: 0, slot: next.id } : { offset: 1, slot: slots[0]?.id ?? 'breakfast' };
 }
 
+// Days with a plan, Monday first, for the week view. Days off (eating out) are left out.
+export function plannedDays(plan = MEAL_PLAN): number[] {
+  return [1, 2, 3, 4, 5, 6, 0].filter((d) => plan[d]);
+}
+
 function useNow() {
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -77,20 +82,22 @@ export function MealsPanel() {
       subtitle: 'Weekly delivery schedule',
       body: (
         <div className="meal-week">
-          {[1, 2, 3, 4, 5, 6].map((d) => (
+          {plannedDays().map((d) => (
             <section key={d} className={`card meal-day ${d === today ? 'today' : ''}`}>
               <h3 className="label">{DAYS[d]}{d === today ? ' · today' : ''}</h3>
               <DayMeals day={d} active={null} />
             </section>
           ))}
-          <section className="card meal-day">
-            <h3 className="label">Kitchen instructions</h3>
-            <ul className="meal-notes">
-              {KITCHEN_NOTES.map((n) => (
-                <li key={n}>{n}</li>
-              ))}
-            </ul>
-          </section>
+          {KITCHEN_NOTES.length > 0 && (
+            <section className="card meal-day">
+              <h3 className="label">Kitchen instructions</h3>
+              <ul className="meal-notes">
+                {KITCHEN_NOTES.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
       ),
     });
