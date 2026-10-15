@@ -5,6 +5,7 @@ import { domainOf, isOn, isUnavailable, stateLabel } from '../ha/format';
 import { useLongPress } from '../hooks/useLongPress';
 import { Icon, type IconName } from './Icon';
 import { FanIcon } from './FanIcon';
+import { LightIcon } from './LightIcon';
 import { useOpenSheet } from './Sheet';
 import type { ControlDef } from '../config/entities';
 
@@ -38,7 +39,13 @@ export function EntityTile({ entity, name, icon, readOnly }: ControlDef) {
       aria-label={`${name}: ${stateLabel(e)}`}
     >
       <span className="tile-icon">
-        {iconName === 'fan' ? <FanIcon on={on} pct={e?.attributes.percentage as number | undefined} size={22} /> : <Icon name={iconName} size={22} />}
+        {iconName === 'fan' ? (
+          <FanIcon on={on} pct={e?.attributes.percentage as number | undefined} size={22} />
+        ) : iconName === 'light' ? (
+          <LightIcon on={on} brightness={((e?.attributes.brightness as number | undefined) ?? 255) / 255} size={22} />
+        ) : (
+          <Icon name={iconName} size={22} />
+        )}
       </span>
       <span className="tile-name">{name}</span>
       <span className="tile-state">{stateLabel(e)}</span>

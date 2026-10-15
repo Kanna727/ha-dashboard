@@ -7,6 +7,7 @@ import { usePurifier } from '../components/usePurifier';
 import { useDishShine } from '../components/useDishShine';
 import { DishRack } from '../components/DishRack';
 import { FanIcon } from '../components/FanIcon';
+import { LightIcon } from '../components/LightIcon';
 import { ClimateCard } from '../components/ClimateCard';
 import { MediaCard } from '../components/MediaCard';
 import { EntityTile } from '../components/EntityTile';
@@ -93,6 +94,8 @@ function RoomRow({ room }: { room: RoomDef }) {
   const quickHeld = !!room.quick && held.some((f) => f.entity === room.quick!.entity);
 
   const lit = lights.filter(isOn).length;
+  // The bulb on the lights button glows as bright as the brightest light that's on.
+  const litBrightness = Math.max(0, ...lights.filter(isOn).map((l) => ((l?.attributes.brightness as number | undefined) ?? 255) / 255));
   const others = room.controls.filter((c, i) => !c.entity.startsWith('light.') && !c.readOnly && isOn(controls[i]));
   const occupied = presence.some((p) => p?.state === 'on');
   const doorOpen = doors.some((d) => d?.state === 'on');
@@ -224,7 +227,7 @@ function RoomRow({ room }: { room: RoomDef }) {
           )}
           {lightIds.length > 0 && (
             <button className={`row-btn bulb ${lit ? 'on' : ''}`} onClick={toggleLights} aria-label={`${lit ? 'Turn off' : 'Turn on'} ${room.name} lights`}>
-              <Icon name="lightOn" size={22} />
+              <LightIcon on={lit > 0} brightness={litBrightness} size={22} />
             </button>
           )}
         </span>
