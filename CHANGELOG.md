@@ -1,3 +1,10 @@
+## [1.18.3](https://github.com/Kanna727/ha-dashboard/compare/v1.18.2...v1.18.3) (2026-10-15)
+
+
+### Bug Fixes
+
+* **meals:** hide days off and empty kitchen notes in the week view ([#32](https://github.com/Kanna727/ha-dashboard/issues/32)) ([555472d](https://github.com/Kanna727/ha-dashboard/commit/555472d4d6a414e86434f2e80acd6dcf56034836))
+
 ## [1.18.2](https://github.com/Kanna727/ha-dashboard/compare/v1.18.1...v1.18.2) (2026-10-15)
 
 
