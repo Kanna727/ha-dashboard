@@ -18,18 +18,6 @@ const roomLit = (r: RoomDef, all: HassEntities) => lightsOf(r).some((id) => all[
 // Curtain pleats behind the quick fan's fill: 16 across the card plus one spare at each edge,
 // so the swinging hem never opens a gap at the sides.
 const PLEATS = Array.from({ length: 18 }, (_, i) => i - 1);
-// Dishwasher spray: 14 nozzles along the bottom, each throwing one droplet up-left and one
-// up-right. Spread, height, pace and phase are scrambled deterministically so no two match.
-const JETS = Array.from({ length: 28 }, (_, i) => {
-  const t = 1.1 + ((i * 5) % 9) * 0.07;
-  return {
-    '--x': `${(3 + (i >> 1) * 7.2).toFixed(1)}%`,
-    '--dx': `${(i % 2 ? 1 : -1) * (6 + ((i * 7) % 15))}px`,
-    '--h': `${30 + ((i * 13) % 50)}px`,
-    '--t': `${t.toFixed(2)}s`,
-    '--d': `${(-((i * 0.37) % t)).toFixed(2)}s`,
-  } as React.CSSProperties;
-});
 
 // Fans in the room whose "manual off" flag is on, i.e. automations won't turn them on.
 function useHeldFans(room: RoomDef) {
@@ -180,14 +168,13 @@ function RoomRow({ room }: { room: RoomDef }) {
       {progress !== undefined && (
         <span className="room-row-progress dishwasher" aria-hidden="true">
           <span style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}>
-            {/* Water jets spraying up from the bottom, and a sheen sweeping along the fill. The spray
-                layer is card-wide (the fill clips it), so the jets don't bunch up early in the cycle. */}
+            {/* Water sloshing in the machine: three wave layers rolling past each other while the water
+                rocks. Card-wide (the fill clips it), so the waves keep their size whatever the progress. */}
             {progress > 0 && (
-              <span className="spray" style={{ width: `${10000 / Math.min(100, progress)}%` }}>
-                {JETS.map((j, i) => <i key={i} style={j} />)}
+              <span className="water" style={{ width: `${10000 / Math.min(100, progress)}%` }}>
+                <i><b /></i><i><b /></i><i><b /></i>
               </span>
             )}
-            <b className="sheen" />
           </span>
         </span>
       )}

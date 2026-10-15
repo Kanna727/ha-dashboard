@@ -543,51 +543,51 @@ button.wide { width: 100%; }
   to { transform: skewX(calc(var(--sway, 4deg) * var(--m, 1))) scaleY(0.985); }
 }
 @keyframes curtain-flutter { from { transform: skewX(calc(var(--sway, 4deg) * -0.12)); } to { transform: skewX(calc(var(--sway, 4deg) * 0.12)); } }
-/* Dishwasher running: water jets inside the progress fill. Each droplet's
-   <i> carries it sideways at a steady rate (--dx) while its ::before rises
-   fast, slows, and falls back (--h), so together they trace a real arc. The
-   spray layer is card-wide and clipped by the fill, like the fan's curtain.
-   A faint mist hangs along the bottom (.spray::before) and a soft sheen sweeps
-   along the fill towards the progress edge. Droplets, mist and sheen rest at
-   opacity 0 (hidden under reduced motion). */
+/* Dishwasher running: water sloshing inside the progress fill. The .water
+   layer is card-wide and clipped by the fill (like the fan's curtain), and
+   holds three translucent wave layers, back to front, each deeper and
+   stronger. Two motions per layer, on different periods so they never line up:
+   - <i> rocks the water (a slight tilt and bob, pivoting at the bottom);
+   - <b> is a strip of waves one wavelength (--l) wider than the card, sliding
+     by exactly one wavelength so the loop is seamless. The middle layer rolls
+     the other way, so the crests pass through each other like sloshing water.
+   b::before is the water body (wave-shaped mask); the front layer's b::after
+   is a light line along its crest. Hidden under reduced motion. */
 .room-row-progress.dishwasher > span { overflow: hidden; }
-.room-row-progress .spray { position: absolute; top: 0; bottom: 0; left: 0; }
-.room-row-progress .spray::before {
-  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 45%; opacity: 0; transform-origin: 50% 100%;
-  background: linear-gradient(to top, color-mix(in srgb, #fff 10%, color-mix(in srgb, #2dd4bf 22%, transparent)), transparent);
-  animation: spray-mist 2.2s ease-in-out infinite alternate;
+.room-row-progress .water {
+  position: absolute; top: 0; bottom: 0; left: 0;
+  --wave-fill: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 10C25 0 25 0 50 10S75 20 100 10V100H0Z'/%3E%3C/svg%3E");
+  --wave-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath d='M0 10C25 0 25 0 50 10S75 20 100 10' fill='none' stroke='%23000' stroke-width='1.6' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
 }
-.room-row-progress .spray i {
-  position: absolute; bottom: 2px; left: var(--x); width: 2.5px; height: 3.5px; opacity: 0;
-  animation: spray-x var(--t) linear infinite; animation-delay: var(--d);
+.room-row-progress .water i {
+  position: absolute; left: -8%; right: -8%; top: var(--top); bottom: -14px; transform-origin: 50% 100%;
+  animation: water-slosh var(--slosh) ease-in-out infinite alternate; animation-delay: var(--sd);
 }
-.room-row-progress .spray i::before {
-  content: ''; position: absolute; inset: 0; border-radius: 50%;
-  background: color-mix(in srgb, #fff 50%, #2dd4bf);
-  box-shadow: 0 0 4px color-mix(in srgb, #2dd4bf 60%, transparent);
-  animation: spray-y var(--t) infinite; animation-delay: var(--d);
+.room-row-progress .water b {
+  position: absolute; top: 0; bottom: 0; left: calc(var(--l) * -1); right: 0;
+  animation: water-roll var(--roll) linear infinite;
 }
-.room-row-progress .sheen {
-  position: absolute; top: 0; bottom: 0; left: 0; width: 45%; opacity: 0;
-  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, #fff 16%, transparent) 50%, transparent 80%);
-  animation: dw-sheen 3.6s ease-in-out infinite;
+.room-row-progress .water b::before, .room-row-progress .water b::after {
+  content: ''; position: absolute; inset: 0;
+  -webkit-mask-size: var(--l) 100%; mask-size: var(--l) 100%;
+  -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
 }
-@keyframes spray-x {
-  0% { transform: translateX(0); opacity: 0; }
-  10% { opacity: 0.9; }
-  75% { opacity: 0.7; }
-  100% { transform: translateX(var(--dx)); opacity: 0; }
+.room-row-progress .water b::before {
+  background: linear-gradient(to bottom, color-mix(in srgb, #2dd4bf var(--a), transparent), color-mix(in srgb, #2dd4bf calc(var(--a) * 0.55), transparent));
+  -webkit-mask-image: var(--wave-fill); mask-image: var(--wave-fill);
 }
-@keyframes spray-y {
-  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
-  55% { transform: translateY(calc(var(--h) * -1)); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
-  100% { transform: translateY(calc(var(--h) * -0.45)); }
+.room-row-progress .water i:nth-child(1) { --top: 36%; --l: 190px; --roll: 8s; --slosh: 4.2s; --sd: -1s; --a: 16%; }
+.room-row-progress .water i:nth-child(2) { --top: 43%; --l: 140px; --roll: 5.5s; --slosh: 3.4s; --sd: -2.2s; --a: 20%; }
+.room-row-progress .water i:nth-child(3) { --top: 50%; --l: 165px; --roll: 4.2s; --slosh: 2.9s; --sd: -0.6s; --a: 26%; }
+.room-row-progress .water i:nth-child(2) b { animation-direction: reverse; }
+.room-row-progress .water i:nth-child(3) b::after {
+  background: color-mix(in srgb, #fff 30%, color-mix(in srgb, #2dd4bf 45%, transparent));
+  -webkit-mask-image: var(--wave-line); mask-image: var(--wave-line);
 }
-@keyframes spray-mist { from { transform: scaleY(0.85); opacity: 0.45; } to { transform: scaleY(1.1); opacity: 0.9; } }
-@keyframes dw-sheen {
-  0% { transform: translateX(-100%); opacity: 0; }
-  15%, 85% { opacity: 1; }
-  100% { transform: translateX(230%); opacity: 0; }
+@keyframes water-roll { from { transform: translateX(0); } to { transform: translateX(var(--l)); } }
+@keyframes water-slosh {
+  from { transform: translateY(2px) skewY(-1.3deg); }
+  to { transform: translateY(-2px) skewY(1.3deg); }
 }
 /* Geyser heating: a warm wash from the bottom that swells unevenly, with
    bubbles rising through it like water coming to the boil. Each <i> rises from
@@ -1097,7 +1097,7 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 @keyframes flow { to { stroke-dashoffset: -16; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
-  .room-row-progress.fan .curtain { display: none; }
+  .room-row-progress.fan .curtain, .room-row-progress .water { display: none; }
 }
 
 /* ---------- meals ---------- */
