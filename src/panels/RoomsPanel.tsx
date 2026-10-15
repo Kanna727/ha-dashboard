@@ -4,6 +4,8 @@ import { useAllEntities, useEntities, useEntity } from '../ha/store';
 import { fmtNum, fmtWatts, isOn, isUnavailable, num } from '../ha/format';
 import { AppliancesCard } from '../components/AppliancesCard';
 import { usePurifier } from '../components/usePurifier';
+import { useDishShine } from '../components/useDishShine';
+import { DishRack } from '../components/DishRack';
 import { ClimateCard } from '../components/ClimateCard';
 import { MediaCard } from '../components/MediaCard';
 import { EntityTile } from '../components/EntityTile';
@@ -97,6 +99,8 @@ function RoomRow({ room }: { room: RoomDef }) {
   const runningApps = (room.appliances ?? []).filter((a) => appStatus[a].running);
   // Dishwasher cycle progress, drawn as a read-only fill behind the card.
   const progress = room.appliances?.includes('dishwasher') ? appStatus.dishwasher.pct : undefined;
+  // For a few minutes after a cycle, the dishes on the card shine.
+  const dishShine = useDishShine(!!room.appliances?.includes('dishwasher'), appStatus.dishwasher.running);
 
   // The quick fan's speed, drawn as a fill behind the card; sliding across the
   // card sets it (snapped to the fan's speed steps; all the way left = off).
@@ -120,6 +124,7 @@ function RoomRow({ room }: { room: RoomDef }) {
   const status: string[] = [];
   if (lit) status.push(`${lit} light${lit > 1 ? 's' : ''}`);
   runningApps.forEach((a) => status.push(appStatus[a].text));
+  if (dishShine) status.push('Dishes clean');
   if (room.appliances?.includes('purifier') && appStatus.purifier.fault) status.push(appStatus.purifier.text);
   // The washer's plug is always on, so a room with the washer never says "Washer on".
   if (!status.length) status.push(others.length && !room.appliances?.includes('washer') ? `${others[0].name} on` : 'Off');
@@ -166,18 +171,11 @@ function RoomRow({ room }: { room: RoomDef }) {
         </span>
       )}
       {progress !== undefined && (
-        <span className="room-row-progress dishwasher" aria-hidden="true">
-          <span style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}>
-            {/* Water sloshing in the machine: three wave layers rolling past each other while the water
-                rocks. Card-wide (the fill clips it), so the waves keep their size whatever the progress. */}
-            {progress > 0 && (
-              <span className="water" style={{ width: `${10000 / Math.min(100, progress)}%` }}>
-                <i><b /></i><i><b /></i><i><b /></i>
-              </span>
-            )}
-          </span>
+        <span className="room-row-progress" aria-hidden="true">
+          <span style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
         </span>
       )}
+      {(progress !== undefined || dishShine) && <DishRack pct={progress ?? 100} shining={dishShine} />}
       {isFan && fanSlide.value > 0 && (
         <span className="room-row-progress fan" aria-hidden="true">
           {/* A sheer curtain stirring in the draught: card-wide (the fill clips it), swaying harder and
