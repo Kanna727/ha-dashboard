@@ -15,6 +15,9 @@ import type { HassEntities } from 'home-assistant-js-websocket';
 
 const lightsOf = (r: RoomDef) => r.controls.filter((c) => c.entity.startsWith('light.')).map((c) => c.entity);
 const roomLit = (r: RoomDef, all: HassEntities) => lightsOf(r).some((id) => all[id]?.state === 'on');
+// Curtain pleats behind the quick fan's fill: 16 across the card plus one spare at each edge,
+// so the swinging hem never opens a gap at the sides.
+const PLEATS = Array.from({ length: 18 }, (_, i) => i - 1);
 
 // Fans in the room whose "manual off" flag is on, i.e. automations won't turn them on.
 function useHeldFans(room: RoomDef) {
@@ -169,11 +172,17 @@ function RoomRow({ room }: { room: RoomDef }) {
       )}
       {isFan && fanSlide.value > 0 && (
         <span className="room-row-progress fan" aria-hidden="true">
-          {/* Wavy air currents (and a few motes) drifting across the fill; one crossing takes ~3.3 s at
-              speed 1, ~1.8 s at 6 (and the fill is wider at higher speeds, so they also travel further). */}
+          {/* A sheer curtain stirring in the draught: card-wide (the fill clips it), swaying harder and
+              faster with the speed (~3 s a swing at speed 1, ~1.6 s at 6). Keyed by speed so the
+              animations restart with the new --sway (not every engine re-reads var() in running keyframes). */}
           <span style={{ width: `${fanSlide.value}%`, ['--fan-dur' as string]: `${(3.6 - 0.3 * Math.max(1, fanSpeed)).toFixed(2)}s` }}>
-            <i><b /></i><i><b /></i><i><b /></i><i><b /></i>
-            <em /><em /><em />
+            <span
+              className="curtain"
+              key={fanSpeed}
+              style={{ width: `${10000 / fanSlide.value}%`, ['--sway' as string]: `${(1.5 + 1.2 * Math.max(1, fanSpeed)).toFixed(1)}deg` }}
+            >
+              {PLEATS.map((i) => <i key={i} style={{ ['--i' as string]: i }} />)}
+            </span>
           </span>
         </span>
       )}
