@@ -543,6 +543,52 @@ button.wide { width: 100%; }
   to { transform: skewX(calc(var(--sway, 4deg) * var(--m, 1))) scaleY(0.985); }
 }
 @keyframes curtain-flutter { from { transform: skewX(calc(var(--sway, 4deg) * -0.12)); } to { transform: skewX(calc(var(--sway, 4deg) * 0.12)); } }
+/* Dishwasher running: water jets inside the progress fill. Each droplet's
+   <i> carries it sideways at a steady rate (--dx) while its ::before rises
+   fast, slows, and falls back (--h), so together they trace a real arc. The
+   spray layer is card-wide and clipped by the fill, like the fan's curtain.
+   A faint mist hangs along the bottom (.spray::before) and a soft sheen sweeps
+   along the fill towards the progress edge. Droplets, mist and sheen rest at
+   opacity 0 (hidden under reduced motion). */
+.room-row-progress.dishwasher > span { overflow: hidden; }
+.room-row-progress .spray { position: absolute; top: 0; bottom: 0; left: 0; }
+.room-row-progress .spray::before {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 45%; opacity: 0; transform-origin: 50% 100%;
+  background: linear-gradient(to top, color-mix(in srgb, #fff 10%, color-mix(in srgb, #2dd4bf 22%, transparent)), transparent);
+  animation: spray-mist 2.2s ease-in-out infinite alternate;
+}
+.room-row-progress .spray i {
+  position: absolute; bottom: 2px; left: var(--x); width: 2.5px; height: 3.5px; opacity: 0;
+  animation: spray-x var(--t) linear infinite; animation-delay: var(--d);
+}
+.room-row-progress .spray i::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: color-mix(in srgb, #fff 50%, #2dd4bf);
+  box-shadow: 0 0 4px color-mix(in srgb, #2dd4bf 60%, transparent);
+  animation: spray-y var(--t) infinite; animation-delay: var(--d);
+}
+.room-row-progress .sheen {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 45%; opacity: 0;
+  background: linear-gradient(100deg, transparent 20%, color-mix(in srgb, #fff 16%, transparent) 50%, transparent 80%);
+  animation: dw-sheen 3.6s ease-in-out infinite;
+}
+@keyframes spray-x {
+  0% { transform: translateX(0); opacity: 0; }
+  10% { opacity: 0.9; }
+  75% { opacity: 0.7; }
+  100% { transform: translateX(var(--dx)); opacity: 0; }
+}
+@keyframes spray-y {
+  0% { transform: translateY(0); animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1); }
+  55% { transform: translateY(calc(var(--h) * -1)); animation-timing-function: cubic-bezier(0.6, 0, 0.8, 0.4); }
+  100% { transform: translateY(calc(var(--h) * -0.45)); }
+}
+@keyframes spray-mist { from { transform: scaleY(0.85); opacity: 0.45; } to { transform: scaleY(1.1); opacity: 0.9; } }
+@keyframes dw-sheen {
+  0% { transform: translateX(-100%); opacity: 0; }
+  15%, 85% { opacity: 1; }
+  100% { transform: translateX(230%); opacity: 0; }
+}
 /* Geyser heating: a warm wash from the bottom that swells unevenly, with
    bubbles rising through it like water coming to the boil. Each <i> rises from
    the bottom edge, growing and speeding up, then pops (swells and vanishes);
