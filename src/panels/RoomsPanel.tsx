@@ -156,7 +156,12 @@ function RoomRow({ room }: { room: RoomDef }) {
     >
       {/* Ambient state layers behind the content (transform/opacity animations only). */}
       {lit > 0 && <span className="room-glow" aria-hidden="true" />}
-      {room.quick?.kind === 'geyser' && quickOn && <span className="room-heat" aria-hidden="true" />}
+      {room.quick?.kind === 'geyser' && quickOn && (
+        <span className="room-heat" aria-hidden="true">
+          {/* Bubbles rising from the bottom, growing and wobbling, then popping. */}
+          <i /><i /><i /><i /><i /><i /><i /><i />
+        </span>
+      )}
       {progress !== undefined && (
         <span className="room-row-progress" aria-hidden="true">
           <span style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
@@ -164,10 +169,11 @@ function RoomRow({ room }: { room: RoomDef }) {
       )}
       {isFan && fanSlide.value > 0 && (
         <span className="room-row-progress fan" aria-hidden="true">
-          {/* Breeze wisps drifting across the fill; one crossing takes ~3.3 s at speed 1, ~1.8 s at 6
-              (and the fill is wider at higher speeds, so they also travel further). */}
+          {/* Wavy air currents (and a few motes) drifting across the fill; one crossing takes ~3.3 s at
+              speed 1, ~1.8 s at 6 (and the fill is wider at higher speeds, so they also travel further). */}
           <span style={{ width: `${fanSlide.value}%`, ['--fan-dur' as string]: `${(3.6 - 0.3 * Math.max(1, fanSpeed)).toFixed(2)}s` }}>
-            <i /><i /><i /><i />
+            <i><b /></i><i><b /></i><i><b /></i><i><b /></i>
+            <em /><em /><em />
           </span>
         </span>
       )}

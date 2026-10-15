@@ -502,47 +502,124 @@ button.wide { width: 100%; }
   animation: glow-breathe 5s ease-in-out infinite;
 }
 @keyframes glow-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
-/* Fan breeze: a few soft, tapered wisps drifting across the speed fill at
-   different heights, lengths and paces, swaying and fading in and out. Each <i>
-   spans the fill and carries its streak (::before, starting off the left edge)
-   across it; the sway runs on a different period so no two passes look alike. */
+/* Fan breeze: wavy air currents flowing across the speed fill, with a few
+   motes carried along. Three layers per current, each on its own period so no
+   two passes look alike:
+   - <i> spans the fill and carries the current across it, fading in, dipping
+     like a gust and fading out;
+   - <b> is the current itself (starting off the left edge): tapered at both
+     ends by a mask, and drifting up and down;
+   - b::before is a strip of sine waves that keeps sliding along inside <b>,
+     so the ripple travels through the current like a ribbon of moving air.
+   <em> are motes on the same flow. All rest at opacity 0 (hidden under
+   reduced motion). */
 .room-row-progress.fan > span { overflow: hidden; }
-.room-row-progress.fan i {
+.room-row-progress.fan i, .room-row-progress.fan em {
   position: absolute; left: 0; width: 100%; height: 0; top: var(--y);
-  opacity: 0; animation: breeze-drift calc(var(--fan-dur, 2s) * var(--k)) cubic-bezier(0.35, 0.1, 0.6, 1) infinite;
+  opacity: 0; animation: breeze-drift calc(var(--fan-dur, 2s) * var(--k)) cubic-bezier(0.3, 0.05, 0.55, 1) infinite;
   animation-delay: calc(var(--fan-dur, 2s) * var(--d));
 }
-.room-row-progress.fan i::before {
-  content: ''; position: absolute; top: -1px; height: 2px; left: calc(var(--w) * -1); width: var(--w); border-radius: 2px;
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent-fan) 55%, transparent) 70%, transparent);
+.room-row-progress.fan b {
+  position: absolute; top: calc(var(--h) / -2); height: var(--h); left: calc(var(--w) * -1); width: var(--w); overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 45%, #000 70%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 45%, #000 70%, transparent);
   animation: breeze-sway calc(var(--fan-dur, 2s) * 1.7) ease-in-out infinite alternate;
 }
-.room-row-progress.fan i:nth-child(1) { --y: 24%; --w: 46%; --k: 1; --d: -0.1; }
-.room-row-progress.fan i:nth-child(2) { --y: 47%; --w: 30%; --k: 1.3; --d: -0.75; }
-.room-row-progress.fan i:nth-child(3) { --y: 66%; --w: 38%; --k: 0.85; --d: -0.4; }
-.room-row-progress.fan i:nth-child(4) { --y: 84%; --w: 26%; --k: 1.15; --d: -1.05; }
-.room-row-progress.fan i:nth-child(2)::before { animation-delay: -0.6s; }
-.room-row-progress.fan i:nth-child(3)::before { animation-direction: alternate-reverse; }
-.room-row-progress.fan i:nth-child(4)::before { animation-delay: -1.1s; }
+/* One wavelength is 36px (the keyframes shift by exactly that, so the loop is seamless);
+   the wave's height follows --h, so each current ripples by a different amount. */
+.room-row-progress.fan b::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: -36px; right: 0;
+  background: color-mix(in srgb, var(--accent-fan) 80%, transparent);
+  -webkit-mask-image: var(--wave); mask-image: var(--wave);
+  -webkit-mask-size: 36px 100%; mask-size: 36px 100%;
+  -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+  animation: breeze-wave calc(var(--fan-dur, 2s) * var(--r)) linear infinite;
+}
+.room-row-progress.fan { --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 10' preserveAspectRatio='none'%3E%3Cpath d='M0 5C4.5.5 13.5.5 18 5S31.5 9.5 36 5' fill='none' stroke='%23000' stroke-width='1.9'/%3E%3C/svg%3E"); }
+.room-row-progress.fan i:nth-of-type(1) { --y: 25%; --w: 46%; --h: 10px; --k: 1; --d: -0.1; --r: 0.5; }
+.room-row-progress.fan i:nth-of-type(2) { --y: 46%; --w: 30%; --h: 7px; --k: 1.3; --d: -0.75; --r: 0.38; }
+.room-row-progress.fan i:nth-of-type(3) { --y: 66%; --w: 40%; --h: 13px; --k: 0.85; --d: -0.4; --r: 0.62; }
+.room-row-progress.fan i:nth-of-type(4) { --y: 84%; --w: 28%; --h: 8px; --k: 1.15; --d: -1.05; --r: 0.45; }
+.room-row-progress.fan i:nth-of-type(2) b { animation-delay: -0.6s; }
+.room-row-progress.fan i:nth-of-type(3) b { animation-direction: alternate-reverse; }
+.room-row-progress.fan i:nth-of-type(4) b { animation-delay: -1.1s; }
+.room-row-progress.fan em { animation-name: mote-drift; }
+.room-row-progress.fan em::before {
+  content: ''; position: absolute; left: -3px; top: -1.5px; width: 3px; height: 3px; border-radius: 50%;
+  background: color-mix(in srgb, var(--accent-fan) 85%, transparent);
+  animation: mote-sway calc(var(--fan-dur, 2s) * 0.8) ease-in-out infinite alternate;
+}
+.room-row-progress.fan em:nth-of-type(1) { --y: 36%; --k: 0.9; --d: -0.3; }
+.room-row-progress.fan em:nth-of-type(2) { --y: 57%; --k: 1.25; --d: -0.95; }
+.room-row-progress.fan em:nth-of-type(3) { --y: 76%; --k: 1.05; --d: -0.55; }
+.room-row-progress.fan em:nth-of-type(2)::before { animation-direction: alternate-reverse; }
+.room-row-progress.fan em:nth-of-type(3)::before { animation-delay: -0.7s; }
 @keyframes breeze-drift {
   0% { transform: translateX(0); opacity: 0; }
-  20% { opacity: 1; }
-  75% { opacity: 0.9; }
-  100% { transform: translateX(var(--travel, 150%)); opacity: 0; }
+  18% { opacity: 0.95; }
+  45% { opacity: 0.6; }
+  70% { opacity: 0.9; }
+  100% { transform: translateX(150%); opacity: 0; }
 }
 @keyframes breeze-sway { from { transform: translateY(-3px); } to { transform: translateY(3px); } }
-/* Geyser heating: warm wash from the bottom with faint ripples rising. */
+@keyframes breeze-wave { to { transform: translateX(36px); } }
+@keyframes mote-drift {
+  0% { transform: translateX(0); opacity: 0; }
+  20% { opacity: 0.75; }
+  80% { opacity: 0.5; }
+  100% { transform: translateX(105%); opacity: 0; }
+}
+@keyframes mote-sway { from { transform: translateY(-6px); } to { transform: translateY(5px); } }
+/* Geyser heating: a warm wash from the bottom that swells unevenly, with
+   bubbles rising through it like water coming to the boil. Each <i> rises from
+   the bottom edge, growing and speeding up, then pops (swells and vanishes);
+   its ::before wobbles and squashes on its own period. The climb is a multiple
+   of the bubble's size, so bigger bubbles rise higher. Columns, sizes and paces
+   differ so the boil never pulses in step. Bubbles rest at opacity 0. */
 .room-heat {
   position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none;
   background: linear-gradient(to top, color-mix(in srgb, var(--warn) 22%, transparent), transparent 72%);
-  -webkit-mask-image: linear-gradient(to top, #000 20%, transparent 85%); mask-image: linear-gradient(to top, #000 20%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to top, #000 35%, transparent 95%); mask-image: linear-gradient(to top, #000 35%, transparent 95%);
 }
-.room-heat::after {
-  content: ''; position: absolute; left: 0; right: 0; top: 0; height: calc(100% + 14px);
-  background: repeating-linear-gradient(0deg, transparent 0 12px, color-mix(in srgb, var(--warn) 14%, transparent) 12px 14px);
-  animation: heat-rise 1.8s linear infinite;
+.room-heat::before {
+  content: ''; position: absolute; left: -10%; right: -10%; bottom: -20%; height: 70%; transform-origin: 50% 100%;
+  background: radial-gradient(55% 60% at 50% 100%, color-mix(in srgb, var(--warn) 24%, transparent), transparent 70%);
+  opacity: 0.7; animation: heat-simmer 3.4s ease-in-out infinite;
 }
-@keyframes heat-rise { from { transform: translateY(0); } to { transform: translateY(-14px); } }
+.room-heat i {
+  position: absolute; bottom: -2px; left: var(--x); width: var(--s); height: var(--s); margin-left: calc(var(--s) / -2);
+  opacity: 0; animation: boil-rise var(--t) infinite; animation-delay: var(--d);
+}
+.room-heat i::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  border: 1.2px solid color-mix(in srgb, var(--warn) 65%, transparent);
+  background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.6) 0 15%, color-mix(in srgb, var(--warn) 16%, transparent) 45%, transparent 75%);
+  animation: boil-wobble calc(var(--t) * 0.3) ease-in-out infinite alternate;
+}
+.room-heat i:nth-child(1) { --x: 9%; --s: 6px; --t: 2.3s; --d: -0.4s; }
+.room-heat i:nth-child(2) { --x: 20%; --s: 9px; --t: 2.9s; --d: -1.9s; }
+.room-heat i:nth-child(3) { --x: 31%; --s: 5px; --t: 1.9s; --d: -1.1s; }
+.room-heat i:nth-child(4) { --x: 44%; --s: 7px; --t: 2.6s; --d: -0.2s; }
+.room-heat i:nth-child(5) { --x: 57%; --s: 10px; --t: 3.2s; --d: -2.4s; }
+.room-heat i:nth-child(6) { --x: 68%; --s: 5px; --t: 2.1s; --d: -1.5s; }
+.room-heat i:nth-child(7) { --x: 80%; --s: 8px; --t: 2.7s; --d: -0.9s; }
+.room-heat i:nth-child(8) { --x: 91%; --s: 6px; --t: 2.4s; --d: -1.7s; }
+.room-heat i:nth-child(even)::before { animation-direction: alternate-reverse; }
+@keyframes boil-rise {
+  0% { transform: translateY(0) scale(0.3); opacity: 0; animation-timing-function: cubic-bezier(0.5, 0, 0.85, 0.65); }
+  12% { opacity: 0.9; }
+  84% { transform: translateY(-650%) scale(1); opacity: 0.9; animation-timing-function: ease-out; }
+  92%, 100% { transform: translateY(-720%) scale(1.5); opacity: 0; }
+}
+@keyframes boil-wobble {
+  from { transform: translateX(-1.5px) scale(1.06, 0.94); }
+  to { transform: translateX(1.5px) scale(0.94, 1.06); }
+}
+@keyframes heat-simmer {
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  30% { transform: scale(1.06, 1.14); opacity: 1; }
+  65% { transform: scale(0.98, 1.04); opacity: 0.75; }
+}
 /* Presence: a soft ping around the green dot. */
 .presence-dot { position: relative; }
 .presence-dot::after {
