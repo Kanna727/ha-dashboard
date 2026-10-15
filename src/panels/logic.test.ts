@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HassEntity } from 'home-assistant-js-websocket';
-import { upcoming, minutes } from './MealsPanel';
+import { upcoming, minutes, plannedDays } from './MealsPanel';
 import { hoursForToday, nightAt } from './WeatherPanel';
 import { distanceKm } from './CarPanel';
 import type { ForecastDay } from '../ha/api';
@@ -34,6 +34,13 @@ describe('meals: next up', () => {
   it("rolls over to tomorrow's breakfast after the last window", () => {
     expect(upcoming(at('19:00'), slots)).toEqual({ offset: 1, slot: 'breakfast' });
     expect(upcoming(at('23:30'), slots)).toEqual({ offset: 1, slot: 'breakfast' });
+  });
+
+  it('lists only planned days in the week view, Monday first', () => {
+    const day = { p1: { breakfast: 'a', lunch: 'b', dinner: 'c' } };
+    expect(plannedDays({ 1: day, 2: day, 5: day })).toEqual([1, 2, 5]);
+    expect(plannedDays({ 0: day, 6: day, 1: day })).toEqual([1, 6, 0]);
+    expect(plannedDays({})).toEqual([]);
   });
 });
 
