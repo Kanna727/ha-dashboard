@@ -22,7 +22,9 @@ export interface RoomDef {
   power?: string[];
   // Second one-tap button on the room row, next to the lights button.
   quick?: { entity: string; kind: 'fan' | 'geyser' };
-  // Status buttons on the room card; tap opens the appliance details (never toggles power).
+  // Appliances shown in the room's detail modal. Washer and dishwasher also get
+  // status buttons on the room card (tap opens the details, never toggles power);
+  // the purifier has no button, only a fault note in the card's subtitle.
   appliances?: ('washer' | 'dishwasher' | 'purifier')[];
   // Extra cards shown in the room's detail modal.
   detailCards?: ('climate' | 'media')[];

@@ -52,7 +52,7 @@ function RoomDetail({ room }: { room: RoomDef }) {
 }
 
 // Appliance status, shared by the room card buttons and subtitle. The purifier
-// never "runs"; its button turns amber on a fault instead.
+// has no button and never "runs"; it only puts a fault in the subtitle.
 function useApplianceStatus() {
   const washer = useEntity(APPLIANCES.washer.running);
   const washerPower = useEntity(APPLIANCES.washer.power);
@@ -68,7 +68,7 @@ function useApplianceStatus() {
       pct: dwRunning ? pct! : undefined,
       text: dwRunning ? `Dishwasher ${Math.round(pct!)}%` : isUnavailable(dwState) ? 'Dishwasher asleep' : 'Dishwasher idle',
     },
-    purifier: { running: false, fault: purifier.activeFaults.length > 0, present: !!purifier.cfg, text: purifier.text },
+    purifier: { running: false, fault: purifier.activeFaults.length > 0, text: purifier.text },
   };
 }
 
@@ -174,10 +174,10 @@ function RoomRow({ room }: { room: RoomDef }) {
       <div className="room-row-top">
         <span className="room-row-icon"><Icon name={room.icon as IconName} size={22} /></span>
         <span className="row-buttons">
-          {room.appliances?.filter((a) => a !== 'purifier' || appStatus.purifier.present).map((a) => (
+          {room.appliances?.filter((a) => a !== 'purifier').map((a) => (
             <button
               key={a}
-              className={`row-btn ${a} ${appStatus[a].running ? 'on' : ''} ${a === 'purifier' && appStatus.purifier.fault ? 'fault' : ''}`}
+              className={`row-btn ${a} ${appStatus[a].running ? 'on' : ''}`}
               onClick={(e) => {
                 e.stopPropagation();
                 openDetail();

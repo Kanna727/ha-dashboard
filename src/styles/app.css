@@ -577,14 +577,11 @@ button.wide { width: 100%; }
 .row-btn.geyser { --tint: #fb923c; }
 .row-btn.washer { --tint: var(--accent-energy); }
 .row-btn.dishwasher { --tint: #2dd4bf; }
-.row-btn.purifier { --tint: var(--accent-fan); }
-/* Purifier fault: amber outline rather than a fill (it isn't "running"). */
-.row-btn.fault { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, var(--tile)); }
 /* An odd last room card (Utility) spans both columns instead of leaving a hole,
    which also gives its three buttons room. */
 .room-rows > .room-row:last-child:nth-child(odd) { grid-column: 1 / -1; }
-/* A half-width card can't fit the room icon plus three buttons (e.g. Kitchen:
-   purifier, fan, lights); the buttons win and the name still says which room. */
+/* A half-width card can't fit the room icon plus three buttons; the buttons
+   win and the name still says which room. */
 .room-rows > .room-row:not(:last-child:nth-child(odd)):has(.row-buttons > :nth-child(3)) .room-row-icon { display: none; }
 .detail-card { margin-top: 16px; }
 .detail-card .card { margin: 0; }
