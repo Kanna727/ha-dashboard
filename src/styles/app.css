@@ -697,7 +697,15 @@ button.wide { width: 100%; }
 .leave-home.note { width: auto; padding: 0 16px; gap: 8px; color: var(--ok); border-color: var(--ok); }
 .pill-hint { font-size: 14px; font-weight: 700; }
 .row-btn.on { background: var(--tint); color: var(--on-text); box-shadow: 0 0 22px color-mix(in srgb, var(--tint) 50%, transparent); border-color: transparent; }
-.spin-y-icon { animation: spin-y 1s linear infinite; }
+/* Ceiling-fan icon (components/FanIcon.tsx): static mount and motor over a
+   blade layer centred on the hub (12, 13.5 of the 24-unit icon), tilted nearly
+   edge-on so the blades, spun in that plane by WAAPI, sweep round in
+   perspective. */
+.fan-icon { position: relative; display: inline-block; flex-shrink: 0; }
+.fan-icon > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.fan-plane { position: absolute; left: 4.1667%; top: 10.4167%; width: 91.667%; height: 91.667%; transform: perspective(60px) rotateX(68deg); }
+.fan-blades { position: absolute; inset: 0; }
+.fan-blades svg { display: block; width: 100%; height: 100%; }
 
 /* ---------- entity tiles (modals) ---------- */
 .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
@@ -722,8 +730,6 @@ button.wide { width: 100%; }
 .tile.offline { opacity: 0.45; }
 .tile.readonly { cursor: default; }
 .tile.readonly:active { transform: none; }
-/* Ceiling-fan icon is drawn side-on, so spin it around the vertical axis. */
-.tile-icon.spin svg { animation: spin-y 1s linear infinite; }
 .device-groups { display: grid; gap: 16px; }
 .device-group .label { margin-bottom: 8px; }
 .geyser-cell { display: grid; gap: 6px; text-align: center; }
@@ -1099,7 +1105,6 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 
 /* ---------- motion ---------- */
 @keyframes spin { to { transform: rotate(360deg); } }
-@keyframes spin-y { from { transform: perspective(80px) rotateY(0deg); } to { transform: perspective(80px) rotateY(360deg); } }
 @keyframes pulse { 50% { opacity: 0.55; } }
 @keyframes fade { from { opacity: 0; } }
 @keyframes fade-out { 60% { opacity: 1; } to { opacity: 0; } }

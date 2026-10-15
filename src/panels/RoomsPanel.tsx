@@ -6,6 +6,7 @@ import { AppliancesCard } from '../components/AppliancesCard';
 import { usePurifier } from '../components/usePurifier';
 import { useDishShine } from '../components/useDishShine';
 import { DishRack } from '../components/DishRack';
+import { FanIcon } from '../components/FanIcon';
 import { ClimateCard } from '../components/ClimateCard';
 import { MediaCard } from '../components/MediaCard';
 import { EntityTile } from '../components/EntityTile';
@@ -217,7 +218,7 @@ function RoomRow({ room }: { room: RoomDef }) {
               aria-label={`${quickOn ? 'Turn off' : 'Turn on'} ${room.name} ${quickName}${quickHeld ? ' (manual override on)' : ''}`}
               title={quickHeld ? 'Manual override: automations will not turn this fan on' : undefined}
             >
-              <Icon name={room.quick.kind === 'fan' ? 'fan' : 'geyser'} size={22} className={room.quick.kind === 'fan' && quickOn ? 'spin-y-icon' : undefined} />
+              {room.quick.kind === 'fan' ? <FanIcon on={quickOn} pct={fanSlide.value} size={22} /> : <Icon name="geyser" size={22} />}
               {quickHeld && <span className="hold-badge"><Icon name="lock" size={11} /></span>}
             </button>
           )}
