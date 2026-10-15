@@ -4,6 +4,10 @@ import { useAllEntities, useEntities, useEntity } from '../ha/store';
 import { fmtNum, fmtWatts, isOn, isUnavailable, num } from '../ha/format';
 import { AppliancesCard } from '../components/AppliancesCard';
 import { usePurifier } from '../components/usePurifier';
+import { useDishShine } from '../components/useDishShine';
+import { DishRack } from '../components/DishRack';
+import { FanIcon } from '../components/FanIcon';
+import { LightIcon } from '../components/LightIcon';
 import { ClimateCard } from '../components/ClimateCard';
 import { MediaCard } from '../components/MediaCard';
 import { EntityTile } from '../components/EntityTile';
@@ -15,6 +19,9 @@ import type { HassEntities } from 'home-assistant-js-websocket';
 
 const lightsOf = (r: RoomDef) => r.controls.filter((c) => c.entity.startsWith('light.')).map((c) => c.entity);
 const roomLit = (r: RoomDef, all: HassEntities) => lightsOf(r).some((id) => all[id]?.state === 'on');
+// Curtain pleats behind the quick fan's fill: 16 across the card plus one spare at each edge,
+// so the swinging hem never opens a gap at the sides.
+const PLEATS = Array.from({ length: 18 }, (_, i) => i - 1);
 
 // Fans in the room whose "manual off" flag is on, i.e. automations won't turn them on.
 function useHeldFans(room: RoomDef) {
@@ -87,6 +94,8 @@ function RoomRow({ room }: { room: RoomDef }) {
   const quickHeld = !!room.quick && held.some((f) => f.entity === room.quick!.entity);
 
   const lit = lights.filter(isOn).length;
+  // The bulb on the lights button glows as bright as the brightest light that's on.
+  const litBrightness = Math.max(0, ...lights.filter(isOn).map((l) => ((l?.attributes.brightness as number | undefined) ?? 255) / 255));
   const others = room.controls.filter((c, i) => !c.entity.startsWith('light.') && !c.readOnly && isOn(controls[i]));
   const occupied = presence.some((p) => p?.state === 'on');
   const doorOpen = doors.some((d) => d?.state === 'on');
@@ -94,6 +103,8 @@ function RoomRow({ room }: { room: RoomDef }) {
   const runningApps = (room.appliances ?? []).filter((a) => appStatus[a].running);
   // Dishwasher cycle progress, drawn as a read-only fill behind the card.
   const progress = room.appliances?.includes('dishwasher') ? appStatus.dishwasher.pct : undefined;
+  // For a few minutes after a cycle, the dishes on the card shine.
+  const dishShine = useDishShine(!!room.appliances?.includes('dishwasher'), appStatus.dishwasher.running);
 
   // The quick fan's speed, drawn as a fill behind the card; sliding across the
   // card sets it (snapped to the fan's speed steps; all the way left = off).
@@ -117,6 +128,7 @@ function RoomRow({ room }: { room: RoomDef }) {
   const status: string[] = [];
   if (lit) status.push(`${lit} light${lit > 1 ? 's' : ''}`);
   runningApps.forEach((a) => status.push(appStatus[a].text));
+  if (dishShine) status.push('Dishes clean');
   if (room.appliances?.includes('purifier') && appStatus.purifier.fault) status.push(appStatus.purifier.text);
   // The washer's plug is always on, so a room with the washer never says "Washer on".
   if (!status.length) status.push(others.length && !room.appliances?.includes('washer') ? `${others[0].name} on` : 'Off');
@@ -156,18 +168,31 @@ function RoomRow({ room }: { room: RoomDef }) {
     >
       {/* Ambient state layers behind the content (transform/opacity animations only). */}
       {lit > 0 && <span className="room-glow" aria-hidden="true" />}
-      {room.quick?.kind === 'geyser' && quickOn && <span className="room-heat" aria-hidden="true" />}
+      {room.quick?.kind === 'geyser' && quickOn && (
+        <span className="room-heat" aria-hidden="true">
+          {/* Bubbles rising from the bottom, growing and wobbling, then popping. */}
+          <i /><i /><i /><i /><i /><i /><i /><i />
+        </span>
+      )}
       {progress !== undefined && (
         <span className="room-row-progress" aria-hidden="true">
           <span style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
         </span>
       )}
+      {(progress !== undefined || dishShine) && <DishRack pct={progress ?? 100} shining={dishShine} />}
       {isFan && fanSlide.value > 0 && (
         <span className="room-row-progress fan" aria-hidden="true">
-          {/* Breeze wisps drifting across the fill; one crossing takes ~3.3 s at speed 1, ~1.8 s at 6
-              (and the fill is wider at higher speeds, so they also travel further). */}
+          {/* A sheer curtain stirring in the draught: card-wide (the fill clips it), swaying harder and
+              faster with the speed (~3 s a swing at speed 1, ~1.6 s at 6). Keyed by speed so the
+              animations restart with the new --sway (not every engine re-reads var() in running keyframes). */}
           <span style={{ width: `${fanSlide.value}%`, ['--fan-dur' as string]: `${(3.6 - 0.3 * Math.max(1, fanSpeed)).toFixed(2)}s` }}>
-            <i /><i /><i /><i />
+            <span
+              className="curtain"
+              key={fanSpeed}
+              style={{ width: `${10000 / fanSlide.value}%`, ['--sway' as string]: `${(1.5 + 1.2 * Math.max(1, fanSpeed)).toFixed(1)}deg` }}
+            >
+              {PLEATS.map((i) => <i key={i} style={{ ['--i' as string]: i }} />)}
+            </span>
           </span>
         </span>
       )}
@@ -196,13 +221,13 @@ function RoomRow({ room }: { room: RoomDef }) {
               aria-label={`${quickOn ? 'Turn off' : 'Turn on'} ${room.name} ${quickName}${quickHeld ? ' (manual override on)' : ''}`}
               title={quickHeld ? 'Manual override: automations will not turn this fan on' : undefined}
             >
-              <Icon name={room.quick.kind === 'fan' ? 'fan' : 'geyser'} size={22} className={room.quick.kind === 'fan' && quickOn ? 'spin-y-icon' : undefined} />
+              {room.quick.kind === 'fan' ? <FanIcon on={quickOn} pct={fanSlide.value} size={22} /> : <Icon name="geyser" size={22} />}
               {quickHeld && <span className="hold-badge"><Icon name="lock" size={11} /></span>}
             </button>
           )}
           {lightIds.length > 0 && (
             <button className={`row-btn bulb ${lit ? 'on' : ''}`} onClick={toggleLights} aria-label={`${lit ? 'Turn off' : 'Turn on'} ${room.name} lights`}>
-              <Icon name="lightOn" size={22} />
+              <LightIcon on={lit > 0} brightness={litBrightness} size={22} />
             </button>
           )}
         </span>
