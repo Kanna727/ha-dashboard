@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/Kanna727/ha-dashboard/compare/v1.19.0...v1.20.0) (2026-10-16)
+
+
+### Features
+
+* **rooms:** dim and colour lights from the room cards, glow to match ([#34](https://github.com/Kanna727/ha-dashboard/issues/34)) ([a5b0a84](https://github.com/Kanna727/ha-dashboard/commit/a5b0a84b08314fdd19901678f0dc1680acb87af4))
+
 # [1.19.0](https://github.com/Kanna727/ha-dashboard/compare/v1.18.3...v1.19.0) (2026-10-15)
 
 
