@@ -1,3 +1,10 @@
+# [1.21.0](https://github.com/Kanna727/ha-dashboard/compare/v1.20.0...v1.21.0) (2026-10-16)
+
+
+### Features
+
+* **energy:** give the TV unit its own icon and colour ([#35](https://github.com/Kanna727/ha-dashboard/issues/35)) ([e4ca941](https://github.com/Kanna727/ha-dashboard/commit/e4ca941446e24fd7445e46f42ffe7a5000cbe568))
+
 # [1.20.0](https://github.com/Kanna727/ha-dashboard/compare/v1.19.0...v1.20.0) (2026-10-16)
 
 
