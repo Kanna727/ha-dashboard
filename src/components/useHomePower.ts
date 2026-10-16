@@ -17,9 +17,11 @@ export interface ConsumerPower {
 }
 
 // Icon and colour for a plug that isn't in ENERGY.plugs, from its name.
-// Order matters: "dishwasher" must hit dish before wash.
+// Order matters: "dishwasher" must hit dish before wash, and "TV unit" (the
+// cabinet's router, streamer, set-top box, soundbar) must hit before plain TV.
 const PLUG_GUESSES: [RegExp, IconName, string][] = [
   [/fridge|refrigerator|freezer/i, 'fridge', '#38bdf8'],
+  [/\btv (unit|stand|cabinet)|entertainment|media|router|network|set.?top|soundbar/i, 'avUnit', '#c084fc'],
   [/\btv\b|television/i, 'tv', '#60a5fa'],
   [/\bpc\b|computer|desktop|laptop|monitor/i, 'pc', '#f472b6'],
   [/geyser|heater|boiler|kettle/i, 'geyser', '#fb923c'],

@@ -24,7 +24,7 @@ const config: DashboardConfig = {
         { entity: 'light.living_room_living_room_t_light', name: 'Light' },
         { entity: 'fan.sofa_fan', name: 'Sofa Fan' },
         { entity: 'fan.tv_fan', name: 'TV Fan' },
-        { entity: 'switch.tv_unit_plug', name: 'TV Unit', icon: 'tv' },
+        { entity: 'switch.tv_unit_plug', name: 'TV Unit', icon: 'avUnit' },
       ],
     },
     {
@@ -148,7 +148,7 @@ const config: DashboardConfig = {
     plugs: {
       'sensor.kitchen_fridge_power': { name: 'Fridge', icon: 'fridge', color: '#38bdf8' },
       'sensor.workroom_pc_power': { name: 'PC', icon: 'pc', color: '#f472b6' }, // pink: purple was too dim on dark panels
-      'sensor.tv_unit_plug_power': { name: 'TV Unit', icon: 'tv', color: '#60a5fa' },
+      'sensor.tv_unit_plug_power': { name: 'TV Unit', icon: 'avUnit', color: '#c084fc' },
       'sensor.common_bathroom_common_bathroom_geyser_power': { name: 'Common Geyser', icon: 'geyser', color: '#fb923c' },
       'sensor.master_bathroom_master_bathroom_geyser_power': { name: 'Master Geyser', icon: 'geyser', color: '#fb923c' },
       'sensor.kitchen_kitchen_small_appliances_power': { name: 'Appliances', icon: 'blender', color: '#fbbf24' },
