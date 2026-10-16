@@ -24,6 +24,9 @@ const lightsOf = (r: RoomDef) => r.controls.filter((c) => c.entity.startsWith('l
 const roomLit = (r: RoomDef, all: HassEntities) => lightsOf(r).some((id) => all[id]?.state === 'on');
 // Curtain pleats behind the quick fan's fill: 16 across the card plus one spare at each edge,
 // so the swinging hem never opens a gap at the sides.
+// Where each light's glow shines from along the card's top edge: one light from
+// the top-right corner, several spread towards the left.
+const glowX = (i: number, n: number) => (n < 2 ? 88 : 88 - (i * 62) / (n - 1));
 const PLEATS = Array.from({ length: 18 }, (_, i) => i - 1);
 
 // Fans in the room whose "manual off" flag is on, i.e. automations won't turn them on.
@@ -203,6 +206,7 @@ function RoomRow({ room }: { room: RoomDef }) {
   return (
     <div
       className={`room-row ${lit ? 'lit' : ''} ${held.length ? 'fan-held' : ''} ${isFan ? 'slidable' : ''} ${fanSlide.sliding ? 'sliding' : ''}`}
+      style={litRgb ? { ['--room-light' as string]: cssRgb(litRgb) } : undefined}
       role="button"
       tabIndex={0}
       onClick={openDetail}
@@ -211,7 +215,26 @@ function RoomRow({ room }: { room: RoomDef }) {
       {...(isFan ? fanSlide.handlers : {})}
     >
       {/* Ambient state layers behind the content (transform/opacity animations only). */}
-      {lit > 0 && <span className="room-glow" aria-hidden="true" style={litRgb ? { ['--glow' as string]: cssRgb(litRgb) } : undefined} />}
+      {lightIds.length > 0 && (
+        <span className="room-glows" aria-hidden="true">
+          {lights.map((l, i) => {
+            // While the lights button is being dragged, every light follows the level being set.
+            const pct = bulbSlide.sliding ? bulbPct : brightnessPct(l);
+            const rgb = lightRgb(l);
+            return (
+              <span
+                key={lightIds[i]}
+                className={`room-glow ${pct > 0 ? 'on' : ''}`}
+                style={{
+                  ['--x' as string]: `${glowX(i, lightIds.length)}%`,
+                  ['--b' as string]: (pct / 100).toFixed(2),
+                  ['--glow-color' as string]: rgb ? cssRgb(rgb) : 'var(--accent-light)',
+                }}
+              />
+            );
+          })}
+        </span>
+      )}
       {room.quick?.kind === 'geyser' && quickOn && (
         <span className="room-heat" aria-hidden="true">
           {/* Bubbles rising from the bottom, growing and wobbling, then popping. */}

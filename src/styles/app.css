@@ -480,9 +480,10 @@ button.wide { width: 100%; }
   display: flex; flex-direction: column; gap: 2px; padding: 12px 12px 14px; border-radius: 22px; min-width: 0;
   background: var(--card); border: 1.5px solid var(--border); cursor: pointer; transition: background 0.25s, border-color 0.25s;
 }
-.room-row.lit { background: color-mix(in srgb, var(--accent-light) 10%, var(--card)); border-color: color-mix(in srgb, var(--accent-light) 55%, transparent); }
+/* --room-light: the colour of the brightest light that's on (RoomsPanel), so a lit card's tint and border match it. */
+.room-row.lit { background: color-mix(in srgb, var(--room-light, var(--accent-light)) 10%, var(--card)); border-color: color-mix(in srgb, var(--room-light, var(--accent-light)) 55%, transparent); }
 .room-row.fan-held { box-shadow: inset 4px 0 0 var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--card)); }
-.room-row.fan-held.lit { background: color-mix(in srgb, var(--danger) 5%, color-mix(in srgb, var(--accent-light) 10%, var(--card))); }
+.room-row.fan-held.lit { background: color-mix(in srgb, var(--danger) 5%, color-mix(in srgb, var(--room-light, var(--accent-light)) 10%, var(--card))); }
 .hold-note { margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: var(--danger); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
 .row-btn { position: relative; }
 .room-row { position: relative; isolation: isolate; }
@@ -496,11 +497,25 @@ button.wide { width: 100%; }
 
 /* Living room cards: ambient layers under the content. Only transform and
    opacity animate (compositor-only), so the kiosk can run them all day. */
+/* Lights: one glow per light, shining down from its spot on the top edge
+   (--x). It takes the light's colour or white temperature (--glow-color), and
+   its brightness (--b) sets how strong it is and how far it reaches. Lights
+   switching, dimming or changing colour fade between states (--glow-color is
+   registered so the colour itself can transition). Real light is steady, so it
+   only shimmers very slightly. */
+@property --glow-color { syntax: '<color>'; inherits: true; initial-value: #fbbf24; }
+.room-glows { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none; }
 .room-glow {
-  position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
-  background: radial-gradient(110% 90% at 88% 0%, color-mix(in srgb, var(--glow, var(--accent-light)) 32%, transparent), transparent 62%);
-  animation: glow-breathe 5s ease-in-out infinite;
+  position: absolute; inset: 0; transform-origin: var(--x) 0; opacity: 0; transform: scale(0.6);
+  transition: opacity 0.8s ease, transform 0.8s ease, --glow-color 0.8s ease;
 }
+.room-glow::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(110% 95% at var(--x) 0%, color-mix(in srgb, var(--glow-color) 36%, transparent), transparent 64%);
+  animation: glow-shimmer 6s ease-in-out infinite alternate;
+}
+.room-glow.on { opacity: calc(0.25 + 0.75 * var(--b)); transform: scale(calc(0.7 + 0.45 * var(--b))); }
+@keyframes glow-shimmer { from { opacity: 0.9; } to { opacity: 1; } }
 @keyframes glow-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
 /* Fan breeze: a sheer curtain stirring in the fan's draught. The curtain is as
    wide as the card (the fill clips it, so raising the speed draws more of it
