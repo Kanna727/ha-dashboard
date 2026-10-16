@@ -14,13 +14,19 @@ import { EntityTile } from '../components/EntityTile';
 import { Icon, type IconName } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { useSlide } from '../hooks/useSlide';
+import { useThrottle } from '../hooks/useThrottle';
+import { useOpenSheet } from '../components/Sheet';
+import { brightnessPct, canDim, cssRgb, inColorMode, lightRgb, luminance } from '../lib/lightColor';
 import { percentToSend, speedCount, speedOf } from '../lib/fanSpeed';
-import type { HassEntities } from 'home-assistant-js-websocket';
+import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
 
 const lightsOf = (r: RoomDef) => r.controls.filter((c) => c.entity.startsWith('light.')).map((c) => c.entity);
 const roomLit = (r: RoomDef, all: HassEntities) => lightsOf(r).some((id) => all[id]?.state === 'on');
 // Curtain pleats behind the quick fan's fill: 16 across the card plus one spare at each edge,
 // so the swinging hem never opens a gap at the sides.
+// Where each light's glow shines from along the card's top edge: one light from
+// the top-right corner, several spread towards the left.
+const glowX = (i: number, n: number) => (n < 2 ? 88 : 88 - (i * 62) / (n - 1));
 const PLEATS = Array.from({ length: 18 }, (_, i) => i - 1);
 
 // Fans in the room whose "manual off" flag is on, i.e. automations won't turn them on.
@@ -94,8 +100,6 @@ function RoomRow({ room }: { room: RoomDef }) {
   const quickHeld = !!room.quick && held.some((f) => f.entity === room.quick!.entity);
 
   const lit = lights.filter(isOn).length;
-  // The bulb on the lights button glows as bright as the brightest light that's on.
-  const litBrightness = Math.max(0, ...lights.filter(isOn).map((l) => ((l?.attributes.brightness as number | undefined) ?? 255) / 255));
   const others = room.controls.filter((c, i) => !c.entity.startsWith('light.') && !c.readOnly && isOn(controls[i]));
   const occupied = presence.some((p) => p?.state === 'on');
   const doorOpen = doors.some((d) => d?.state === 'on');
@@ -138,6 +142,45 @@ function RoomRow({ room }: { room: RoomDef }) {
   parts.push(...status);
 
   // The lights button always drives every light in the room together.
+  // The lights button: a tap toggles every light in the room, a drag up or down
+  // sets them all to one brightness (live, throttled), and a long press opens
+  // the lights sheet (brightness, warmth, colour, each light). It shows the
+  // brightest light that's on, in that light's colour.
+  const openSheet = useOpenSheet();
+  const brightest = lights.filter(isOn).reduce<HassEntity | undefined>((b, l) => (!b || brightnessPct(l) > brightnessPct(b) ? l : b), undefined);
+  const litRgb = lightRgb(brightest);
+  const setRoomBrightness = (v: number) => {
+    if (v <= 0) return hass.callService('light', 'turn_off', {}, { entity_id: lightIds });
+    const dimmable = lightIds.filter((_, i) => canDim(lights[i]));
+    const plain = lightIds.filter((_, i) => !canDim(lights[i]));
+    if (dimmable.length) hass.callService('light', 'turn_on', { brightness_pct: v }, { entity_id: dimmable });
+    if (plain.length) hass.callService('light', 'turn_on', {}, { entity_id: plain });
+  };
+  const bulbLive = useThrottle(setRoomBrightness);
+  const bulbSlide = useSlide({
+    value: brightest ? brightnessPct(brightest) : 0,
+    step: 1,
+    enabled: lights.some(canDim),
+    axis: 'y',
+    range: 150,
+    keyStep: 10,
+    onInput: (v) => v > 0 && bulbLive.push(v), // never switch off mid-drag
+    onCommit: bulbLive.end,
+    onLongPress: () =>
+      openSheet({
+        entity: lightIds[0],
+        name: `${room.name} lights`,
+        lights: room.controls.filter((c) => c.entity.startsWith('light.')).map((c) => ({ entity: c.entity, name: c.name })),
+      }),
+  });
+  const bulbPct = bulbSlide.value;
+  const bulbOn = bulbSlide.sliding ? bulbPct > 0 : lit > 0;
+  // A colour light tints the button; white light keeps the usual yellow.
+  const bulbStyle =
+    litRgb && inColorMode(brightest)
+      ? { ['--tint' as string]: cssRgb(litRgb), color: bulbOn && luminance(litRgb) < 0.35 ? '#fff' : undefined }
+      : undefined;
+
   const toggleLights = (e: React.MouseEvent) => {
     e.stopPropagation();
     hass.callService('light', lit ? 'turn_off' : 'turn_on', {}, { entity_id: lightIds });
@@ -152,13 +195,18 @@ function RoomRow({ room }: { room: RoomDef }) {
   };
   const quickName = room.quick?.kind === 'geyser' ? 'geyser' : (quick?.attributes.friendly_name as string | undefined) ?? 'fan';
   const fanLabel = room.controls.find((c) => c.entity === room.quick?.entity)?.name ?? 'Fan';
-  // While sliding, the subtitle shows the speed being set instead of the room status.
-  const subtitle = fanSlide.sliding ? `${fanLabel} · ${fanSpeed ? `speed ${fanSpeed}/${fanSpeeds}` : 'off'}` : parts.join(' · ');
+  // While sliding, the subtitle shows the speed or brightness being set instead of the room status.
+  const subtitle = fanSlide.sliding
+    ? `${fanLabel} · ${fanSpeed ? `speed ${fanSpeed}/${fanSpeeds}` : 'off'}`
+    : bulbSlide.sliding
+      ? `Lights · ${bulbPct ? `${bulbPct}%` : 'off'}`
+      : parts.join(' · ');
   const openDetail = () => modal.open({ title: room.name, icon: room.icon as IconName, accent: lit ? 'var(--accent-light)' : undefined, body: <RoomDetail room={room} /> });
 
   return (
     <div
       className={`room-row ${lit ? 'lit' : ''} ${held.length ? 'fan-held' : ''} ${isFan ? 'slidable' : ''} ${fanSlide.sliding ? 'sliding' : ''}`}
+      style={litRgb ? { ['--room-light' as string]: cssRgb(litRgb) } : undefined}
       role="button"
       tabIndex={0}
       onClick={openDetail}
@@ -167,7 +215,26 @@ function RoomRow({ room }: { room: RoomDef }) {
       {...(isFan ? fanSlide.handlers : {})}
     >
       {/* Ambient state layers behind the content (transform/opacity animations only). */}
-      {lit > 0 && <span className="room-glow" aria-hidden="true" />}
+      {lightIds.length > 0 && (
+        <span className="room-glows" aria-hidden="true">
+          {lights.map((l, i) => {
+            // While the lights button is being dragged, every light follows the level being set.
+            const pct = bulbSlide.sliding ? bulbPct : brightnessPct(l);
+            const rgb = lightRgb(l);
+            return (
+              <span
+                key={lightIds[i]}
+                className={`room-glow ${pct > 0 ? 'on' : ''}`}
+                style={{
+                  ['--x' as string]: `${glowX(i, lightIds.length)}%`,
+                  ['--b' as string]: (pct / 100).toFixed(2),
+                  ['--glow-color' as string]: rgb ? cssRgb(rgb) : 'var(--accent-light)',
+                }}
+              />
+            );
+          })}
+        </span>
+      )}
       {room.quick?.kind === 'geyser' && quickOn && (
         <span className="room-heat" aria-hidden="true">
           {/* Bubbles rising from the bottom, growing and wobbling, then popping. */}
@@ -226,8 +293,17 @@ function RoomRow({ room }: { room: RoomDef }) {
             </button>
           )}
           {lightIds.length > 0 && (
-            <button className={`row-btn bulb ${lit ? 'on' : ''}`} onClick={toggleLights} aria-label={`${lit ? 'Turn off' : 'Turn on'} ${room.name} lights`}>
-              <LightIcon on={lit > 0} brightness={litBrightness} size={22} />
+            <button
+              className={`row-btn bulb ${bulbOn ? 'on' : ''} ${bulbSlide.sliding ? 'sliding' : ''}`}
+              style={bulbStyle}
+              onClick={toggleLights}
+              {...bulbSlide.handlers}
+              aria-label={`${lit ? 'Turn off' : 'Turn on'} ${room.name} lights`}
+              aria-keyshortcuts="ArrowUp ArrowDown"
+              title="Tap to switch, drag up or down to dim, hold for colour"
+            >
+              {bulbSlide.sliding && <span className="bulb-level" style={{ height: `${bulbPct}%` }} aria-hidden="true" />}
+              <LightIcon on={bulbOn} brightness={bulbPct / 100} color={litRgb} size={22} />
             </button>
           )}
         </span>

@@ -3,23 +3,31 @@ import { useHass } from '../ha/api';
 import { useEntity } from '../ha/store';
 import { domainOf, isOn, stateLabel } from '../ha/format';
 import { Icon } from './Icon';
+import { LightSheet, type SheetLight } from './LightSheet';
 
 interface SheetState {
   entity: string;
   name: string;
+  // A room's lights, for the lights button's sheet (`entity` is then the first).
+  lights?: SheetLight[];
 }
 
 const SheetContext = createContext<(s: SheetState) => void>(() => undefined);
 export const useOpenSheet = () => useContext(SheetContext);
 
-// Long-press detail sheet: brightness for lights, speed for fans.
+// Long-press detail sheet: the lights sheet (LightSheet) for lights, speed for fans.
 export function SheetProvider({ children }: { children: ReactNode }) {
   const [sheet, setSheet] = useState<SheetState | null>(null);
   const open = useCallback((s: SheetState) => setSheet(s), []);
   return (
     <SheetContext.Provider value={open}>
       {children}
-      {sheet && <EntitySheet {...sheet} onClose={() => setSheet(null)} />}
+      {sheet &&
+        (sheet.lights || domainOf(sheet.entity) === 'light' ? (
+          <LightSheet title={sheet.name} lights={sheet.lights ?? [{ entity: sheet.entity, name: sheet.name }]} onClose={() => setSheet(null)} />
+        ) : (
+          <EntitySheet {...sheet} onClose={() => setSheet(null)} />
+        ))}
     </SheetContext.Provider>
   );
 }
