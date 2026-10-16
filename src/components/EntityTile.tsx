@@ -6,6 +6,7 @@ import { useLongPress } from '../hooks/useLongPress';
 import { Icon, type IconName } from './Icon';
 import { FanIcon } from './FanIcon';
 import { LightIcon } from './LightIcon';
+import { lightRgb } from '../lib/lightColor';
 import { useOpenSheet } from './Sheet';
 import type { ControlDef } from '../config/entities';
 
@@ -42,7 +43,7 @@ export function EntityTile({ entity, name, icon, readOnly }: ControlDef) {
         {iconName === 'fan' ? (
           <FanIcon on={on} pct={e?.attributes.percentage as number | undefined} size={22} />
         ) : iconName === 'light' ? (
-          <LightIcon on={on} brightness={((e?.attributes.brightness as number | undefined) ?? 255) / 255} size={22} />
+          <LightIcon on={on} brightness={((e?.attributes.brightness as number | undefined) ?? 255) / 255} color={lightRgb(e)} size={22} />
         ) : (
           <Icon name={iconName} size={22} />
         )}

@@ -19,7 +19,9 @@ function e(entity_id: string, state: string, attributes: Record<string, unknown>
 const plug = (entity_id: string, state: string, name: string) =>
   e(entity_id, state, { device_class: 'power', state_class: 'measurement', unit_of_measurement: 'W', friendly_name: name });
 
-const dimmable = { supported_color_modes: ['brightness'] };
+// Lights like the real ones: white-only (warmth) for the two 't_light' bulbs, colour for the rest.
+const white = { supported_color_modes: ['color_temp'], min_color_temp_kelvin: 2700, max_color_temp_kelvin: 6500 };
+const rgbw = { supported_color_modes: ['color_temp', 'hs', 'xy'], min_color_temp_kelvin: 2202, max_color_temp_kelvin: 6535 };
 const fan = { percentage_step: 16.666666666666668 };
 
 const list: HassEntity[] = [
@@ -43,7 +45,7 @@ const list: HassEntity[] = [
   e('binary_sensor.living_room_presence_zone_4', 'off'),
   e('binary_sensor.living_room_presence_zone_6', 'off'),
   e('binary_sensor.living_room_main_door', 'off'),
-  e('light.living_room_living_room_t_light', 'on', { ...dimmable, brightness: 204 }),
+  e('light.living_room_living_room_t_light', 'on', { ...white, brightness: 204, color_mode: 'color_temp', color_temp_kelvin: 2700 }),
   e('fan.sofa_fan', 'on', { ...fan, percentage: 83 }),
   e('fan.tv_fan', 'off', fan),
   e('switch.tv_unit_plug', 'on'),
@@ -53,7 +55,7 @@ const list: HassEntity[] = [
   e('binary_sensor.living_room_presence_zone_5', 'off'),
   e('binary_sensor.kitchen_fridge_door_sensor_door', 'off'),
   e('binary_sensor.kitchen_oven_door', 'off'),
-  e('light.kitchen_kitchen_t_light', 'unavailable', dimmable),
+  e('light.kitchen_kitchen_t_light', 'unavailable', white),
   e('fan.kitchen_fan', 'off', fan),
   e('switch.kitchen_kitchen_small_appliances', 'off'),
   e('switch.kitchen_oven', 'off'),
@@ -63,33 +65,33 @@ const list: HassEntity[] = [
   e('sensor.bedroom_bedroom_hub_temperature', '27.1'),
   e('sensor.bedroom_bedroom_hub_humidity', '72'),
   e('binary_sensor.bedroom_bedroom_presence_sensor_occupancy', 'off'),
-  e('light.bedroom_bedroom_light', 'off', dimmable),
-  e('light.bedroom_bedroom_light_2', 'off', dimmable),
+  e('light.bedroom_bedroom_light', 'off', rgbw),
+  e('light.bedroom_bedroom_light_2', 'off', rgbw),
   e('fan.bedroom_fan', 'off', fan),
 
   // Workroom
   e('sensor.workroom_workroom_hub_temperature', '29.0'),
   e('sensor.workroom_workroom_hub_humidity', '64'),
   e('binary_sensor.workroom_workroom_presence_sensor_occupancy', 'on'),
-  e('light.workroom_workroom_light', 'on', { ...dimmable, brightness: 255 }),
+  e('light.workroom_workroom_light', 'on', { ...rgbw, brightness: 255, color_mode: 'color_temp', color_temp_kelvin: 4000 }),
   e('fan.work_room_fan', 'off', fan),
   e('switch.workroom_pc', 'on'),
 
   // Bathrooms
   e('binary_sensor.common_bathroom_common_bathroom_presence_sensor_occupancy', 'off'),
   e('binary_sensor.common_bathroom_common_bathroom_door_sensor_door', 'unavailable'),
-  e('light.common_bathroom_common_bathroom_light', 'off', dimmable),
+  e('light.common_bathroom_common_bathroom_light', 'off', rgbw),
   e('switch.common_bathroom_common_bathroom_geyser', 'off'),
   e('binary_sensor.master_bathroom_master_bathroom_presence_sensor_occupancy', 'off'),
   e('binary_sensor.master_bathroom_master_bathroom_door_sensor_door', 'on'),
-  e('light.master_bathroom_master_bathroom_light', 'off', dimmable),
+  e('light.master_bathroom_master_bathroom_light', 'off', rgbw),
   e('switch.master_bathroom_master_bathroom_geyser', 'off'),
 
   // Utility
   e('binary_sensor.utility_utility_door_sensor_door', 'off'),
   e('binary_sensor.utility_washing_machine_door_sensor_door', 'off'),
-  e('light.utility_utility_light', 'off', dimmable),
-  e('light.utility_utility_light_2', 'off', dimmable),
+  e('light.utility_utility_light', 'off', rgbw),
+  e('light.utility_utility_light_2', 'off', rgbw),
   e('switch.utility_washing_machine', 'on'),
   e('input_boolean.washing_machine_running', 'on'),
   // Fan manual-off flags (bedroom is held, like in the real house)

@@ -3,6 +3,7 @@ import type { ConnectionStatus } from '../src/ha/api';
 import type { HassEntity } from 'home-assistant-js-websocket';
 import { HassContext, HassStatusContext, type HassApi, type HistoryPoint } from '../src/ha/api';
 import { store } from '../src/ha/store';
+import { hsToRgb, kelvinToRgb } from '../src/lib/lightColor';
 import { FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
@@ -19,6 +20,26 @@ function patch(id: string, update: Partial<HassEntity> & { attributes?: Record<s
   store.set(states);
 }
 
+// What light.turn_on does to a light's attributes: brightness (kept from last
+// time if not given, like HA), white temperature or colour, and the matching
+// color_mode and rgb_color.
+function lightAttrs(cur: HassEntity, data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { brightness: data.brightness_pct !== undefined ? Math.round((data.brightness_pct as number) * 2.55) : (cur.attributes.brightness ?? 255) };
+  if (data.color_temp_kelvin !== undefined) {
+    out.color_mode = 'color_temp';
+    out.color_temp_kelvin = data.color_temp_kelvin;
+    out.rgb_color = kelvinToRgb(data.color_temp_kelvin as number);
+  } else if (data.hs_color !== undefined) {
+    out.color_mode = 'hs';
+    out.hs_color = data.hs_color;
+    out.rgb_color = hsToRgb(data.hs_color as [number, number]);
+  } else if (!cur.attributes.color_mode) {
+    const modes = cur.attributes.supported_color_modes as string[] | undefined;
+    if (modes?.includes('color_temp')) Object.assign(out, { color_mode: 'color_temp', color_temp_kelvin: 3000 });
+  }
+  return out;
+}
+
 function ids(target?: { entity_id?: string | string[] }): string[] {
   const t = target?.entity_id;
   return t ? (Array.isArray(t) ? t : [t]) : [];
@@ -31,13 +52,14 @@ function applyService(domain: string, service: string, data: Record<string, unkn
     const on = cur.state === 'on';
     switch (service) {
       case 'toggle':
-        patch(id, { state: on ? 'off' : 'on', attributes: !on && domain === 'light' ? { brightness: 255 } : {} });
+        patch(id, { state: on ? 'off' : 'on', attributes: !on && domain === 'light' ? lightAttrs(cur, {}) : {} });
         break;
       case 'turn_on':
         if (domain === 'climate') patch(id, { state: 'cool', attributes: { temperature: cur.attributes.temperature ?? 24 } });
         else if (domain === 'script') patch(id, { state: 'on' });
         else if (domain === 'media_player') patch(id, { state: 'idle' });
-        else patch(id, { state: 'on', attributes: data.brightness_pct ? { brightness: Math.round((data.brightness_pct as number) * 2.55) } : {} });
+        else if (domain === 'light') patch(id, { state: 'on', attributes: lightAttrs(cur, data) });
+        else patch(id, { state: 'on' });
         break;
       case 'turn_off':
         patch(id, { state: 'off' });

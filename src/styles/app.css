@@ -498,7 +498,7 @@ button.wide { width: 100%; }
    opacity animate (compositor-only), so the kiosk can run them all day. */
 .room-glow {
   position: absolute; inset: 0; border-radius: inherit; z-index: -1; pointer-events: none;
-  background: radial-gradient(110% 90% at 88% 0%, color-mix(in srgb, var(--accent-light) 32%, transparent), transparent 62%);
+  background: radial-gradient(110% 90% at 88% 0%, color-mix(in srgb, var(--glow, var(--accent-light)) 32%, transparent), transparent 62%);
   animation: glow-breathe 5s ease-in-out infinite;
 }
 @keyframes glow-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
@@ -697,6 +697,12 @@ button.wide { width: 100%; }
 .leave-home.note { width: auto; padding: 0 16px; gap: 8px; color: var(--ok); border-color: var(--ok); }
 .pill-hint { font-size: 14px; font-weight: 700; }
 .row-btn.on { background: var(--tint); color: var(--on-text); box-shadow: 0 0 22px color-mix(in srgb, var(--tint) 50%, transparent); border-color: transparent; }
+/* Lights button: drag up/down to dim (useSlide axis 'y'), so it takes every
+   touch; while dragging it grows a little and fills from the bottom with the level. */
+.row-btn.bulb { touch-action: none; overflow: hidden; transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s; }
+.row-btn.bulb.sliding { transform: scale(1.12); z-index: 1; }
+.bulb-level { position: absolute; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, #fff 45%, transparent); pointer-events: none; }
+.row-btn.bulb > svg { position: relative; }
 /* Ceiling-fan icon (components/FanIcon.tsx): static mount and motor over a
    blade layer centred on the hub (12, 13.5 of the 24-unit icon), tilted nearly
    edge-on so the blades, spun in that plane by WAAPI, sweep round in
@@ -716,7 +722,7 @@ button.wide { width: 100%; }
   transform: scale(calc(0.8 + 0.2 * var(--b, 1))); opacity: 1;
   transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.25), opacity 0.25s ease-out;
 }
-.light-icon .lit { fill: #fffbeb; stroke: currentColor; stroke-width: 1.3; opacity: 0; transition: opacity 0.5s ease-out; }
+.light-icon .lit { fill: var(--lit, #fffbeb); stroke: currentColor; stroke-width: 1.3; opacity: 0; transition: opacity 0.5s ease-out; }
 .light-icon .filament { fill: none; stroke: #f97316; stroke-width: 0.9; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity 1.2s ease-out; }
 .light-icon.on .lit, .light-icon.on .filament { opacity: 1; animation: bulb-catch 0.5s linear; }
 .light-icon .halo {
@@ -1050,6 +1056,41 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 }
 .level-track input { position: absolute; width: 260px; height: 120px; left: -70px; top: 70px; margin: 0; transform: rotate(-90deg); opacity: 0; cursor: pointer; touch-action: none; }
 .level-value { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+/* Lights sheet (components/LightSheet.tsx): pill sliders (components/Slider.tsx,
+   --pos 0–1), a colour wheel and swatches. Sliders and the wheel take every
+   touch (touch-action: none) so dragging never scrolls the page. */
+.light-sheet { gap: 16px; }
+.light-sheet .segmented { margin: 0; background: var(--tile); }
+.mixed-chip { margin-left: 8px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 800; color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.slider {
+  position: relative; height: 52px; border-radius: 18px; overflow: hidden; background: var(--tile);
+  touch-action: none; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 0 16px; user-select: none; -webkit-user-select: none;
+}
+.slider:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.slider > :not(.slider-fill, .slider-thumb) { position: relative; z-index: 1; pointer-events: none; }
+.slider-fill { position: absolute; inset: 0 auto 0 0; width: calc(var(--pos) * 100%); pointer-events: none; }
+.slider-thumb { position: absolute; top: 8px; bottom: 8px; width: 6px; border-radius: 3px; left: calc(var(--pos) * (100% - 22px) + 8px); background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35); pointer-events: none; }
+.slider.brightness .slider-fill { background: color-mix(in srgb, var(--accent-light) 70%, transparent); }
+.slider.brightness .slider-thumb { display: none; }
+.slider.brightness { color: var(--text); font-weight: 800; }
+.slider-value { margin-left: auto; font-variant-numeric: tabular-nums; }
+.slider.warmth { background: linear-gradient(90deg, var(--warm), #fff 55%, var(--cool)); }
+.slider.warmth .slider-fill { display: none; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.swatch { min-width: 64px; padding: 8px 10px; border-radius: 12px; font-size: 12px; font-weight: 800; color: #1f2937; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.swatch:active, .round-swatch:active { transform: scale(0.94); }
+.round-swatch { min-width: 0; width: 34px; height: 34px; padding: 0; border-radius: 50%; }
+.light-white, .light-colour { display: grid; gap: 14px; }
+.color-wheel {
+  position: relative; width: min(220px, 70vw); aspect-ratio: 1; margin: 0 auto; border-radius: 50%; touch-action: none; cursor: crosshair;
+  background: radial-gradient(circle closest-side, #fff, rgba(255, 255, 255, 0) 100%), conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+.color-wheel-handle {
+  position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; pointer-events: none;
+  border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
 
 /* ---------- layouts ---------- */
 .layout { padding: max(20px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(20px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left)); }
