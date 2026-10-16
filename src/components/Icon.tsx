@@ -1,5 +1,6 @@
 import {
   mdiAirConditioner,
+  mdiAudioVideo,
   mdiBathtub,
   mdiBedKing,
   mdiBlender,
@@ -127,6 +128,7 @@ export const ICONS = {
   thermometer: mdiThermometer,
   switch: mdiToggleSwitch,
   tv: mdiTelevision,
+  avUnit: mdiAudioVideo, // TV unit: router, streamer, set-top box, soundbar
   dashboard: mdiViewDashboard,
   washer: mdiWashingMachine,
   geyser: mdiWaterBoiler,

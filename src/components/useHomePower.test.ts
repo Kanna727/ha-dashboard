@@ -33,6 +33,10 @@ describe('smart plug discovery', () => {
     // "dish" must win over "wash" in the guess order.
     expect(look('Dishwasher Power').icon).toBe('dishwasher');
     expect(look('Washing Machine Power').icon).toBe('washer');
+    // A TV unit (router, streamer, soundbar...) must not look like the TV itself.
+    expect(look('TV Unit Power').icon).toBe('avUnit');
+    expect(look('TV Power').icon).toBe('tv');
+    expect(look('TV Unit Power').color).not.toBe(look('TV Power').color);
     expect(look('Mystery Gadget Power').icon).toBe('flash');
   });
 });
