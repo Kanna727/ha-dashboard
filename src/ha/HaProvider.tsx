@@ -192,6 +192,16 @@ export const haApi: HassApi = {
     const conn = await getConnection();
     return conn.sendMessagePromise({ type: 'lovelace/config', url_path: urlPath, force: false });
   },
+  async fetchAutomationConfigs() {
+    const conn = await getConnection();
+    const ents = await conn.sendMessagePromise<{ entities: { ei: string }[] }>({ type: 'config/entity_registry/list_for_display' });
+    const ids = ents.entities.map((e) => e.ei).filter((id) => id.startsWith('automation.'));
+    const res = await Promise.allSettled(
+      ids.map((entityId) => conn.sendMessagePromise<{ config: unknown }>({ type: 'automation/config', entity_id: entityId }).then((r) => ({ entityId, config: r.config }))),
+    );
+    // One that can't be read (e.g. removed meanwhile) is skipped rather than failing them all.
+    return res.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+  },
   logout() {
     saveTokens(null);
     window.location.reload();

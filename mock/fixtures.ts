@@ -40,6 +40,7 @@ const list: HassEntity[] = [
   // Living room
   e('sensor.living_room_hub_living_room_temperature', '29.3'),
   e('sensor.living_room_hub_living_room_humidity', '64'),
+  e('sensor.living_room_light_level', '142', { device_class: 'illuminance', unit_of_measurement: 'lx' }),
   e('binary_sensor.living_room_presence_zone_1', 'on'),
   e('binary_sensor.living_room_presence_zone_2', 'on'),
   e('binary_sensor.living_room_presence_zone_4', 'off'),
@@ -62,8 +63,11 @@ const list: HassEntity[] = [
   e('switch.kitchen_fridge', 'on'),
 
   // Bedroom
-  e('sensor.bedroom_bedroom_hub_temperature', '27.1'),
+  // Too cool for the fan and too bright for the lights, so both readings show red.
+  e('sensor.bedroom_bedroom_hub_temperature', '26.4'),
   e('sensor.bedroom_bedroom_hub_humidity', '72'),
+  e('sensor.bedroom_light_level', '12'),
+  e('input_boolean.bedroom_fan_temp_override', 'off'),
   e('binary_sensor.bedroom_bedroom_presence_sensor_occupancy', 'off'),
   e('light.bedroom_bedroom_light', 'off', rgbw),
   e('light.bedroom_bedroom_light_2', 'off', rgbw),
@@ -72,6 +76,7 @@ const list: HassEntity[] = [
   // Workroom
   e('sensor.workroom_workroom_hub_temperature', '29.0'),
   e('sensor.workroom_workroom_hub_humidity', '64'),
+  e('sensor.workroom_light_level', '35'),
   e('binary_sensor.workroom_workroom_presence_sensor_occupancy', 'on'),
   e('light.workroom_workroom_light', 'on', { ...rgbw, brightness: 255, color_mode: 'color_temp', color_temp_kelvin: 4000 }),
   e('fan.work_room_fan', 'off', fan),
@@ -94,6 +99,11 @@ const list: HassEntity[] = [
   e('light.utility_utility_light_2', 'off', rgbw),
   e('switch.utility_washing_machine', 'on'),
   e('input_boolean.washing_machine_running', 'on'),
+  // Automations whose thresholds the room cards show (configs in AUTOMATIONS below)
+  e('automation.living_room_occupied', 'on'),
+  e('automation.sofa_fan_on_when_hot', 'on'),
+  e('automation.bedroom_occupied', 'on'),
+  e('automation.workroom_occupied', 'on'),
   // Fan manual-off flags (bedroom is held, like in the real house)
   e('input_boolean.sofa_fan_manual_off', 'off'),
   e('input_boolean.tv_fan_manual_off', 'off'),
@@ -294,3 +304,59 @@ export const FORECAST = ['partlycloudy', 'rainy', 'lightning-rainy', 'cloudy', '
   templow: 21 + (i % 2),
   precipitation: condition.includes('rain') ? 2.4 + i : 0,
 }));
+
+// Automation configs (automation/config) behind the threshold colouring on the
+// room cards: lights on below a light level, fans on above a temperature.
+const lightsWhenDark = (sensor: string, below: number, light: string | string[]) => ({
+  if: [{ condition: 'numeric_state', entity_id: sensor, below }],
+  then: [{ action: 'light.turn_on', target: { entity_id: light } }],
+});
+const fanWhenHot = (sensor: string, fan: string, override?: string) => ({
+  if: [
+    override
+      ? {
+          condition: 'or',
+          conditions: [
+            { condition: 'numeric_state', entity_id: sensor, above: 27 },
+            { condition: 'state', entity_id: override, state: 'on' },
+          ],
+        }
+      : { condition: 'numeric_state', entity_id: sensor, above: 27 },
+  ],
+  then: [{ action: 'fan.turn_on', target: { entity_id: fan } }],
+});
+const occupied = (presence: string, ...branches: object[]) => ({
+  triggers: [{ trigger: 'state', entity_id: presence, to: 'on' }],
+  actions: [{ parallel: branches }],
+  mode: 'single',
+});
+
+export const AUTOMATIONS = [
+  {
+    entityId: 'automation.living_room_occupied',
+    config: occupied('binary_sensor.living_room_presence_zone_1', lightsWhenDark('sensor.living_room_light_level', 60, 'light.living_room_living_room_t_light')),
+  },
+  {
+    entityId: 'automation.sofa_fan_on_when_hot',
+    config: {
+      triggers: [{ trigger: 'numeric_state', entity_id: 'sensor.living_room_hub_living_room_temperature', above: 27, for: { minutes: 1 } }],
+      actions: [{ action: 'fan.turn_on', target: { entity_id: 'fan.sofa_fan' } }],
+    },
+  },
+  {
+    entityId: 'automation.bedroom_occupied',
+    config: occupied(
+      'binary_sensor.bedroom_bedroom_presence_sensor_occupancy',
+      lightsWhenDark('sensor.bedroom_light_level', 6, ['light.bedroom_bedroom_light', 'light.bedroom_bedroom_light_2']),
+      fanWhenHot('sensor.bedroom_bedroom_hub_temperature', 'fan.bedroom_fan', 'input_boolean.bedroom_fan_temp_override'),
+    ),
+  },
+  {
+    entityId: 'automation.workroom_occupied',
+    config: occupied(
+      'binary_sensor.workroom_workroom_presence_sensor_occupancy',
+      lightsWhenDark('sensor.workroom_light_level', 6, 'light.workroom_workroom_light'),
+      fanWhenHot('sensor.workroom_workroom_hub_temperature', 'fan.work_room_fan'),
+    ),
+  },
+];
