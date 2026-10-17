@@ -1,3 +1,10 @@
+# [1.22.0](https://github.com/Kanna727/ha-dashboard/compare/v1.21.0...v1.22.0) (2026-10-17)
+
+
+### Features
+
+* **rooms:** show light level and flag readings that keep fans or lights off ([#36](https://github.com/Kanna727/ha-dashboard/issues/36)) ([ee2010d](https://github.com/Kanna727/ha-dashboard/commit/ee2010dce3f84c13122f0764974f44acbe21be9d))
+
 # [1.21.0](https://github.com/Kanna727/ha-dashboard/compare/v1.20.0...v1.21.0) (2026-10-16)
 
 
