@@ -4,7 +4,7 @@ import type { HassEntity } from 'home-assistant-js-websocket';
 import { HassContext, HassStatusContext, type HassApi, type HistoryPoint } from '../src/ha/api';
 import { store } from '../src/ha/store';
 import { hsToRgb, kelvinToRgb } from '../src/lib/lightColor';
-import { FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
+import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
 // and logs them, so layouts can be exercised without touching the house.
@@ -248,6 +248,9 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       },
       async fetchLovelaceConfig() {
         return { views: [] };
+      },
+      async fetchAutomationConfigs() {
+        return AUTOMATIONS;
       },
       logout() {
         console.info('[mock] logout');

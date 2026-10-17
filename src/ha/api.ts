@@ -65,6 +65,11 @@ export interface StatPoint {
   mean?: number;
 }
 
+export interface AutomationConfig {
+  entityId: string;
+  config: unknown;
+}
+
 export interface LastState {
   state: string;
   t: number;
@@ -94,6 +99,8 @@ export interface HassApi {
   fetchLovelaceConfig(urlPath: string): Promise<LovelaceConfig>;
   // Device + entity registry, used to group unavailable entities by device.
   fetchRegistry(): Promise<RegistrySnapshot>;
+  // Every automation's raw config (automation/config), for the thresholds they gate on.
+  fetchAutomationConfigs(): Promise<AutomationConfig[]>;
   logout(): void;
 }
 

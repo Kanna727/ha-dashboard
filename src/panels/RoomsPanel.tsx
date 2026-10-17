@@ -1,6 +1,9 @@
+import { useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { APPLIANCES, FAN_MANUAL_OFF, ROOMS, type RoomDef } from '../config/entities';
 import { useHass } from '../ha/api';
-import { useAllEntities, useEntities, useEntity } from '../ha/store';
+import { store, useAllEntities, useEntities, useEntity } from '../ha/store';
+import { useGates } from '../ha/automations';
+import { ambienceSensor, describeGate, gatesFor, heldBack, type Gate, type Read } from '../lib/thresholds';
 import { fmtNum, fmtWatts, isOn, isUnavailable, num } from '../ha/format';
 import { AppliancesCard } from '../components/AppliancesCard';
 import { usePurifier } from '../components/usePurifier';
@@ -36,9 +39,73 @@ function useHeldFans(room: RoomDef) {
   return fans.filter((_, i) => flags[i]?.state === 'on');
 }
 
-function RoomDetail({ room }: { room: RoomDef }) {
+// What the room's automations make of a reading: the rule ("above 27") and
+// whether the reading is what's keeping the devices off right now.
+interface ReadingRule {
+  rule: string;
+  held: boolean;
+}
+
+// Temperature, humidity and light level, plus the thresholds the automations
+// gate on (read from the automations themselves, lib/thresholds.ts): the
+// temperature for the room's fans, the light level for its lights. The light
+// sensor is the one the room's light automations use.
+function useRoomReadings(room: RoomDef, gates: Gate[]) {
+  const ambienceId = useMemo(() => ambienceSensor(gates, lightsOf(room)), [gates, room]);
   const temp = useEntity(room.temperature);
   const hum = useEntity(room.humidity);
+  const ambience = useEntity(ambienceId);
+  // The rules depend on flags, limits and device states, so they are worked
+  // out against the whole store; React gets a string, so a room only
+  // re-renders when its rules change.
+  const sig = useSyncExternalStore(store.subscribe, () => {
+    const all = store.getAll();
+    const read: Read = (id) => all[id]?.state;
+    const rule = (sensor: string | undefined, devices: string[]): ReadingRule | null => {
+      const any = gatesFor(gates, sensor, devices, read, false);
+      if (!any.length) return null;
+      return { rule: [...new Set(any.map((g) => describeGate(g, read)))].join(' or '), held: heldBack(gatesFor(gates, sensor, devices, read), read) };
+    };
+    const fans = room.controls.filter((c) => c.entity.startsWith('fan.')).map((c) => c.entity);
+    return JSON.stringify([rule(room.temperature, fans), rule(ambienceId, lightsOf(room))]);
+  });
+  const [tempRule, ambienceRule] = useMemo(() => JSON.parse(sig) as (ReadingRule | null)[], [sig]);
+  const unit = ambience?.attributes.unit_of_measurement as string | undefined;
+  const lux = unit ? ` ${unit}` : '';
+  return {
+    temp,
+    hum,
+    ambience,
+    lux,
+    tempRule,
+    ambienceRule,
+    tempNote: tempRule && (tempRule.held ? `Fan stays off: automations turn it on ${tempRule.rule}°` : `Automations turn the fan on ${tempRule.rule}°`),
+    ambienceNote:
+      ambienceRule && (ambienceRule.held ? `Lights stay off: automations turn them on ${ambienceRule.rule}${lux}` : `Automations turn the lights on ${ambienceRule.rule}${lux}`),
+  };
+}
+
+// "26.4° · 72% · ☀ 12 lx" on the room card. A reading turns red while it's
+// what keeps the room's fan or lights off (too cool, too bright).
+function Readings({ r }: { r: ReturnType<typeof useRoomReadings> }) {
+  const items: ReactNode[] = [];
+  if (r.temp) items.push(<span key="t" className={r.tempRule?.held ? 'held' : undefined} title={r.tempNote ?? undefined}>{fmtNum(r.temp, 1)}°</span>);
+  if (r.hum) items.push(<span key="h">{fmtNum(r.hum)}%</span>);
+  if (r.ambience)
+    items.push(
+      <span key="a" className={r.ambienceRule?.held ? 'held' : undefined} title={r.ambienceNote ?? 'Light level'}>
+        <Icon name="ambience" size={12} />
+        {fmtNum(r.ambience)}
+        {r.lux}
+      </span>,
+    );
+  if (!items.length) return null;
+  return <span className="room-row-readings">{items.flatMap((x, i) => (i ? [' · ', x] : [x]))}</span>;
+}
+
+function RoomDetail({ room, gates }: { room: RoomDef; gates: Gate[] }) {
+  const r = useRoomReadings(room, gates);
+  const { temp, hum, ambience } = r;
   const held = useHeldFans(room);
   return (
     <div>
@@ -50,10 +117,23 @@ function RoomDetail({ room }: { room: RoomDef }) {
           </span>
         </div>
       ))}
-      {(temp || hum) && (
-        <div className="stat-tiles two">
-          {temp && <div className="stat-tile"><div className="label">Temperature</div><div className="stat-val">{fmtNum(temp, 1)}<small>°C</small></div></div>}
+      {(temp || hum || ambience) && (
+        <div className={`stat-tiles two ${[temp, hum, ambience].filter(Boolean).length > 2 ? 'three' : ''}`}>
+          {temp && (
+            <div className={`stat-tile ${r.tempRule?.held ? 'held' : ''}`}>
+              <div className="label">Temperature</div>
+              <div className="stat-val">{fmtNum(temp, 1)}<small>°C</small></div>
+              {r.tempRule && <div className="stat-rule">Fan {r.tempRule.held ? 'needs' : 'on'} {r.tempRule.rule}°</div>}
+            </div>
+          )}
           {hum && <div className="stat-tile"><div className="label">Humidity</div><div className="stat-val">{fmtNum(hum)}<small>%</small></div></div>}
+          {ambience && (
+            <div className={`stat-tile ${r.ambienceRule?.held ? 'held' : ''}`}>
+              <div className="label">Light level</div>
+              <div className="stat-val">{fmtNum(ambience)}<small>{r.lux.trim()}</small></div>
+              {r.ambienceRule && <div className="stat-rule">Lights {r.ambienceRule.held ? 'need' : 'on'} {r.ambienceRule.rule}{r.lux}</div>}
+            </div>
+          )}
         </div>
       )}
       <div className="tiles roomy">{room.controls.map((c) => <EntityTile key={c.entity} {...c} />)}</div>
@@ -85,11 +165,10 @@ function useApplianceStatus() {
   };
 }
 
-function RoomRow({ room }: { room: RoomDef }) {
+function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
   const hass = useHass();
   const modal = useModal();
-  const temp = useEntity(room.temperature);
-  const hum = useEntity(room.humidity);
+  const readings = useRoomReadings(room, gates);
   const quick = useEntity(room.quick?.entity);
   const lightIds = lightsOf(room);
   const lights = useEntities(lightIds);
@@ -128,7 +207,8 @@ function RoomRow({ room }: { room: RoomDef }) {
   const fanSpeeds = speedCount(fanStep);
   const fanSpeed = speedOf(fanSlide.value, fanStep);
 
-  // Climate first, then what's running: lights, running appliances, else the first other device that's on.
+  // What's running: lights, running appliances, else the first other device that's on.
+  // (Temperature, humidity and light level have their own line above it.)
   const status: string[] = [];
   if (lit) status.push(`${lit} light${lit > 1 ? 's' : ''}`);
   runningApps.forEach((a) => status.push(appStatus[a].text));
@@ -136,10 +216,6 @@ function RoomRow({ room }: { room: RoomDef }) {
   if (room.appliances?.includes('purifier') && appStatus.purifier.fault) status.push(appStatus.purifier.text);
   // The washer's plug is always on, so a room with the washer never says "Washer on".
   if (!status.length) status.push(others.length && !room.appliances?.includes('washer') ? `${others[0].name} on` : 'Off');
-  const parts: string[] = [];
-  if (temp) parts.push(`${fmtNum(temp, 0)}°`);
-  if (hum) parts.push(`${fmtNum(hum)}%`);
-  parts.push(...status);
 
   // The lights button always drives every light in the room together.
   // The lights button: a tap toggles every light in the room, a drag up or down
@@ -200,8 +276,9 @@ function RoomRow({ room }: { room: RoomDef }) {
     ? `${fanLabel} · ${fanSpeed ? `speed ${fanSpeed}/${fanSpeeds}` : 'off'}`
     : bulbSlide.sliding
       ? `Lights · ${bulbPct ? `${bulbPct}%` : 'off'}`
-      : parts.join(' · ');
-  const openDetail = () => modal.open({ title: room.name, icon: room.icon as IconName, accent: lit ? 'var(--accent-light)' : undefined, body: <RoomDetail room={room} /> });
+      : status.join(' · ');
+  const openDetail = () =>
+    modal.open({ title: room.name, icon: room.icon as IconName, accent: lit ? 'var(--accent-light)' : undefined, body: <RoomDetail room={room} gates={gates} /> });
 
   return (
     <div
@@ -313,6 +390,7 @@ function RoomRow({ room }: { room: RoomDef }) {
         {occupied && <span className="presence-dot" title="Someone's here" />}
         {doorOpen && <Icon name="doorOpen" size={14} className="door-warn" />}
       </span>
+      <Readings r={readings} />
       <span className={`room-row-sub ${lit ? 'lit' : ''}`}>{subtitle}</span>
       {held.length > 0 && (
         <span className="hold-note">{held.length > 1 ? 'Fans' : held[0].name.toLowerCase().includes('fan') ? held[0].name : `${held[0].name} fan`} on manual override</span>
@@ -323,13 +401,14 @@ function RoomRow({ room }: { room: RoomDef }) {
 
 export function RoomsPanel() {
   const all = useAllEntities();
+  const gates = useGates();
   const litTotal = ROOMS.filter((r) => roomLit(r, all)).length;
 
   return (
     <section className="panel rooms-panel">
       <PanelHead label="Rooms" summary={litTotal ? `${litTotal} room${litTotal > 1 ? 's' : ''} lit` : 'All dark'} />
       <div className="room-rows">
-        {ROOMS.map((r) => <RoomRow key={r.id} room={r} />)}
+        {ROOMS.map((r) => <RoomRow key={r.id} room={r} gates={gates} />)}
       </div>
     </section>
   );
