@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/Kanna727/ha-dashboard/compare/v1.23.0...v1.24.0) (2026-10-18)
+
+
+### Features
+
+* **preview:** deploy a preview of every PR and release to /local/dashboard/preview ([#38](https://github.com/Kanna727/ha-dashboard/issues/38)) ([886816f](https://github.com/Kanna727/ha-dashboard/commit/886816f72cdd722b2710db2f79b0a5c1ff680b17))
+
 # [1.23.0](https://github.com/Kanna727/ha-dashboard/compare/v1.22.0...v1.23.0) (2026-10-18)
 
 
