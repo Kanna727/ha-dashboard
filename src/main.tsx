@@ -56,3 +56,6 @@ async function boot() {
 }
 
 boot();
+
+// The deployed preview (a mock build) reloads itself when a newer one lands.
+if (import.meta.env.VITE_MOCK) void import('./update/previewUpdate').then((m) => m.watchPreviewUpdates());

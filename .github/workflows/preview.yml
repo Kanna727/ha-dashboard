@@ -1,0 +1,86 @@
+name: Preview
+
+# Every push to a pull request deploys a preview of it to Home Assistant at
+# /local/dashboard/preview/: the mock dashboard (fake data from the example
+# config) with the sky test panel open, so changes can be tried on the iPad or
+# a phone before merging. The live dashboard is untouched. Releases redeploy
+# the preview from main (release.yml, deploy-preview).
+#
+# HA only installs files from this repo's release assets, so the build is
+# uploaded to a rolling `preview` pre-release first (never "latest"; its tag
+# doesn't match semantic-release's vX.Y.Z). The newest push wins.
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ha-preview
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    # Same-repo branches only: forks and Dependabot get no secrets, and their
+    # code must not run on the HA origin.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    env:
+      HA_HOST: ${{ vars.HA_TAILNET_HOST }}
+      HAS_SECRETS: ${{ secrets.TS_OAUTH_CLIENT_ID != '' && secrets.HA_PREVIEW_WEBHOOK_ID != '' }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Check deploy setup
+        if: env.HAS_SECRETS != 'true' || env.HA_HOST == ''
+        run: |
+          echo "::warning::Preview deploy skipped: set the HA_PREVIEW_WEBHOOK_ID secret (see docs/home-assistant.md)."
+      - uses: actions/checkout@v7
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        with:
+          # The branch as pushed, so the preview matches what's being reviewed.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v7
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        with:
+          node-version: 22
+          cache: npm
+      - name: Build preview
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        id: build
+        run: |
+          set -euo pipefail
+          npm ci
+          sha=$(git rev-parse --short=7 HEAD)
+          if [ -n "${{ github.event.pull_request.number }}" ]; then
+            label="pr${{ github.event.pull_request.number }}"
+          else
+            label=$(echo "$GITHUB_REF_NAME" | tr -c '0-9A-Za-z-' '-' | sed 's/-*$//')
+          fi
+          # A semver pre-release, as HA's automation expects.
+          version="0.0.0-$label.$sha"
+          bash scripts/build-preview.sh "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Upload to the preview pre-release
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        run: |
+          set -euo pipefail
+          gh release view preview >/dev/null 2>&1 || gh release create preview --prerelease --target main \
+            --title "Preview" --notes "Rolling preview build for pull requests, installed by Home Assistant at /local/dashboard/preview/. Replaced on every push."
+          cp dist-preview/index.html preview-index.html
+          cp dist-preview/version.json preview-version.json
+          gh release upload preview preview-index.html preview-version.json --clobber
+      - name: Join tailnet
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Trigger HA preview deploy
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        env:
+          HA_PREVIEW_WEBHOOK_ID: ${{ secrets.HA_PREVIEW_WEBHOOK_ID }}
+        run: bash scripts/ha-deploy-preview.sh preview "${{ steps.build.outputs.version }}"

@@ -127,3 +127,79 @@ gh variable set HA_TAILNET_HOST --body homeassistant   # HA's MagicDNS name
 ```
 
 To test, run **Actions → Release → Run workflow**: with nothing new to release it redeploys the latest one. A missing secret makes the deploy job skip with a warning instead of failing.
+
+## 6. Preview deploys (optional)
+
+Every push to a pull request, and every release, can also install a **preview** at `/local/dashboard/preview/index.html`: the mock dashboard with fake data and the sky test panel, for trying changes on a tablet or phone before merging. It goes through its own automation and webhook, into `www/dashboard/preview/`, so the live dashboard is never touched.
+
+Create a second automation in YAML mode, with a new random `<PREVIEW_WEBHOOK_ID>` and the same `<REPO_ID>`:
+
+```yaml
+alias: Dashboard - install preview
+description: >-
+  Called by the repo's workflows over Tailscale. Downloads the preview build
+  (index.html, then version.json) into www/dashboard/preview. Never touches the
+  live dashboard or input_text.dashboard_build.
+mode: queued
+max: 5
+triggers:
+  - trigger: webhook
+    webhook_id: <PREVIEW_WEBHOOK_ID>
+    allowed_methods: [POST]
+    local_only: false
+conditions:
+  - condition: template
+    value_template: >-
+      {%- set allowed = ['index.html', 'version.json'] -%}
+      {%- set j = trigger.json if trigger.json is defined else {} -%}
+      {%- set files = j.files if j.files is defined else [] -%}
+      {{ (j.version | default('')) is match('^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$')
+         and files | count > 0
+         and files | map(attribute='name') | reject('in', allowed) | list | count == 0
+         and files | map(attribute='url') | reject('match', '^https://[a-z-]+\.githubusercontent\.com/[^/]+/<REPO_ID>/') | list | count == 0 }}
+actions:
+  - variables:
+      files: "{{ trigger.json.files }}"
+      failed: false
+  - repeat:
+      for_each: "{{ files }}"
+      sequence:
+        - parallel:
+            - sequence:
+                - wait_for_trigger:
+                    - trigger: event
+                      event_type: downloader_download_completed
+                    - trigger: event
+                      event_type: downloader_download_failed
+                  timeout: "00:02:00"
+                  continue_on_timeout: true
+                - if:
+                    - condition: template
+                      value_template: "{{ wait.trigger is none or wait.trigger.event.event_type != 'downloader_download_completed' }}"
+                  then:
+                    - variables: { failed: true }
+            - sequence:
+                - delay: { milliseconds: 500 }
+                - action: downloader.download_file
+                  data:
+                    url: "{{ repeat.item.url }}"
+                    subdir: preview
+                    filename: "{{ repeat.item.name }}"
+                    overwrite: true
+  - if:
+      - condition: template
+        value_template: "{{ failed }}"
+    then:
+      - action: persistent_notification.create
+        data:
+          title: Dashboard preview deploy failed
+          message: "Preview {{ trigger.json.version }}: a file could not be downloaded."
+```
+
+Then store its ID in GitHub:
+
+```sh
+gh secret set HA_PREVIEW_WEBHOOK_ID
+```
+
+Without that secret the preview jobs skip with a warning. Pull requests from forks never deploy (they get no secrets), so only code pushed to this repo runs on your HA's origin.

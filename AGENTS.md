@@ -58,7 +58,8 @@ src/components/*           building blocks: Modal (ModalProvider + PanelHead), S
 src/commute/*              commute routes + Google Maps loader + full map (CommuteMap), used by CommutePanel's modal
 src/styles/fonts.css       Plus Jakarta Sans (latin subset only), inlined into the bundle
 src/layout/Layouts.tsx     TabletLayout (3 columns, each scrolls), DesktopLayout (4 columns), PhoneLayout (4 bottom tabs)
-src/update/useSelfUpdate.ts reloads when input_text.dashboard_build != "<version>/<config hash>"
+src/update/useSelfUpdate.ts reloads when input_text.dashboard_build != "<version>/<config hash>" (not in mock builds)
+src/update/previewUpdate.ts the deployed preview reloads itself when version.json changes (mock builds only)
 mock/fixtures.ts           state snapshot matching the example config
 mock/MockProvider.tsx      fake HassApi that applies service calls locally and jitters power sensors
 src/lib/fanSpeed.ts        fan percentage snapping / what to send to HA (unit-tested)
@@ -77,9 +78,15 @@ src/components/SkyBackdrop.tsx  the animated full-page sky behind every layout (
 src/lib/skySim.ts          simulated sun for ?skyTest (unit-tested)
 src/ha/automations.ts      useGates(): every automation's config via automation/config, parsed and cached (dashGates)
 scripts/deploy.py          manual deploy: build, copy index.html to the share, push config, set helper
+scripts/build-preview.sh   builds the preview (mock + sky test panel) into dist-preview/ with version.json
+scripts/local-preview.mjs  local preview: mirror to BUILD_DIR, rebuild if sources changed, serve at localhost:4180
+scripts/local-preview-server.mjs  its static server (localhost only, no-store)
+.claude/settings.json      Claude Code Stop hook that runs the local preview after every agent turn
+scripts/ha-deploy-preview.sh asks HA to install a release's preview files (signed URLs → preview webhook)
 scripts/push-config.mjs    saves dist/dashboard-config.json into HA and updates the helper (HA_URL + HA_TOKEN)
 scripts/privacy-check.sh   blocks personal data in tracked files
-.github/workflows/         ci.yml (PRs), release.yml (semantic-release + deploy over Tailscale)
+.github/workflows/         ci.yml (PRs), release.yml (semantic-release + deploy + preview deploy over Tailscale),
+                           preview.yml (a preview of every PR push)
 docs/home-assistant.md     HA-side setup for automatic deploys
 ```
 
@@ -88,6 +95,7 @@ docs/home-assistant.md     HA-side setup for automatic deploys
 ```sh
 npm install
 npm run mock        # offline preview on :5173 with fake data (service calls logged to console)
+npm run preview:local   # rebuild the local preview and serve it at http://localhost:4180 (see Local preview)
 npm run dev         # live; set VITE_HA_URL=http://homeassistant.local when running off-box
 npm run typecheck
 npm test            # vitest unit tests (src/**/*.test.ts)
@@ -117,7 +125,12 @@ python3 scripts/deploy.py --build-only   # build with the real version, no copy
 - Running the Release workflow by hand (Actions → Release → Run workflow) redeploys the latest release when there is nothing new to release.
 - **Helper format:** `input_text.dashboard_build` holds `"<app version>/<config hash>"`. The release automation replaces the first half; `deploy.py --config-only` replaces the second. Open pages reload when it differs from what they run. The `'dev'` version turns self-update off.
 - The config is never deployed by CI (CI doesn't have it). Push it with `deploy.py --config-only` (needs `HA_URL` + an admin `HA_TOKEN`), or, as an agent with the HA MCP server, save `dist/dashboard-config.json` as the `dashboard-config` dashboard's config and update the helper's second half.
-- Secrets/vars in GitHub: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `HA_WEBHOOK_ID`, `PRIVACY_PATTERNS`; variable `HA_TAILNET_HOST`. The deploy job skips with a warning if they are missing.
+- Secrets/vars in GitHub: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `HA_WEBHOOK_ID`, `HA_PREVIEW_WEBHOOK_ID`, `PRIVACY_PATTERNS`; variable `HA_TAILNET_HOST`. The deploy jobs skip with a warning if they are missing.
+- **Preview deploys** (the owner asked for the local test version to be deployed with every change, at an endpoint apart from the live dashboard): the preview is the mock build (fake data from the example config, no HA connection) built with `VITE_PREVIEW=1`, which opens the sky test panel by default and shows the build version in it. `scripts/build-preview.sh <version>` writes `dist-preview/index.html` and `version.json`. HA installs it at `www/dashboard/preview/` (URL `/local/dashboard/preview/index.html`) through a separate automation, "Dashboard - install preview", on its own webhook (`HA_PREVIEW_WEBHOOK_ID`), so the live install automation and files are never touched; Downloader's `subdir: preview` does the placing. Setup: docs/home-assistant.md section 6.
+  - **When:** every push to a same-repo pull request (`preview.yml`; forks and Dependabot get no secrets and must not run code on the HA origin), and every release (`release.yml`'s `deploy-preview`, which waits 60 s after the live deploy so the two automations' Downloader events don't interleave). The newest push wins; there is one preview.
+  - **Only release assets:** like the live deploy, HA only accepts download URLs of this repo's release assets (any page on `/local/` runs next to the devices' HA tokens). Releases carry `preview-index.html` and `preview-version.json` (`.releaserc.json`); pull requests upload theirs to a rolling `preview` pre-release (never "latest"; its tag doesn't match semantic-release's `v*`). Versions are semver so HA's check passes: the release version, or `0.0.0-pr<N>.<sha7>`.
+  - **Staying current:** HA serves `/local/` with a 31-day cache, so the page fetches `version.json` with `cache: 'no-store'` on load, every 5 minutes and when it becomes visible, and reloads with `?v=<version>` when it differs (one reload per version, so a stale file can't loop). `version.json` is installed after `index.html`. Mock builds skip `useSelfUpdate` (the mock helper says `dev`, which would otherwise look like a new deploy).
+
 
 ## Design
 
@@ -274,7 +287,7 @@ The Weather card has no arc and no backdrop of its own any more: the page sky (s
 - **Moisture:** a low haze over the far skyline (pale by day, sky-dark at night, `hazeColor`) and condensation beads along the bottom of the screen like a misted window (they looked like dust scattered over the sky), a few trickling down.
 - Only transform/opacity animate (the strike glow also blends); the global reduced-motion rule freezes it to a still scene, and night mode's `html.night` rule pauses it.
 - **See-through panels:** no `backdrop-filter` on panels (it would re-blur the animated sky under every panel each frame; keep it off). How solid panels and the cards inside them are follows daylight: `SkyBackdrop` sets `--panel-a` (48 % at night … 80 % by day) and `--card-a` (55 % … 100 %) on the root, in 0.1 daylight steps. Inside `.panel`, `--card`/`--card-hi`/`--tile`/`--tile-hover` are re-derived from their `*-base` colours at `--card-a`; top-bar pills follow `--panel-a` + 5 %. Pop-ups and sheets render outside `.panel`, so they stay solid. The owner found the scene hard to see through the panels at night; by day bright clouds behind see-through panels would wash out the muted text.
-- **`?skyTest`** (any build, like `?nightTest`): a floating panel (`components/SkyTestPanel.tsx`) with Time (a simulated 06:00/18:00 day, `simSun` in `src/lib/skySim.ts`), Play day (a day in a minute), Weather, Wind (km/h), Humidity and Moon phase; each has ⟲ to go back to live. Only the page sky follows it (the weather card and night mode stay live), nothing is sent to HA, and fades are shortened to 0.6 s (`.sky.testing`). It can be minimised to a chip.
+- **`?skyTest`** (any build, like `?nightTest`; the deployed preview opens it by default): a floating panel (`components/SkyTestPanel.tsx`) with Time (a simulated 06:00/18:00 day, `simSun` in `src/lib/skySim.ts`), Play day (a day in a minute), Weather, Wind (km/h), Humidity and Moon phase; each has ⟲ to go back to live. Only the page sky follows it (the weather card and night mode stay live), nothing is sent to HA, and fades are shortened to 0.6 s (`.sky.testing`). It can be minimised to a chip.
 - Mock: the fixture's `sun.sun` is a night (elevation −38, azimuth 282) and the weather has wind, bearing and 92 % humidity. `__mockPatch('sun.sun', { state: 'above_horizon', attributes: { elevation: 1.5, azimuth: 255, rising: false } })` gives a sunset, or use `?skyTest`.
 
 ## Home energy panel
@@ -307,10 +320,19 @@ Each branch is a faint `.flow-track` plus `.flow-particles`: zero-length dashes 
 - Any public HA URL (Nabu Casa remote UI, Tailscale Funnel) exposes `/local/` to the internet, and such hostnames show up in certificate-transparency logs. That is why the per-home config lives behind the login and not in `/local/`.
 - HA's HTTP server settings (port, reverse proxy, IP ban) are UI-managed since 2026.8 (Settings → System → Network → HTTP server), not `configuration.yaml`. Behind a reverse proxy such as Funnel, "Trust X-Forwarded-For" must be on with the proxy's address trusted; a request carrying `X-Forwarded-For` from any other address gets HTTP 400.
 
+## Local preview (after every change)
+
+The owner develops with agents and tests each change in a browser on the PC, so **every change must land in the local preview at http://localhost:4180** (the same test build as the HA preview: fake data, sky test panel open, build version shown). An open tab picks up a new build within ~2 s by itself (`previewUpdate.ts` polls `version.json` every 2 s on localhost).
+- **Claude Code does it automatically:** the Stop hook in `.claude/settings.json` runs `node scripts/local-preview.mjs --hook` in the background when an agent finishes a turn (`asyncRewake`). It rebuilds only if the build inputs changed (a content hash of `src`, `mock`, `public`, `config`, `index.html`, package files, `vite.config.ts`, `tsconfig.json`; mtimes are useless on Google Drive). A failed build exits 2, which wakes the agent with the error; the same broken sources don't report again, and the last good build stays served. The hook starts in sessions opened after `.claude/` exists.
+- **Other agents** (no Claude hooks): run `npm run preview:local` (or `node scripts/local-preview.mjs`) after each change and fix any build error it prints. It takes a few seconds; with no source change the hook form (`--hook`) returns at once.
+- **Where it builds:** on a checkout that can't hold `node_modules` (Google Drive), set `BUILD_DIR` in the environment or in `.env.local` (`BUILD_DIR=...`, gitignored): the inputs are mirrored there and built there; elsewhere it builds in place. Output in `<build dir>/.local-preview/site` (swapped in atomically), with `npm install` when `package-lock.json` changes.
+- **The server** (`scripts/local-preview-server.mjs`) listens on 127.0.0.1 only (no firewall prompt, not reachable from other devices; use the HA preview for the iPad), sends `Cache-Control: no-store`, and answers `/__local-preview` with the site it serves and its pid, so the script starts it only when needed. `--stop` stops it; `--port <n>` or `LOCAL_PREVIEW_PORT` changes the port.
+
 ## Verifying UI changes
 
-- Always run `npm run typecheck`, `npm test` and `npm run build`. CI and the Release workflow run all three.
+- Always run `npm run typecheck`, `npm test` and `npm run build`. CI and the Release workflow run all three. The local preview (above) is for the owner's eyes, not a substitute.
 - **Unit tests** (`vitest`, config in `vitest.config.ts`) cover pure logic: fan-speed snapping (`src/lib/fanSpeed.ts`), meal "Next up", plug discovery, `relTime`/`num`, weather hours/night, car distance, commute card extraction. They run in plain Node; `src/test/setup.ts` sets `window` to the global object and loads the example config, as `main.tsx` does. Put new pure helpers somewhere importable without React rendering and add a test beside them (`*.test.ts`, never imported by the app, so never bundled). vitest stays on 3.x: 4.x needs Vite 6+ and Node 20+.
+- To try a pull request on a real device, open the **preview** (`/local/dashboard/preview/index.html`), which every push deploys (see Releases and deploys). It's fake data, so it can't test the HA connection, login or config loading.
 - Take visual checks against a **production-mode mock build**, not the dev server. The dev server loads `@mdi/js` slowly, and headless screenshots then capture half-loaded pages.
   ```sh
   VITE_MOCK=1 npx vite build --outDir <scratch>/dist-mock --emptyOutDir

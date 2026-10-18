@@ -29,7 +29,8 @@ export function useSelfUpdate() {
   const target = status === 'live' ? helper?.state : undefined;
 
   useEffect(() => {
-    if (BUILD_HASH === 'dev' || !target || target === 'unknown' || target === 'unavailable') return;
+    // Mock builds (the deployed preview included) update from version.json instead (previewUpdate.ts).
+    if (import.meta.env.VITE_MOCK || BUILD_HASH === 'dev' || !target || target === 'unknown' || target === 'unavailable') return;
     if (target === DEPLOY_ID) {
       sessionStorage.removeItem(GUARD_KEY);
       return;

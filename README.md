@@ -25,11 +25,14 @@ A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lo
 ```sh
 npm install
 npm run mock     # offline preview with fake data on http://localhost:5173
+npm run preview:local   # the test build at http://localhost:4180; open tabs reload on each rebuild
 npm run dev      # live against HA (set VITE_HA_URL=http://homeassistant.local off-box)
 npm run build    # dist/index.html (the app) + dist/dashboard-config.json (your config)
 ```
 
 Each device logs in to HA once through the normal OAuth screen and keeps its own token.
+
+Working with Claude Code, the local preview rebuilds by itself after every agent turn (a Stop hook in `.claude/settings.json`), so a tab on http://localhost:4180 always shows the latest change. If the repo lives somewhere that can't hold `node_modules` (such as Google Drive), put `BUILD_DIR=<a local folder>` in `.env.local`.
 
 ## Your config
 
@@ -63,11 +66,16 @@ HA stays off the internet and GitHub never holds an HA token. One-time setup: [d
 
 **Manual deploy** (no CI, or for testing): mount the HA `config` Samba share, then run `python scripts/deploy.py`.
 
+### Preview
+
+Every push to a pull request, and every release, also deploys a **preview** next to the live dashboard, at `/local/dashboard/preview/index.html` (add `?layout=tablet|phone|desktop`). It's the same test version as `npm run mock`: fake data from the example config and no connection to your home, with the sky test panel open to try any hour, weather, wind, humidity and moon phase. Use it to check a pull request on the iPad or a phone before merging. The live dashboard is never touched, and the preview reloads itself when a newer build lands. One-time setup: section 6 of [docs/home-assistant.md](docs/home-assistant.md).
+
 ## Kiosk URLs
 
 ```
 http://homeassistant.local/local/dashboard/index.html?layout=tablet
 http://homeassistant.local/local/dashboard/index.html?layout=phone
+http://homeassistant.local/local/dashboard/preview/index.html?layout=tablet   # preview (fake data)
 ```
 
 ## Security and privacy
