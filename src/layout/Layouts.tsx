@@ -7,18 +7,12 @@ import { MealsPanel } from '../panels/MealsPanel';
 import { RoomsPanel } from '../panels/RoomsPanel';
 import { TopBar } from '../panels/TopBar';
 import { WeatherPanel } from '../panels/WeatherPanel';
-import type { ThemeMode } from '../theme/useSunTheme';
-
-interface LayoutProps {
-  themeMode: ThemeMode;
-  onTheme: () => void;
-}
 
 // iPad kiosk: three columns that each scroll on their own, page never scrolls.
-export function TabletLayout(p: LayoutProps) {
+export function TabletLayout() {
   return (
     <div className="layout tablet">
-      <TopBar themeMode={p.themeMode} onTheme={p.onTheme} />
+      <TopBar />
       <main className="cols cols-3">
         <div className="col">
           <EnergyPanel />
@@ -37,10 +31,10 @@ export function TabletLayout(p: LayoutProps) {
   );
 }
 
-export function DesktopLayout(p: LayoutProps) {
+export function DesktopLayout() {
   return (
     <div className="layout desktop">
-      <TopBar themeMode={p.themeMode} onTheme={p.onTheme} />
+      <TopBar />
       <main className="cols cols-4">
         <div className="col">
           <EnergyPanel />
@@ -69,7 +63,7 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'more', label: 'More', icon: 'music' },
 ];
 
-export function PhoneLayout(p: LayoutProps) {
+export function PhoneLayout() {
   const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem('dashTab') as Tab) || 'home');
   const select = (t: Tab) => {
     sessionStorage.setItem('dashTab', t);
@@ -79,7 +73,7 @@ export function PhoneLayout(p: LayoutProps) {
 
   return (
     <div className="layout phone">
-      <TopBar themeMode={p.themeMode} onTheme={p.onTheme} compact />
+      <TopBar compact />
       <main className="phone-body">
         {tab === 'home' && (
           <>

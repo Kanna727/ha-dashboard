@@ -6,7 +6,6 @@ import { isOn } from '../ha/format';
 import { useNow } from '../hooks/useNow';
 import { Icon } from '../components/Icon';
 import { useModal } from '../components/Modal';
-import type { ThemeMode } from '../theme/useSunTheme';
 import { useIssues } from './useIssues';
 import { MusicPlayer, PlayerDots, activePlayers } from './MusicPlayer';
 import { cycle, useSwipe } from '../hooks/useSwipe';
@@ -159,7 +158,7 @@ function StatusPill() {
   );
 }
 
-export function TopBar({ themeMode, onTheme, compact = false }: { themeMode: ThemeMode; onTheme: () => void; compact?: boolean }) {
+export function TopBar({ compact = false }: { compact?: boolean }) {
   const { userName } = useHassStatus();
   const now = useNow(1000);
   const first = userName?.split(' ')[0];
@@ -179,10 +178,6 @@ export function TopBar({ themeMode, onTheme, compact = false }: { themeMode: The
         <NowPlayingPill />
         <StatusPill />
         <LeaveHomeButton />
-        <button className="pill icon-pill" onClick={onTheme} aria-label={`Theme: ${themeMode}`} title={`Theme: ${themeMode}`}>
-          <Icon name="theme" size={22} />
-          {themeMode === 'auto' && <span className="auto-dot" />}
-        </button>
       </div>
       <div className="big-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
     </header>

@@ -28,8 +28,11 @@ const list: HassEntity[] = [
   e('sun.sun', 'below_horizon', {
     next_rising: new Date(Date.now() + 9 * 3600_000).toISOString(),
     next_setting: new Date(Date.now() + 21 * 3600_000).toISOString(),
+    elevation: -38.4,
+    azimuth: 282,
+    rising: false,
   }),
-  e('weather.forecast_home', 'partlycloudy', { temperature: 27.9, humidity: 92, wind_speed: 8.6, wind_speed_unit: 'km/h' }),
+  e('weather.forecast_home', 'partlycloudy', { temperature: 27.9, humidity: 92, wind_speed: 8.6, wind_speed_unit: 'km/h', wind_bearing: 240 }),
   e('sensor.outdoor_temperature', '27.9'),
   e('person.alex', 'home', { friendly_name: 'Alex' }),
   // Placeholder coordinates only; never real locations in fixtures.

@@ -38,18 +38,6 @@ function shortPlaceLabel(name: string | undefined, address: string | undefined):
 
 const timeLabel = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-// Tracks the resolved dashboard theme so the map can match it.
-function useDocumentTheme(): 'dark' | 'light' {
-  const read = (): 'dark' | 'light' => (document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
-  const [theme, setTheme] = useState(read);
-  useEffect(() => {
-    const obs = new MutationObserver(() => setTheme(read()));
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-    return () => obs.disconnect();
-  }, []);
-  return theme;
-}
-
 // Commute settings live on the Lovelace card; undefined = loading, null = not found.
 export function useCommuteConfig(): { config: CommuteConfig | null | undefined; error?: string } {
   const hass = useHass();
@@ -86,7 +74,6 @@ export function CommuteCard({ mapHeight }: { mapHeight?: number }) {
 }
 
 export function CommuteMap({ config, mapHeight }: { config: CommuteConfig; mapHeight?: number }) {
-  const theme = useDocumentTheme();
   const now = useNow(15_000);
 
   const mapDiv = useRef<HTMLDivElement>(null);
@@ -116,7 +103,7 @@ export function CommuteMap({ config, mapHeight }: { config: CommuteConfig; mapHe
     setRecents((prev) => [p, ...prev.filter((r) => r.label !== p.label)].slice(0, MAX_RECENTS));
   }, []);
 
-  // Map + traffic layer; rebuilt when the theme flips so colorScheme matches.
+  // Map + traffic layer, in the dashboard's dark scheme.
   useEffect(() => {
     let cancelled = false;
     loadGoogleMaps(config.apiKey)
@@ -125,7 +112,7 @@ export function CommuteMap({ config, mapHeight }: { config: CommuteConfig; mapHe
         const map = new google.maps.Map(mapDiv.current, {
           zoom: 12,
           center: config.center,
-          colorScheme: theme === 'dark' ? google.maps.ColorScheme.DARK : google.maps.ColorScheme.LIGHT,
+          colorScheme: google.maps.ColorScheme.DARK,
           disableDefaultUI: true,
           zoomControl: true,
           gestureHandling: 'cooperative',
@@ -157,7 +144,7 @@ export function CommuteMap({ config, mapHeight }: { config: CommuteConfig; mapHe
       overlays.current = [];
       mapRef.current = null;
     };
-  }, [config, theme, choosePlace]);
+  }, [config, choosePlace]);
 
   // Fetch routes whenever the trip changes, on manual refresh, or on the timer.
   useEffect(() => {
@@ -324,7 +311,7 @@ export function CommuteMap({ config, mapHeight }: { config: CommuteConfig; mapHe
       )}
 
       <div className="commute-map" style={{ height }}>
-        <div ref={mapDiv} key={theme} className="commute-map-inner" />
+        <div ref={mapDiv} className="commute-map-inner" />
         {hoverTip && <div className="commute-tip">{hoverTip}</div>}
       </div>
       <div className="commute-legend small muted">

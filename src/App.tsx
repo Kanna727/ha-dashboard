@@ -4,8 +4,8 @@ import { SheetProvider } from './components/Sheet';
 import { ToastProvider } from './components/Toasts';
 import { Alerts } from './components/Alerts';
 import { NightMode } from './components/NightMode';
+import { SkyBackdrop } from './components/SkyBackdrop';
 import { DesktopLayout, PhoneLayout, TabletLayout } from './layout/Layouts';
-import { useSunTheme } from './theme/useSunTheme';
 import { useSelfUpdate } from './update/useSelfUpdate';
 
 type LayoutName = 'tablet' | 'phone' | 'desktop';
@@ -22,7 +22,6 @@ function detectLayout(): LayoutName {
 
 export function App() {
   const [layout, setLayout] = useState<LayoutName>(detectLayout);
-  const theme = useSunTheme();
   useSelfUpdate();
 
   useEffect(() => {
@@ -31,14 +30,14 @@ export function App() {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  const props = { themeMode: theme.mode, onTheme: theme.cycle };
   return (
     <SheetProvider>
       <ModalProvider>
         <ToastProvider>
+          <SkyBackdrop />
           <Alerts />
           <NightMode layout={layout} />
-          {layout === 'phone' ? <PhoneLayout {...props} /> : layout === 'tablet' ? <TabletLayout {...props} /> : <DesktopLayout {...props} />}
+          {layout === 'phone' ? <PhoneLayout /> : layout === 'tablet' ? <TabletLayout /> : <DesktopLayout />}
         </ToastProvider>
       </ModalProvider>
     </SheetProvider>
