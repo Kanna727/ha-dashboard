@@ -3,6 +3,7 @@
 interface ImportMetaEnv {
   readonly VITE_HA_URL?: string;
   readonly VITE_MOCK?: string;
+  readonly VITE_PREVIEW?: string; // '1' in the deployed preview build (scripts/build-preview.sh)
 }
 
 // Embedded config for dev and mock builds; null in production, where the app

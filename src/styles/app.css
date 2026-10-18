@@ -477,6 +477,7 @@ button.wide { width: 100%; }
   width: min(340px, calc(100vw - 32px)); display: grid; gap: 8px; padding: 12px 14px; border-radius: 18px; font-size: 13px; font-weight: 600;
   background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--panel-border); box-shadow: var(--shadow); user-select: none; }
 .sky-test-head { display: flex; align-items: center; gap: 8px; }
+.sky-test-build { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: -4px; font-variant-numeric: tabular-nums; }
 .sky-test-head strong { flex: 1; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label); }
 .sky-test-head button { width: 28px; height: 28px; border-radius: 9px; background: var(--card); font-size: 16px; }
 .sky-test-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 74px 26px; align-items: center; gap: 8px; }

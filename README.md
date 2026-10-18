@@ -63,11 +63,16 @@ HA stays off the internet and GitHub never holds an HA token. One-time setup: [d
 
 **Manual deploy** (no CI, or for testing): mount the HA `config` Samba share, then run `python scripts/deploy.py`.
 
+### Preview
+
+Every push to a pull request, and every release, also deploys a **preview** next to the live dashboard, at `/local/dashboard/preview/index.html` (add `?layout=tablet|phone|desktop`). It's the same test version as `npm run mock`: fake data from the example config and no connection to your home, with the sky test panel open to try any hour, weather, wind, humidity and moon phase. Use it to check a pull request on the iPad or a phone before merging. The live dashboard is never touched, and the preview reloads itself when a newer build lands. One-time setup: section 6 of [docs/home-assistant.md](docs/home-assistant.md).
+
 ## Kiosk URLs
 
 ```
 http://homeassistant.local/local/dashboard/index.html?layout=tablet
 http://homeassistant.local/local/dashboard/index.html?layout=phone
+http://homeassistant.local/local/dashboard/preview/index.html?layout=tablet   # preview (fake data)
 ```
 
 ## Security and privacy

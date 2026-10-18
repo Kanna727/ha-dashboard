@@ -21,7 +21,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "BUILD_HASH=${nextRelease.version} npm run build"
+        "prepareCmd": "BUILD_HASH=${nextRelease.version} npm run build && bash scripts/build-preview.sh ${nextRelease.version}"
       }
     ],
     [
@@ -58,6 +58,16 @@
           {
             "path": "dist/apple-touch-icon.png",
             "label": "apple-touch-icon.png"
+          },
+          {
+            "path": "dist-preview/index.html",
+            "name": "preview-index.html",
+            "label": "preview-index.html"
+          },
+          {
+            "path": "dist-preview/version.json",
+            "name": "preview-version.json",
+            "label": "preview-version.json"
           }
         ],
         "successComment": false,

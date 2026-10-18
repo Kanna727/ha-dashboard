@@ -3,7 +3,9 @@ name: Release
 # Every merge to main: semantic-release reads the Conventional Commits since the
 # last tag, and if any are feat/fix/perf (or breaking) it tags vX.Y.Z, updates
 # CHANGELOG.md and publishes a GitHub Release with the built index.html.
-# The deploy job then tells Home Assistant to install that release. Running the
+# The deploy job then tells Home Assistant to install that release, and
+# deploy-preview installs the release's preview build (the mock dashboard) at
+# /local/dashboard/preview/. Running the
 # workflow by hand (Actions → Release → Run workflow) redeploys the latest release
 # when there is nothing new to release.
 on:
@@ -107,3 +109,44 @@ jobs:
             curl -fsS --max-time 20 -X POST -H 'Content-Type: application/json' --data @- \
               "http://$HA_HOST/api/webhook/$HA_WEBHOOK_ID"
           echo "Asked Home Assistant to install v$VERSION"
+
+  deploy-preview:
+    # The release also carries a preview build (the mock dashboard with the sky
+    # test panel, preview-index.html + preview-version.json); HA installs it at
+    # /local/dashboard/preview/ through its own webhook, never touching the live
+    # files. It runs after the live deploy and waits a minute, so the two
+    # automations' downloads don't overlap. Pull requests deploy previews too
+    # (preview.yml).
+    needs: [release, deploy]
+    if: needs.release.outputs.published == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+      HA_HOST: ${{ vars.HA_TAILNET_HOST }}
+      HAS_SECRETS: ${{ secrets.TS_OAUTH_CLIENT_ID != '' && secrets.HA_PREVIEW_WEBHOOK_ID != '' }}
+    steps:
+      - name: Check deploy setup
+        if: env.HAS_SECRETS != 'true' || env.HA_HOST == ''
+        run: |
+          echo "::warning::Preview deploy skipped: set the HA_PREVIEW_WEBHOOK_ID secret (see docs/home-assistant.md)."
+      - uses: actions/checkout@v7
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+      - name: Join tailnet
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Trigger HA preview deploy
+        if: env.HAS_SECRETS == 'true' && env.HA_HOST != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HA_PREVIEW_WEBHOOK_ID: ${{ secrets.HA_PREVIEW_WEBHOOK_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$VERSION" ]; then
+            VERSION=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName | sed 's/^v//')
+          fi
+          sleep 60
+          bash scripts/ha-deploy-preview.sh "v$VERSION" "$VERSION"

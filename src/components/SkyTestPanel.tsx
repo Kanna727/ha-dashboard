@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { SkyScene } from '../lib/skyScene';
+import { BUILD_HASH } from '../update/useSelfUpdate';
 import { CONDITIONS, fmtHour, moonName } from '../lib/skySim';
 
 // ?skyTest (any build): a floating panel to preview the page sky at any hour,
 // in any weather, wind, humidity and moon phase. Only the page sky follows it;
 // nothing is sent to HA.
-export const SKY_TEST = new URLSearchParams(window.location.search).has('skyTest');
+// The deployed preview build shows it by default.
+export const SKY_TEST = new URLSearchParams(window.location.search).has('skyTest') || import.meta.env.VITE_PREVIEW === '1';
 
 export interface SkySim {
   hour: number | null; // each null = live
@@ -81,6 +83,7 @@ export function SkyTestPanel({ sim, onChange, live, scene }: { sim: SkySim; onCh
           –
         </button>
       </div>
+      {import.meta.env.VITE_PREVIEW === '1' && <div className="sky-test-build">Preview build {BUILD_HASH}</div>}
       <Row
         label="Time"
         min={0}
