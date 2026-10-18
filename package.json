@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "mock": "VITE_MOCK=1 vite",
+    "preview:local": "node scripts/local-preview.mjs",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",

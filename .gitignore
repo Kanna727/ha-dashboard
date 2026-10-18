@@ -2,6 +2,7 @@ node_modules
 dist
 dist-mock
 dist-preview
+.local-preview
 test-results
 playwright-report
 .env*

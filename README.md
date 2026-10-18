@@ -25,11 +25,14 @@ A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lo
 ```sh
 npm install
 npm run mock     # offline preview with fake data on http://localhost:5173
+npm run preview:local   # the test build at http://localhost:4180; open tabs reload on each rebuild
 npm run dev      # live against HA (set VITE_HA_URL=http://homeassistant.local off-box)
 npm run build    # dist/index.html (the app) + dist/dashboard-config.json (your config)
 ```
 
 Each device logs in to HA once through the normal OAuth screen and keeps its own token.
+
+Working with Claude Code, the local preview rebuilds by itself after every agent turn (a Stop hook in `.claude/settings.json`), so a tab on http://localhost:4180 always shows the latest change. If the repo lives somewhere that can't hold `node_modules` (such as Google Drive), put `BUILD_DIR=<a local folder>` in `.env.local`.
 
 ## Your config
 

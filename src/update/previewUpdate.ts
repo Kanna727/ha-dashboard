@@ -6,9 +6,12 @@ import { BUILD_HASH } from './useSelfUpdate';
 // bypassing the HTTP cache (HA serves /local/ with a 31-day max-age), and when
 // a newer build is there it reloads with ?v=<version>, a URL the cache hasn't
 // seen. Deploys write version.json last, after index.html.
-// A local mock has no version.json, so this does nothing there.
+// `npm run mock` has no version.json, so this does nothing there; the local
+// preview (scripts/local-preview.mjs) writes one on every rebuild.
 
-const CHECK_MS = 5 * 60_000;
+// Every 5 minutes on HA; every 2 s for the local preview, so a tab follows each rebuild.
+const LOCAL = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+const CHECK_MS = LOCAL ? 2_000 : 5 * 60_000;
 const GUARD_KEY = 'dashPreviewReloadFor';
 
 async function check() {
