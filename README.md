@@ -2,14 +2,9 @@
 
 A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lovelace on a wall-mounted iPad, a phone and the desktop, and keeps itself up to date: merge a PR and every screen in the house reloads into the new release.
 
-![Tablet layout, dark theme](docs/screenshots/tablet-dark.png)
+![Tablet layout at dusk, city skyline](docs/screenshots/tablet.png)
 
-<table>
-  <tr>
-    <td width="62%"><img src="docs/screenshots/tablet-light.png" alt="Tablet layout, light theme"></td>
-    <td><img src="docs/screenshots/phones.png" alt="Phone layout, dark and light"></td>
-  </tr>
-</table>
+<p align="center"><img src="docs/screenshots/phones.png" width="62%" alt="Phone layout: a morning and a moonlit night"></p>
 
 <sub>Screenshots use the built-in mock with a fictional home.</sub>
 
@@ -18,11 +13,11 @@ A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lo
 - **Three layouts**: a 3-column tablet kiosk, a 4-column desktop, and a phone layout with bottom tabs (`?layout=tablet|desktop|phone`, or picked from the viewport).
 - **Rooms at a glance**: one-tap lights and fan/geyser buttons, presence, temperature and humidity. Each room's fan speed is drawn across its card; slide sideways to change it.
 - **Live energy tree**: particles flow to the top consumers right now, each at a speed set by that plug's own draw; 30 days of daily kWh in the Power popup. New smart plugs are discovered automatically.
-- **Weather** with animated skies, a sun/moon arc and a rain-coming heads-up, plus a car card (optionally a 3D model of your car in your paint colour, showing open doors, lights, heaters and warnings where they are on the car, that you can turn and sit inside; with remote climate, refresh, hazards and horn), commute traffic (Google Routes), media, appliances and a meal plan.
+- **Weather** with hourly and daily forecasts, sunrise and sunset, and a rain-coming heads-up, plus a car card (optionally a 3D model of your car in your paint colour, showing open doors, lights, heaters and warnings where they are on the car, that you can turn and sit inside; with remote climate, refresh, hazards and horn), commute traffic (Google Routes), media, appliances and a meal plan.
 - **Alive, not busy**: lit rooms glow, a soft breeze drifts across rooms with a fan on, cards zoom into their details, and banners (with a soft chime) say when the washer is done or a door is left open.
 - **Night screen** on the kiosk: a dim, burn-in-safe clock after a few idle minutes at night.
 - **Instant loads**: a single self-contained file that paints from a cached snapshot in ~80 ms, then syncs live over the HA WebSocket API.
-- **Themes** follow the sun (`?theme=auto|dark|light`).
+- **A living city skyline** behind everything, in a dark theme: towers that light up floor by floor at night, a metro line, and a sky that follows the sun, the moon's place and phase, clouds, rain, thunderstorms and humidity; the wind shows in the swaying tree, drifting clouds and slanting rain. Add `?skyTest` to try any hour and weather.
 - **Installable on the phone**: open it over HTTPS and choose "Install app" / "Add to Home Screen" for a full-screen app.
 
 ## Quick start

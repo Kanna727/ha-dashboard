@@ -4,8 +4,8 @@ import { useForecast } from '../ha/forecast';
 import { useEntity } from '../ha/store';
 import { num } from '../ha/format';
 import { WeatherIcon } from '../components/WeatherIcon';
-import { WeatherBackdrop } from '../components/WeatherBackdrop';
-import { SkyArc } from '../components/SkyArc';
+import { Icon } from '../components/Icon';
+import { sunTimes } from '../lib/sky';
 import { PanelHead } from '../components/Modal';
 import { conditionLabel } from './TopBar';
 
@@ -34,6 +34,23 @@ export function nightAt(t: number, rising?: string, setting?: string) {
   return t < r || t >= s; // currently night: until sunrise, and again after the next sunset
 }
 
+const hhmm = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+// Today's sunrise and sunset (the page sky shows where the sun and moon are).
+function SunTimes({ sun }: { sun: ReturnType<typeof useEntity> }) {
+  const times = sunTimes(sun?.state === 'above_horizon', sun?.attributes.next_rising as string, sun?.attributes.next_setting as string);
+  if (!times.length) return null;
+  return (
+    <div className="wx-sun">
+      {times.map(({ kind, at }) => (
+        <span key={kind} title={kind === 'sunrise' ? 'Sunrise' : 'Sunset'}>
+          <Icon name={kind} size={16} />
+          {hhmm(at)}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export function WeatherPanel({ days = 5 }: { days?: number }) {
   const hass = useHass();
@@ -50,7 +67,6 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
 
   return (
     <section className="panel weather-panel">
-      <WeatherBackdrop condition={weather?.state} night={night} />
       <PanelHead
         label="Weather"
         summary={`${a.humidity ?? '–'}% humidity · wind ${a.wind_speed !== undefined ? Math.round(a.wind_speed as number) : '–'} ${a.wind_speed_unit ?? 'km/h'}`}
@@ -65,9 +81,9 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
               High {Math.round(today.temperature)}°{today.templow !== undefined && ` · Low ${Math.round(today.templow)}°`}
             </div>
           )}
+          <SunTimes sun={sun} />
         </div>
       </div>
-      <SkyArc sun={sun} />
       {hourly.length > 0 && (
         <div className="wx-hours" aria-label="Hourly forecast">
           {hoursForToday(hourly).map((h, i, all) => {
