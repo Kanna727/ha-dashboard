@@ -633,7 +633,7 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .room-row.lit { background: color-mix(in srgb, var(--room-light, var(--accent-light)) 10%, var(--card)); border-color: color-mix(in srgb, var(--room-light, var(--accent-light)) 55%, transparent); }
 .room-row.fan-held { box-shadow: inset 4px 0 0 var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--card)); }
 .room-row.fan-held.lit { background: color-mix(in srgb, var(--danger) 5%, color-mix(in srgb, var(--room-light, var(--accent-light)) 10%, var(--card))); }
-.hold-note { margin-top: 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: var(--danger); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
+.hold-note { margin-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: var(--danger); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
 .row-btn { position: relative; }
 .room-row { position: relative; isolation: isolate; }
 .room-row-progress { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none; }
@@ -707,7 +707,7 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
   to { transform: skewX(calc(var(--sway, 4deg) * var(--m, 1))) scaleY(0.985); }
 }
 @keyframes curtain-flutter { from { transform: skewX(calc(var(--sway, 4deg) * -0.12)); } to { transform: skewX(calc(var(--sway, 4deg) * 0.12)); } }
-/* Dishwasher: dishes standing in a rack at the card's bottom right
+/* Dishwasher: dishes standing in a rack at the card's top right
    (components/DishRack.tsx, an inline SVG). While a cycle runs they start
    dirty and come clean as the progress rises: each food smudge fades out over
    the 25 % before its own mark and a grime film thins away (lib/dishes.ts), so
@@ -718,7 +718,7 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
    they read in both themes. Under reduced motion the dishes stay (the dirt
    still shows progress) but the rinse, glint and sparkles don't. */
 .dish-rack {
-  position: absolute; right: 12px; bottom: 8px; width: 108px; height: 54px; z-index: -1; pointer-events: none;
+  position: absolute; right: 12px; top: 6px; width: 68px; height: 34px; z-index: -1; pointer-events: none;
   --dish: color-mix(in srgb, #fff 84%, var(--card)); --dish-edge: color-mix(in srgb, var(--muted) 55%, var(--card));
 }
 .dish-rack svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -826,51 +826,57 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .hold-banner svg { flex-shrink: 0; margin-top: 1px; }
 .hold-banner span { color: var(--text); }
 .hold-banner strong { color: var(--danger); }
-.room-row-icon {
-  width: 46px; height: 46px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-  background: var(--tile); color: var(--muted);
-}
-.room-row.lit .room-row-icon { color: var(--accent-light); background: color-mix(in srgb, var(--accent-light) 16%, transparent); }
-.room-row-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.room-row-name { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; padding-left: 2px; }
-.room-row-sub { font-size: 13px; color: var(--muted); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
-.room-row-sub.lit { color: var(--accent-light); font-weight: 600; }
+/* Room card: a small room icon by the name (yellow while lit), the readings,
+   a note line for what the chips can't show, and the control chips along the bottom. */
+.room-row-head { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--muted); }
+.room-row-head > svg { flex-shrink: 0; transition: color 0.25s; }
+.room-row.lit .room-row-head > svg { color: var(--accent-light); }
+.room-row-name { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; color: var(--text); }
+/* overflow: hidden cuts long names, so pad it (and take the padding back) to leave room for the presence ping, which reaches ~10px past its dot. */
+.room-row-name { padding-block: 8px; padding-right: 12px; margin: -8px -12px -8px 0; }
+.room-row-sub { margin-top: 2px; font-size: 13px; color: var(--warn); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
 /* Temperature · humidity · light level. Red (.held) while a reading is what keeps the room's fan or lights
    from switching on: the automations' own thresholds (lib/thresholds.ts). */
-.room-row-readings { font-size: 12.5px; color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; font-variant-numeric: tabular-nums; }
+.room-row-readings { margin-top: 3px; font-size: 12.5px; color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; font-variant-numeric: tabular-nums; }
 .room-row-readings svg { vertical-align: -2px; margin-right: 2px; }
 .room-row-readings .held { color: var(--danger); font-weight: 800; }
 .presence-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); flex-shrink: 0; }
 .door-warn { color: var(--warn); flex-shrink: 0; }
-/* margin-left: auto keeps the buttons right-aligned when the room icon is hidden. */
-.row-buttons { display: flex; gap: 8px; flex-shrink: 0; margin-left: auto; }
+/* Control chips: off is a plain icon; on grows (flex-grow eases, only on a
+   switch) with a label, and the light and fan fill from the left to their level
+   (--level is registered so the fill glides). The held quick fan says "Held" in red.
+   margin-top: auto lines the chips up along the bottom of a grid row. */
+@property --level { syntax: '<percentage>'; inherits: false; initial-value: 100%; }
+.row-buttons { display: flex; gap: 6px; width: 100%; margin-top: auto; padding-top: 10px; }
 .row-btn {
   --tint: var(--accent-light);
-  width: 46px; height: 46px; border-radius: 15px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
-  background: var(--tile); color: var(--muted); border: 1px solid var(--border); transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  flex: 1 1 0; min-width: 0; height: 40px; border-radius: 13px; padding: 0 6px; display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  background: var(--tile); color: var(--muted); border: 1px solid var(--border);
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s, flex-grow 0.3s ease, --level 0.35s ease;
 }
 .row-btn.fan { --tint: var(--accent-fan); }
 .row-btn.geyser { --tint: #fb923c; }
 .row-btn.washer { --tint: var(--accent-energy); }
 .row-btn.dishwasher { --tint: #2dd4bf; }
+.row-btn.on { flex-grow: 2.2; background: var(--tint); color: var(--on-text); box-shadow: 0 0 22px color-mix(in srgb, var(--tint) 50%, transparent); border-color: transparent; }
+.row-btn.lvl-fill.on { background: linear-gradient(90deg, var(--tint) var(--level), color-mix(in srgb, var(--tint) 62%, var(--card)) var(--level)); }
+/* While sliding, the fill follows the finger with no lag. */
+.room-row.sliding .row-btn.fan.lvl-fill, .row-btn.bulb.lvl-fill.sliding { transition-duration: 0.2s, 0.2s, 0.2s, 0.15s, 0.3s, 0s; }
+.row-btn.held { flex-grow: 1.8; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.row-btn-label { position: relative; font-size: 12.5px; letter-spacing: -0.01em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 /* An odd last room card (Utility) spans both columns instead of leaving a hole,
-   which also gives its three buttons room. */
+   which also gives its three chips room. */
 .room-rows > .room-row:last-child:nth-child(odd) { grid-column: 1 / -1; }
-/* A half-width card can't fit the room icon plus three buttons; the buttons
-   win and the name still says which room. */
-.room-rows > .room-row:not(:last-child:nth-child(odd)):has(.row-buttons > :nth-child(3)) .room-row-icon { display: none; }
 .detail-card { margin-top: 16px; }
 .detail-card .card { margin: 0; }
 .leave-home { color: var(--accent); }
 .leave-home.confirm { width: auto; padding: 0 16px; gap: 8px; color: var(--warn); border-color: var(--warn); }
 .leave-home.note { width: auto; padding: 0 16px; gap: 8px; color: var(--ok); border-color: var(--ok); }
 .pill-hint { font-size: 14px; font-weight: 700; }
-.row-btn.on { background: var(--tint); color: var(--on-text); box-shadow: 0 0 22px color-mix(in srgb, var(--tint) 50%, transparent); border-color: transparent; }
-/* Lights button: drag up/down to dim (useSlide axis 'y'), so it takes every
-   touch; while dragging it grows a little and fills from the bottom with the level. */
-.row-btn.bulb { touch-action: none; overflow: hidden; transition: background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s; }
-.row-btn.bulb.sliding { transform: scale(1.12); z-index: 1; }
-.bulb-level { position: absolute; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, #fff 45%, transparent); pointer-events: none; }
+/* Lights chip: drag up/down to dim (useSlide axis 'y'), so it takes every
+   touch; while dragging it grows a little and its fill follows the level. */
+.row-btn.bulb { touch-action: none; overflow: hidden; }
+.row-btn.bulb.sliding { transform: scale(1.06); z-index: 1; }
 .row-btn.bulb > svg { position: relative; }
 /* Ceiling-fan icon (components/FanIcon.tsx): static mount and motor over a
    blade layer centred on the hub (12, 13.5 of the 24-unit icon), tilted nearly
@@ -1311,9 +1317,10 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .phone-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .phone-body > * { min-width: 0; }
 .phone-body .room-row { padding: 10px 10px 12px; }
-.phone-body .row-buttons { gap: 6px; }
-.phone-body .row-btn, .phone-body .room-row-icon { width: 40px; height: 40px; border-radius: 13px; }
-@media (max-width: 390px) { .phone-body .room-row-icon { display: none; } .phone-body .room-row-top { justify-content: flex-end; } }
+/* Narrow chips: tighter, and the dishwasher's "done" is dropped ("42% · 7:40"). */
+.phone-body .row-btn { gap: 3px; padding: 0 4px; }
+.phone-body .row-btn-label { font-size: 12px; }
+.phone-body .lbl-word { display: none; }
 .phone-body .panel { padding: 16px; border-radius: 24px; }
 .phone-body .action-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 .phone-body .action { min-height: 0; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; padding: 10px; border-radius: 18px; }
