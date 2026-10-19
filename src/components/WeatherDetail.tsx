@@ -16,7 +16,7 @@ const thisHour = (hourly: ForecastDay[]) => {
   return hourly.find((h) => Date.parse(h.datetime) > now - 3_600_000);
 };
 
-interface Stat {
+export interface Stat {
   key: string;
   icon: IconName;
   label: string;
@@ -28,7 +28,7 @@ interface Stat {
 }
 
 // Every reading worth showing, best first; ones the integration lacks drop out.
-function stats(n: WeatherNow, hourly: ForecastDay[]): Stat[] {
+export function stats(n: WeatherNow, hourly: ForecastDay[]): Stat[] {
   const out: (Stat | false)[] = [];
   const rain = n.rainChance ?? thisHour(hourly)?.precipitation_probability;
   const raining = n.rainRate !== undefined && n.rainRate > 0;
@@ -143,16 +143,16 @@ function useWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
-// Next 24 hours: icons on top, the temperature line, then rain-chance bars
+// Next `count` hours: icons on top, the temperature line, then rain-chance bars
 // (mm when the forecast has no chance) above the hour labels.
-function HourlyChart({ hourly }: { hourly: ForecastDay[] }) {
+export function HourlyChart({ hourly, count = 24, minSlot = MIN_SLOT }: { hourly: ForecastDay[]; count?: number; minSlot?: number }) {
   const sun = useEntity(SUN);
   const [wrap, wrapWidth] = useWidth<HTMLDivElement>();
   const start = Date.now() - 3_600_000;
-  const hours = hourly.filter((h) => Date.parse(h.datetime) > start).slice(0, 24);
+  const hours = hourly.filter((h) => Date.parse(h.datetime) > start).slice(0, count);
   if (hours.length < 2) return null;
 
-  const slot = Math.max(MIN_SLOT, wrapWidth / hours.length);
+  const slot = Math.max(minSlot, wrapWidth / hours.length);
   const width = hours.length * slot;
   const temps = hours.map((h) => h.temperature);
   const lo = Math.min(...temps);
@@ -170,7 +170,7 @@ function HourlyChart({ hourly }: { hourly: ForecastDay[] }) {
 
   return (
     <div className="wx-chart-wrap" ref={wrap}>
-      <svg className="wx-chart" width={width} height={CHART_H} viewBox={`0 0 ${width} ${CHART_H}`} role="img" aria-label="Temperature and rain chance, next 24 hours">
+      <svg className="wx-chart" width={width} height={CHART_H} viewBox={`0 0 ${width} ${CHART_H}`} role="img" aria-label={`Temperature and rain chance, next ${hours.length} hours`}>
         <line className="wx-chart-base" x1={0} x2={width} y1={BAR_BOTTOM + 0.5} y2={BAR_BOTTOM + 0.5} />
         <path className="wx-chart-line" d={line} />
         {hours.map((h, i) => {
@@ -203,12 +203,12 @@ function HourlyChart({ hourly }: { hourly: ForecastDay[] }) {
 }
 
 // The coming days: icon, rain chance and amount, wind, and low–high on a shared scale.
-function DailyList({ days }: { days: ForecastDay[] }) {
+export function DailyList({ days, compact }: { days: ForecastDay[]; compact?: boolean }) {
   if (!days.length) return null;
   const min = Math.min(...days.map((d) => d.templow ?? d.temperature));
   const max = Math.max(...days.map((d) => d.temperature));
   return (
-    <ul className="wx-week">
+    <ul className={`wx-week ${compact ? 'compact' : ''}`}>
       {days.map((d, i) => {
         const lo = d.templow ?? d.temperature;
         const bar = rangeBar(lo, d.temperature, min, max);

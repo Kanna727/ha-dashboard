@@ -316,21 +316,24 @@ export const TODO_ITEMS_2 = [
   { uid: 't2', summary: 'Book AC service', status: 'needs_action' as const },
 ];
 
-// Hourly from the start of the current hour, ~30 h, with an afternoon shower.
+// Hourly from the start of the current hour, ~30 h, with a shower (and a
+// thunderstorm) 3–5 hours from now, so the rain views have something to show at any hour.
+const SHOWER: Record<number, number> = { 2: 20, 3: 60, 4: 80, 5: 70, 6: 30 }; // hours from now → rain chance %
 export const FORECAST_HOURLY = Array.from({ length: 30 }, (_, i) => {
   const t = new Date();
   t.setMinutes(0, 0, 0);
   t.setHours(t.getHours() + i);
   const h = t.getHours();
-  const rainy = h >= 15 && h <= 17;
+  const chance = SHOWER[i] ?? 5;
+  const rainy = chance >= 60;
   const temperature = 22 + 8 * Math.sin(((h - 8) / 24) * 2 * Math.PI);
   return {
     datetime: t.toISOString(),
-    condition: rainy ? 'rainy' : h >= 19 || h < 6 ? 'clear-night' : h < 10 ? 'sunny' : 'partlycloudy',
+    condition: i === 4 ? 'lightning-rainy' : rainy ? 'rainy' : h >= 19 || h < 6 ? 'clear-night' : h < 10 ? 'sunny' : 'partlycloudy',
     temperature,
     apparent_temperature: temperature + 1.5,
     precipitation: rainy ? 1.2 : 0,
-    precipitation_probability: rainy ? 70 : h === 14 || h === 18 ? 30 : 5,
+    precipitation_probability: chance,
     wind_speed: 8 + (h % 5),
     is_daytime: h >= 6 && h < 18,
   };

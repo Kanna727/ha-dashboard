@@ -549,6 +549,102 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .wx-week-bar { position: relative; height: 6px; border-radius: 3px; background: var(--tile); }
 .wx-week-bar i { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, #38bdf8, #fbbf24 60%, #f97316); }
 .wx-attrib { margin: 4px 4px 0; }
+
+/* weather card designs (the owner is choosing one; WeatherDesigns.tsx) */
+.wx-picker { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: -4px 0 12px; padding: 5px; border-radius: 14px; border: 1px dashed var(--border); }
+.wx-picker-label { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label); margin: 0 2px 0 4px; }
+.wx-picker .chip-btn { padding: 4px 8px; font-size: 11.5px; }
+.wx-now.small { gap: 14px; padding-bottom: 12px; }
+.wx-now.small .wx-temp { font-size: 46px; }
+.wx-now.small .wx-cond { font-size: 17px; }
+.wx-now.small .wx-now-img { margin: -8px -6px -8px -8px; }
+
+/* Instruments */
+.wx-dials { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 0 0 12px; }
+.wx-dial { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 8px 4px 10px; border-radius: 16px; background: color-mix(in srgb, var(--card) 72%, transparent); text-align: center; }
+.wx-dial-svg { width: 100%; max-width: 64px; height: auto; overflow: visible; }
+.wx-dial-track { fill: none; stroke: var(--tile); stroke-width: 5; }
+.wx-dial-track.thin { stroke-width: 1.5; stroke: var(--border); }
+.wx-dial-ring { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dasharray 0.8s ease; }
+.wx-dial-ring.rain { stroke: var(--accent-fan); }
+.wx-dial-ring.storm { stroke: var(--accent-light); stroke-width: 3.5; }
+.wx-dial-ring.humidity { stroke: #60a5fa; }
+.wx-dial-tick { stroke: var(--muted); stroke-width: 1.2; opacity: 0.6; }
+.wx-dial-tick.north { stroke: var(--text); opacity: 1; stroke-width: 1.6; }
+.wx-dial-n { font-size: 8px; font-weight: 800; fill: var(--muted); text-anchor: middle; }
+.wx-dial-needle { fill: var(--accent-fan); transform-origin: 32px 32px; transition: transform 0.8s ease; }
+.wx-dial-val { font-size: 15px; font-weight: 800; fill: var(--text); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.wx-dial-pct { font-size: 9px; font-weight: 700; fill: var(--muted); }
+.wx-dial-unit { font-size: 7.5px; font-weight: 700; fill: var(--muted); text-anchor: middle; }
+.wx-uv-band { fill: none; stroke-width: 5; stroke-linecap: round; opacity: 0.85; }
+.wx-uv-band.uv-low { stroke: var(--accent-energy); }
+.wx-uv-band.uv-moderate { stroke: #eab308; }
+.wx-uv-band.uv-high { stroke: #f97316; }
+.wx-uv-band.uv-very-high { stroke: var(--danger); }
+.wx-uv-band.uv-extreme { stroke: #a855f7; }
+.wx-uv-dot { fill: var(--text); stroke: var(--panel); stroke-width: 2; }
+.wx-dial-label { margin-top: 4px; font-size: 11.5px; font-weight: 700; }
+.wx-dial-sub { font-size: 10.5px; font-weight: 600; line-height: 1.25; color: var(--muted); max-width: 100%; overflow-wrap: anywhere; }
+.wx-dial.uv-low .wx-dial-sub { color: var(--accent-energy); }
+.wx-dial.uv-moderate .wx-dial-sub { color: #eab308; }
+.wx-dial.uv-high .wx-dial-sub { color: #f97316; }
+.wx-dial.uv-very-high .wx-dial-sub { color: var(--danger); }
+.wx-dial.uv-extreme .wx-dial-sub { color: #a855f7; }
+
+/* Timeline */
+.wx-outlook { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; padding: 10px 12px; border-radius: 14px; font-size: 14px; font-weight: 700;
+  background: color-mix(in srgb, var(--card) 72%, transparent); }
+.wx-outlook svg { flex-shrink: 0; color: var(--muted); }
+.wx-outlook.wet { background: color-mix(in srgb, var(--accent-fan) 16%, var(--card)); }
+.wx-outlook.wet svg, .wx-outlook.chance svg { color: var(--accent-fan); }
+.wx-outlook.storm { background: color-mix(in srgb, var(--accent-light) 16%, var(--card)); }
+.wx-outlook.storm svg { color: var(--accent-light); }
+.wx-outlook.dry svg { color: var(--accent-light); }
+.wx-rbars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; margin: 0 0 12px; }
+.wx-rbar { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; padding: 4px 0; border-radius: 10px; }
+.wx-rbar.now { background: color-mix(in srgb, var(--card) 72%, transparent); }
+.wx-rbar .wx-img { margin: -3px 0; }
+.wx-rbar-icon { height: 26px; }
+.wx-rbar-temp { font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.wx-rbar-pct { font-size: 9.5px; font-weight: 700; color: var(--accent-fan); min-height: 12px; }
+.wx-rbar-track { position: relative; width: 60%; max-width: 12px; height: 40px; border-radius: 4px; background: color-mix(in srgb, var(--tile) 80%, transparent); overflow: hidden; }
+.wx-rbar-track i { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 4px; background: var(--accent-fan); transition: height 0.6s ease; }
+.wx-rbar-time { font-size: 10.5px; font-weight: 700; color: var(--muted); min-height: 13px; white-space: nowrap; }
+.wx-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.wx-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 10px; border-radius: 999px; font-size: 12px; background: color-mix(in srgb, var(--card) 72%, transparent); }
+.wx-chip > svg { color: var(--muted); }
+.wx-chip b { font-weight: 800; font-variant-numeric: tabular-nums; }
+.wx-chip b small { font-size: 10px; font-weight: 600; color: var(--muted); margin-left: 1px; }
+.wx-chip.warn b, .wx-chip.warn > svg { color: var(--accent-light); }
+.wx-chip.uv-high .muted, .wx-chip.uv-high > svg { color: #f97316; }
+.wx-chip.uv-very-high .muted, .wx-chip.uv-very-high > svg { color: var(--danger); }
+.wx-chip.uv-extreme .muted, .wx-chip.uv-extreme > svg { color: #a855f7; }
+.wx-chip .wx-wind-arrow { margin: 0; }
+.wx-week.compact li { grid-template-columns: 44px 30px 46px 26px minmax(36px, 1fr) 28px; gap: 6px; padding: 3px 0; font-size: 14px; }
+.wx-week.compact .wx-week-cond, .wx-week.compact .wx-week-wind { display: none; }
+.wx-week.compact .wx-img { width: 30px; height: 30px; }
+
+/* Glance */
+.wx-glance { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 12px; align-items: center; margin: 0 0 8px; }
+.wx-glance-hero { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; }
+.wx-glance-hero .wx-now-img { margin: -10px 0 -6px -8px; }
+.wx-glance-hero .wx-temp { font-size: 50px; }
+.wx-glance-hero .wx-cond { font-size: 16px; }
+.wx-glance-hero .wx-sun { gap: 10px; font-size: 12.5px; }
+.wx-glance-list { list-style: none; margin: 0; padding: 4px 10px; border-radius: 16px; background: color-mix(in srgb, var(--card) 72%, transparent); }
+.wx-glance-list li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 6px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.wx-glance-list li:last-child { border-bottom: 0; }
+.wx-glance-list li > svg { color: var(--muted); }
+.wx-glance-label { color: var(--muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wx-glance-val { display: inline-flex; align-items: baseline; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wx-glance-val small { font-size: 10.5px; font-weight: 600; color: var(--muted); margin-left: 2px; }
+.wx-glance-val .wx-wind-arrow { margin-right: 3px; align-self: center; }
+.wx-glance-list li.wet > svg, .wx-glance-list li.wet .wx-glance-val { color: var(--accent-fan); }
+.wx-glance-list li.warn > svg, .wx-glance-list li.warn .wx-glance-val { color: var(--accent-light); }
+.wx-glance-list li.uv-high > svg { color: #f97316; }
+.wx-glance-list li.uv-very-high > svg { color: var(--danger); }
+.wx-glance-list li.uv-extreme > svg { color: #a855f7; }
+.wx-glance + .wx-chart-wrap { margin-bottom: 12px; }
 @media (max-width: 700px) {
   .wx-week li { grid-template-columns: 46px 30px 52px 28px minmax(40px, 1fr) 28px; gap: 6px; }
   .wx-week-cond, .wx-week-wind { display: none; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compass, conditionText, rangeBar, uvLevel, weatherExtras, type ExtraCandidate } from './weather';
+import { compass, conditionText, rainOutlook, rangeBar, uvLevel, weatherExtras, type ExtraCandidate } from './weather';
 
 describe('weather: extra sensors on the weather device', () => {
   const ents: ExtraCandidate[] = [
@@ -58,5 +58,40 @@ describe('weather: formatting', () => {
     expect(rangeBar(22, 26, 20, 30)).toEqual({ left: 20, width: 40 });
     // A day with no spread still shows a sliver.
     expect(rangeBar(25, 25, 20, 30).width).toBe(4);
+  });
+});
+
+describe('weather: rain outlook', () => {
+  const base = Date.UTC(2026, 9, 19, 10, 0);
+  const fmt = (t: number) => `${new Date(t).getUTCHours()}h`;
+  const hours = (spec: [string, number?][]) =>
+    spec.map(([condition, p], i) => ({ datetime: new Date(base + i * 3_600_000).toISOString(), condition, precipitation_probability: p }));
+
+  it('names the wet stretch and when it ends', () => {
+    const h = hours([['cloudy', 10], ['cloudy', 20], ['rainy', 60], ['rainy', 70], ['cloudy', 30]]);
+    expect(rainOutlook(h, base + 60_000, false, 12, fmt)).toEqual({ text: 'Rain likely 12h – 14h', tone: 'wet' });
+  });
+
+  it('says storms when the stretch has lightning, and "now" for the current hour', () => {
+    const h = hours([['lightning-rainy', 50], ['cloudy', 10]]);
+    expect(rainOutlook(h, base + 60_000, false, 12, fmt)).toEqual({ text: 'Storms likely now, until about 11h', tone: 'storm' });
+  });
+
+  it('says when rain eases while it is raining', () => {
+    const h = hours([['rainy', 80], ['rainy', 70], ['cloudy', 20]]);
+    expect(rainOutlook(h, base + 60_000, true, 12, fmt)).toEqual({ text: 'Rain easing around 12h', tone: 'wet' });
+  });
+
+  it('falls back to a small chance, then to dry', () => {
+    expect(rainOutlook(hours([['cloudy', 10], ['cloudy', 25]]), base, false, 12, fmt).tone).toBe('chance');
+    expect(rainOutlook(hours([['sunny', 0], ['sunny', 5]]), base, false, 12, fmt)).toEqual({ text: 'No rain expected in the next 12 hours', tone: 'dry' });
+  });
+
+  it('uses conditions and amounts when the forecast has no chances', () => {
+    const h = [
+      { datetime: new Date(base).toISOString(), condition: 'cloudy' },
+      { datetime: new Date(base + 3_600_000).toISOString(), condition: 'cloudy', precipitation: 0.6 },
+    ];
+    expect(rainOutlook(h, base + 60_000, false, 12, fmt).text).toBe('Rain likely from 11h');
   });
 });
