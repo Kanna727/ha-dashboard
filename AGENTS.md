@@ -67,6 +67,7 @@ src/lib/dishes.ts          dish dirt by progress, dishwasher finish time and shi
 src/lib/lightColor.ts      light capabilities, kelvin/hue maths, colour wheel mapping, "mixed" detection (unit-tested)
 src/lib/throttle.ts        at most one send per 250 ms while dragging, final value on release (unit-tested; hooks/useThrottle)
 src/lib/thresholds.ts      numeric thresholds read from automation configs (fan on above X, lights on below Y) (unit-tested)
+src/lib/weather.ts         weather extras discovery, compass, UV bands, condition text, day range bars, nightAt (unit-tested)
 src/ha/automations.ts      useGates(): every automation's config via automation/config, parsed and cached (dashGates)
 scripts/deploy.py          manual deploy: build, copy index.html to the share, push config, set helper
 scripts/push-config.mjs    saves dist/dashboard-config.json into HA and updates the helper (HA_URL + HA_TOKEN)
@@ -234,6 +235,16 @@ Optional `APPLIANCES.purifier` (an Atomberg-style RO purifier with TDS sensors),
 
 Forecasts come from `useForecast(hass, entity, 'daily'|'hourly')` in `src/ha/forecast.ts`: one HA subscription per entity and type for the whole page, started by the first user and stopped with the last, so the Weather card, the rain nudge and night mode don't each subscribe. `src/lib/rain.ts` (unit-tested) flags the first hourly slot in the next 3 hours that is rainy (or has > 0.2 mm, or ≥ 60 % probability) while the weather entity isn't already rainy; `useIssues` adds it as an `info` issue: "Rain likely soon" (current hour) or "Rain likely around 4 PM". Hourly forecasts only resolve to the hour, so never word it in minutes.
 
+## Weather card
+
+`panels/WeatherPanel.tsx` (card) and `components/WeatherDetail.tsx` (its popup, from the chevron) read the current conditions through `useWeatherNow()` (`components/useWeather.ts`), which is also used by night mode.
+- **Sources:** the `WEATHER` entity's attributes (temperature, `apparent_temperature`, humidity, dew point, wind speed/gust/bearing, UV, visibility, pressure, cloud cover; whatever the integration provides) plus **extra sensors found on the weather entity's device**: condition text, rain chance, rain rate, thunderstorm chance, heat index, wind chill. `weatherExtras()` matches them by registry translation key (`tk` from `list_for_display`, now `RegistryEntity.translationKey`), else by entity ID suffix, else (rain rate) by device class `precipitation_intensity`; the result is cached in `localStorage` (`dashWeatherExtras`). Nothing to configure: switching the weather integration only changes `WEATHER` (and `OUTDOOR_TEMP`). Google Weather has all of them, but most are disabled by default in HA and must be enabled there.
+- **Why Google:** met.no's "current" condition is the next hour's forecast symbol, so any light-rain forecast (0.1–0.5 mm) showed as "rainy" under a dry, partly cloudy sky. Google Weather reports observed current conditions. Its free tier covers the integration's ~4.5k calls a month.
+- **Card:** big icon, temperature, the integration's own condition text in sentence case ("Light rain"), "Feels like" when it differs, the sky arc, then six compact reading tiles (rain chance, storms, wind with an arrow pointing where it blows, humidity + dew point, UV with its WHO band colour, visibility; the list in `stats()` is ordered by importance, and readings the integration lacks drop out). The hourly strip and day tiles show the rain chance (≥ 10 %) when the forecast has one, else millimetres. Header summary: today's high and low.
+- **Popup:** every reading (4 columns, 2 on phones; heat index or wind chill only when they add something to the feels-like), a 24 h SVG chart (icons every 3 h, temperature line, rain-chance bars; it stretches to the card and scrolls sideways below 30 px per hour), and the coming days with rain chance and mm, wind and a low–high bar on a scale shared by all days.
+- **Tablet columns** use `grid-auto-rows: max-content`: a panel with `overflow: hidden` (this card, for its backdrop) has no automatic minimum height, so auto rows squashed it to the column height instead of letting the column scroll.
+- Mock: `weather.forecast_home` has the full attribute set and the six extra sensors on a `dev_weather` registry device; forecasts carry rain chance, wind and `is_daytime`.
+
 ## Sun and moon arc
 
 `src/components/SkyArc.tsx` (in the Weather card, under the current conditions; it replaced the sunrise/sunset chip) draws the sun's arc from sunrise to sunset by day and the moon's from sunset to sunrise by night, with a dot for "now" that glides between once-a-minute positions. The maths is in `src/lib/sky.ts` (unit-tested): `sun.sun` only gives the *next* rising/setting, so today's sunrise is `next_rising − 24 h` by day and the last sunset `next_setting − 24 h` by night. HA has no moon sensor, so the phase is computed from the synodic month against a reference new moon, and `moonLitPath` draws the lit part (right while waxing, left while waning). Night mode reuses the component.
@@ -281,7 +292,7 @@ Each branch is a faint `.flow-track` plus `.flow-particles`: zero-length dashes 
 ## Verifying UI changes
 
 - Always run `npm run typecheck`, `npm test` and `npm run build`. CI and the Release workflow run all three.
-- **Unit tests** (`vitest`, config in `vitest.config.ts`) cover pure logic: fan-speed snapping (`src/lib/fanSpeed.ts`), meal "Next up", plug discovery, `relTime`/`num`, weather hours/night, car distance, commute card extraction. They run in plain Node; `src/test/setup.ts` sets `window` to the global object and loads the example config, as `main.tsx` does. Put new pure helpers somewhere importable without React rendering and add a test beside them (`*.test.ts`, never imported by the app, so never bundled). vitest stays on 3.x: 4.x needs Vite 6+ and Node 20+.
+- **Unit tests** (`vitest`, config in `vitest.config.ts`) cover pure logic: fan-speed snapping (`src/lib/fanSpeed.ts`), meal "Next up", plug discovery, weather extras and formatting, `relTime`/`num`, weather hours/night, car distance, commute card extraction. They run in plain Node; `src/test/setup.ts` sets `window` to the global object and loads the example config, as `main.tsx` does. Put new pure helpers somewhere importable without React rendering and add a test beside them (`*.test.ts`, never imported by the app, so never bundled). vitest stays on 3.x: 4.x needs Vite 6+ and Node 20+.
 - Take visual checks against a **production-mode mock build**, not the dev server. The dev server loads `@mdi/js` slowly, and headless screenshots then capture half-loaded pages.
   ```sh
   VITE_MOCK=1 npx vite build --outDir <scratch>/dist-mock --emptyOutDir
@@ -335,7 +346,7 @@ The room cards colour a reading red when it is what keeps the room's fan or ligh
 
 ## Top bar now-playing pill
 
-`NowPlayingPill` in `TopBar.tsx` shows the first `MUSIC_PLAYERS` entity that is `playing`, else the first `paused` one (`activePlayers` in `MusicPlayer.tsx` lists playing then paused players; with several, swipe the pill or the popup sideways to cycle them, via `hooks/useSwipe.ts`, with dots as the indicator; paused shows a pause icon, "Paused ·" and dimmed art). It shows art or a note icon, title, artist · room and an animated equalizer, and renders nothing when all are idle. Tapping it opens the Music player (`panels/MusicPlayer.tsx`) in a modal; there is no Music panel. On the tablet it is capped at 200 px with the equalizer hidden, so the greeting still fits next to the clock. `conditionLabel` stays exported from `TopBar.tsx` because `WeatherPanel` uses it.
+`NowPlayingPill` in `TopBar.tsx` shows the first `MUSIC_PLAYERS` entity that is `playing`, else the first `paused` one (`activePlayers` in `MusicPlayer.tsx` lists playing then paused players; with several, swipe the pill or the popup sideways to cycle them, via `hooks/useSwipe.ts`, with dots as the indicator; paused shows a pause icon, "Paused ·" and dimmed art). It shows art or a note icon, title, artist · room and an animated equalizer, and renders nothing when all are idle. Tapping it opens the Music player (`panels/MusicPlayer.tsx`) in a modal; there is no Music panel. On the tablet it is capped at 200 px with the equalizer hidden, so the greeting still fits next to the clock. The condition text lives in `lib/weather.ts` (`conditionText`), not in `TopBar.tsx`.
 
 ## Meals panel
 

@@ -22,6 +22,15 @@ export interface ForecastDay {
   templow?: number;
   precipitation?: number;
   precipitation_probability?: number;
+  // Optional extras some integrations add (Google Weather has them all).
+  apparent_temperature?: number;
+  humidity?: number;
+  wind_speed?: number;
+  wind_gust_speed?: number;
+  wind_bearing?: number;
+  uv_index?: number;
+  cloud_coverage?: number;
+  is_daytime?: boolean;
 }
 
 export interface TodoItem {
@@ -52,6 +61,7 @@ export interface RegistryEntity {
   deviceId: string;
   platform: string;
   category?: string; // 'config' | 'diagnostic'
+  translationKey?: string;
 }
 
 export interface RegistrySnapshot {
