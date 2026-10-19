@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/Kanna727/ha-dashboard/compare/v1.25.0...v1.26.0) (2026-10-19)
+
+
+### Features
+
+* **weather:** richer weather card with rain chance, wind, UV and a detail view ([#39](https://github.com/Kanna727/ha-dashboard/issues/39)) ([1be7728](https://github.com/Kanna727/ha-dashboard/commit/1be77280dbe86a3a53addff81afec2d3d853bb2f))
+
 # [1.25.0](https://github.com/Kanna727/ha-dashboard/compare/v1.24.0...v1.25.0) (2026-10-19)
 
 
