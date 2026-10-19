@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/Kanna727/ha-dashboard/compare/v1.26.0...v1.27.0) (2026-10-19)
+
+
+### Features
+
+* **energy:** split the home circle's rim by each consumer's share ([#41](https://github.com/Kanna727/ha-dashboard/issues/41)) ([d29a1f0](https://github.com/Kanna727/ha-dashboard/commit/d29a1f0c3dbc6573f9b78436bc9811862b544747))
+
 # [1.26.0](https://github.com/Kanna727/ha-dashboard/compare/v1.25.0...v1.26.0) (2026-10-19)
 
 
