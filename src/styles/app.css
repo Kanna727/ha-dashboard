@@ -926,6 +926,7 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .tile.offline { opacity: 0.45; }
 .tile.readonly { cursor: default; }
 .tile.readonly:active { transform: none; }
+.tile.confirm { --tint: var(--warn); }
 .device-groups { display: grid; gap: 16px; }
 .device-group .label { margin-bottom: 8px; }
 .geyser-cell { display: grid; gap: 6px; text-align: center; }
