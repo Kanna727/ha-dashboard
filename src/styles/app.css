@@ -271,6 +271,13 @@ button.wide { width: 100%; }
   background: var(--panel); border: 4px solid var(--accent-fan); color: var(--accent-fan); z-index: 1;
   box-shadow: 0 0 32px color-mix(in srgb, var(--accent-fan) 45%, transparent), inset 0 0 20px color-mix(in srgb, var(--accent-fan) 15%, transparent);
 }
+.ef-home.split {
+  border-color: var(--tile); color: var(--home-glow, var(--accent-fan));
+  box-shadow: 0 0 32px color-mix(in srgb, var(--home-glow, var(--accent-fan)) 40%, transparent), inset 0 0 20px color-mix(in srgb, var(--home-glow, var(--accent-fan)) 12%, transparent);
+  transition: box-shadow 0.8s ease, color 0.8s ease;
+}
+.ef-rim { position: absolute; inset: -4px; width: 112px; height: 112px; pointer-events: none; }
+.ef-rim circle { fill: none; stroke-width: 4.5; transition: stroke-dasharray 0.8s ease, stroke-dashoffset 0.8s ease; }
 .ef-home-val { color: var(--text); font-weight: 800; font-size: 26px; font-variant-numeric: tabular-nums; line-height: 1.1; }
 .ef-home-val small { font-size: 0.5em; font-weight: 600; color: var(--muted); margin-left: 2px; }
 .ef-rows { position: absolute; left: 40%; right: 0; list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
