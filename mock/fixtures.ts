@@ -32,7 +32,30 @@ const list: HassEntity[] = [
     azimuth: 282,
     rising: false,
   }),
-  e('weather.forecast_home', 'partlycloudy', { temperature: 27.9, humidity: 92, wind_speed: 8.6, wind_speed_unit: 'km/h', wind_bearing: 240 }),
+  e('weather.forecast_home', 'partlycloudy', {
+    temperature: 27.9,
+    apparent_temperature: 30.4,
+    dew_point: 26.4,
+    humidity: 92,
+    cloud_coverage: 48,
+    uv_index: 0,
+    pressure: 1009.6,
+    pressure_unit: 'hPa',
+    wind_bearing: 240,
+    wind_speed: 8.6,
+    wind_gust_speed: 19,
+    wind_speed_unit: 'km/h',
+    visibility: 14,
+    visibility_unit: 'km',
+    attribution: 'Mock weather',
+  }),
+  // Readings a weather integration adds as sensors on its device (found via the registry).
+  e('sensor.forecast_home_weather_condition', 'Partly cloudy'),
+  e('sensor.forecast_home_precipitation_probability', '20', { unit_of_measurement: '%' }),
+  e('sensor.forecast_home_precipitation_intensity', '0.0', { unit_of_measurement: 'mm/h', device_class: 'precipitation_intensity' }),
+  e('sensor.forecast_home_thunderstorm_probability', '10', { unit_of_measurement: '%' }),
+  e('sensor.forecast_home_heat_index', '30.4', { unit_of_measurement: '°C', device_class: 'temperature' }),
+  e('sensor.forecast_home_wind_chill', '27.9', { unit_of_measurement: '°C', device_class: 'temperature' }),
   e('sensor.outdoor_temperature', '27.9'),
   e('person.alex', 'home', { friendly_name: 'Alex' }),
   // Placeholder coordinates only; never real locations in fixtures.
@@ -256,6 +279,7 @@ export const REGISTRY = {
     { id: 'dev_pc', name: 'DESKTOP-PC', areaId: 'workroom', model: 'Windows', disabled: false },
     { id: 'dev_cb_door', name: 'Common Bath Door Sensor', areaId: 'common_bathroom', model: 'Door sensor', disabled: false },
     { id: 'dev_dot_bed', name: 'Bedroom Dot', areaId: 'bedroom', model: 'Echo Dot', disabled: false },
+    { id: 'dev_weather', name: 'Forecast Home', areaId: null, model: null, disabled: false },
   ],
   entities: [
     ...PLUGS.flatMap(([deviceId, sw, power]) => [
@@ -270,6 +294,13 @@ export const REGISTRY = {
     { entityId: 'media_player.desktop_pc', deviceId: 'dev_pc', platform: 'hass_agent' },
     { entityId: 'binary_sensor.common_bathroom_common_bathroom_door_sensor_door', deviceId: 'dev_cb_door', platform: 'matter' },
     { entityId: 'media_player.bedroom_dot', deviceId: 'dev_dot_bed', platform: 'alexa_devices' },
+    { entityId: 'weather.forecast_home', deviceId: 'dev_weather', platform: 'weather_mock' },
+    { entityId: 'sensor.forecast_home_weather_condition', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'weather_condition' },
+    { entityId: 'sensor.forecast_home_precipitation_probability', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'precipitation_probability' },
+    { entityId: 'sensor.forecast_home_precipitation_intensity', deviceId: 'dev_weather', platform: 'weather_mock' },
+    { entityId: 'sensor.forecast_home_thunderstorm_probability', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'thunderstorm_probability' },
+    { entityId: 'sensor.forecast_home_heat_index', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'heat_index' },
+    { entityId: 'sensor.forecast_home_wind_chill', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'wind_chill' },
   ],
 };
 
@@ -285,18 +316,26 @@ export const TODO_ITEMS_2 = [
   { uid: 't2', summary: 'Book AC service', status: 'needs_action' as const },
 ];
 
-// Hourly from the start of the current hour, ~30 h, with an afternoon shower.
+// Hourly from the start of the current hour, ~30 h, with a shower (and a
+// thunderstorm) 3–5 hours from now, so the rain views have something to show at any hour.
+const SHOWER: Record<number, number> = { 2: 20, 3: 60, 4: 80, 5: 70, 6: 30 }; // hours from now → rain chance %
 export const FORECAST_HOURLY = Array.from({ length: 30 }, (_, i) => {
   const t = new Date();
   t.setMinutes(0, 0, 0);
   t.setHours(t.getHours() + i);
   const h = t.getHours();
-  const rainy = h >= 15 && h <= 17;
+  const chance = SHOWER[i] ?? 5;
+  const rainy = chance >= 60;
+  const temperature = 22 + 8 * Math.sin(((h - 8) / 24) * 2 * Math.PI);
   return {
     datetime: t.toISOString(),
-    condition: rainy ? 'rainy' : h >= 19 || h < 6 ? 'clear-night' : h < 10 ? 'sunny' : 'partlycloudy',
-    temperature: 22 + 8 * Math.sin(((h - 8) / 24) * 2 * Math.PI),
+    condition: i === 4 ? 'lightning-rainy' : rainy ? 'rainy' : h >= 19 || h < 6 ? 'clear-night' : h < 10 ? 'sunny' : 'partlycloudy',
+    temperature,
+    apparent_temperature: temperature + 1.5,
     precipitation: rainy ? 1.2 : 0,
+    precipitation_probability: chance,
+    wind_speed: 8 + (h % 5),
+    is_daytime: h >= 6 && h < 18,
   };
 });
 
@@ -306,6 +345,9 @@ export const FORECAST = ['partlycloudy', 'rainy', 'lightning-rainy', 'cloudy', '
   temperature: 30 - (i % 3),
   templow: 21 + (i % 2),
   precipitation: condition.includes('rain') ? 2.4 + i : 0,
+  precipitation_probability: condition.includes('rain') ? 60 + i * 2 : 10,
+  wind_speed: 10 + i,
+  uv_index: 6 + (i % 3),
 }));
 
 // Automation configs (automation/config) behind the threshold colouring on the

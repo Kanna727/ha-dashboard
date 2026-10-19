@@ -84,6 +84,16 @@ import {
   mdiCarBrakeFluidLevel,
   mdiWiperWash,
   mdiKeyAlert,
+  mdiUmbrellaOutline,
+  mdiWeatherLightning,
+  mdiWeatherWindy,
+  mdiNavigation,
+  mdiWeatherSunny,
+  mdiEyeOutline,
+  mdiGauge,
+  mdiWeatherCloudy,
+  mdiWeatherPartlyCloudy,
+  mdiWaterThermometer,
 } from '@mdi/js';
 
 export const ICONS = {
@@ -173,6 +183,16 @@ export const ICONS = {
   brakeFluid: mdiCarBrakeFluidLevel,
   washerFluid: mdiWiperWash,
   keyAlert: mdiKeyAlert,
+  weather: mdiWeatherPartlyCloudy,
+  umbrella: mdiUmbrellaOutline,
+  storm: mdiWeatherLightning,
+  wind: mdiWeatherWindy,
+  arrow: mdiNavigation,
+  uv: mdiWeatherSunny,
+  eye: mdiEyeOutline,
+  gauge: mdiGauge,
+  cloud: mdiWeatherCloudy,
+  dewPoint: mdiWaterThermometer,
 } as const;
 
 export type IconName = keyof typeof ICONS;

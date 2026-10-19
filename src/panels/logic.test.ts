@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { HassEntity } from 'home-assistant-js-websocket';
 import { upcoming, minutes, plannedDays } from './MealsPanel';
-import { hoursForToday, nightAt } from './WeatherPanel';
+import { nightAt } from '../lib/weather';
 import { distanceKm } from './CarPanel';
-import type { ForecastDay } from '../ha/api';
 import type { MealsConfig } from '../config/types';
 
 const at = (hhmm: string) => {
@@ -44,21 +43,7 @@ describe('meals: next up', () => {
   });
 });
 
-describe('weather: hourly strip and night', () => {
-  const hourly = (from: Date, n: number): ForecastDay[] =>
-    Array.from({ length: n }, (_, i) => ({ datetime: new Date(from.getTime() + i * 3600_000).toISOString(), condition: 'sunny', temperature: 25 }));
-
-  it("keeps the rest of today's hours", () => {
-    const now = at('10:20');
-    const start = at('10:00');
-    expect(hoursForToday(hourly(start, 30), now)).toHaveLength(14); // 10:00 .. 23:00
-  });
-
-  it('spills into tomorrow late in the evening (at least 6 hours)', () => {
-    const now = at('22:10');
-    expect(hoursForToday(hourly(at('22:00'), 30), now)).toHaveLength(6);
-  });
-
+describe('weather: night', () => {
   it('knows night from sun.sun next rising/setting on either side of sunset', () => {
     const rising = '2026-10-15T06:10:00';
     const setting = '2026-10-14T18:00:00';

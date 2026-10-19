@@ -12,8 +12,6 @@ import { cycle, useSwipe } from '../hooks/useSwipe';
 import { StatusDialog } from './StatusDialog';
 
 const greeting = (h: number) => (h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening');
-export const conditionLabel = (c: string | undefined) =>
-  (c ?? '').replace('partlycloudy', 'partly cloudy').replace('clear-night', 'clear').replace(/-/g, ' ');
 
 function People() {
   const people = useEntities(PEOPLE);

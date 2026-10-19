@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { NIGHT_MODE, OUTDOOR_TEMP, SUN, WEATHER } from '../config/entities';
+import { NIGHT_MODE, SUN } from '../config/entities';
 import { useEntity } from '../ha/store';
-import { num } from '../ha/format';
 import { useNow } from '../hooks/useNow';
 import { driftAt, nightActive } from '../lib/night';
 import { useIssues } from '../panels/useIssues';
-import { conditionLabel } from '../panels/TopBar';
+import { useWeatherNow } from './useWeather';
 import { SkyArc } from './SkyArc';
 import { WeatherIcon } from './WeatherIcon';
 
@@ -68,11 +67,10 @@ export function NightMode({ layout }: { layout: string }) {
 }
 
 function NightScreen({ now, onWake }: { now: Date; onWake: (e: React.PointerEvent) => void }) {
-  const weather = useEntity(WEATHER);
-  const outdoor = useEntity(OUTDOOR_TEMP);
+  const weather = useWeatherNow();
   const sun = useEntity(SUN);
   const issues = useIssues();
-  const temp = num(outdoor) ?? (weather?.attributes.temperature as number | undefined);
+  const temp = weather.temp;
   const drift = driftAt(Math.floor(now.getTime() / 60_000));
 
   return (
@@ -81,8 +79,8 @@ function NightScreen({ now, onWake }: { now: Date; onWake: (e: React.PointerEven
         <div className="night-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
         <div className="night-date">{now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}</div>
         <div className="night-weather">
-          <WeatherIcon condition={weather?.state} night={sun?.state === 'below_horizon'} size={44} />
-          <span>{temp !== undefined ? `${Math.round(temp)}°` : '–'} · {conditionLabel(weather?.state)}</span>
+          <WeatherIcon condition={weather.condition} night={sun?.state === 'below_horizon'} size={44} />
+          <span>{temp !== undefined ? `${Math.round(temp)}°` : '–'} · {weather.label}</span>
         </div>
         <SkyArc sun={sun} className="night-sky" />
         {issues.length > 0 && (
