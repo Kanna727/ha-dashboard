@@ -18,6 +18,7 @@ import { Icon, type IconName } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { useSlide } from '../hooks/useSlide';
 import { useThrottle } from '../hooks/useThrottle';
+import { useNow } from '../hooks/useNow';
 import { useOpenSheet } from '../components/Sheet';
 import { brightnessPct, canDim, cssRgb, inColorMode, lightRgb, luminance } from '../lib/lightColor';
 import { percentToSend, speedCount, speedOf } from '../lib/fanSpeed';
@@ -64,7 +65,10 @@ function useRoomReadings(room: RoomDef, gates: Gate[]) {
     const rule = (sensor: string | undefined, devices: string[]): ReadingRule | null => {
       const any = gatesFor(gates, sensor, devices, read, false);
       if (!any.length) return null;
-      return { rule: [...new Set(any.map((g) => describeGate(g, read)))].join(' or '), held: heldBack(gatesFor(gates, sensor, devices, read), read) };
+      return {
+        rule: [...new Set(any.map((g) => describeGate(g, read)))].join(' or '),
+        held: heldBack(gatesFor(gates, sensor, devices, read), read),
+      };
     };
     const fans = room.controls.filter((c) => c.entity.startsWith('fan.')).map((c) => c.entity);
     return JSON.stringify([rule(room.temperature, fans), rule(ambienceId, lightsOf(room))]);
@@ -144,24 +148,47 @@ function RoomDetail({ room, gates }: { room: RoomDef; gates: Gate[] }) {
   );
 }
 
-// Appliance status, shared by the room card buttons and subtitle. The purifier
-// has no button and never "runs"; it only puts a fault in the subtitle.
+// "7:40" from a timestamp sensor (no AM/PM: it's next to a progress %).
+function clockTime(iso: string | undefined) {
+  const d = iso ? new Date(iso) : undefined;
+  return !d || Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M$/i, '');
+}
+
+// How long something has been on ("now", "12m", "1h 5m"), ticking twice a minute.
+// A leaf of its own so only the label re-renders.
+function Since({ at }: { at: string | undefined }) {
+  const now = useNow(30000);
+  const m = at ? Math.max(0, Math.floor((now.getTime() - Date.parse(at)) / 60000)) : NaN;
+  if (Number.isNaN(m)) return null;
+  return <>{m < 1 ? 'now' : m < 60 ? `${m}m` : `${Math.floor(m / 60)}h ${m % 60}m`}</>;
+}
+
+// Appliance status, shared by the room card chips and note line. The purifier
+// has no chip and never "runs"; it only puts a fault in the note line.
 function useApplianceStatus() {
   const washer = useEntity(APPLIANCES.washer.running);
   const washerPower = useEntity(APPLIANCES.washer.power);
   const dwState = useEntity(APPLIANCES.dishwasher.state);
   const dwProgress = useEntity(APPLIANCES.dishwasher.progress);
+  const dwFinish = useEntity(APPLIANCES.dishwasher.finish);
   const pct = num(dwProgress);
   const dwRunning = pct !== undefined && pct > 0 && pct < 100;
   const purifier = usePurifier();
   return {
-    washer: { running: washer?.state === 'on', text: washer?.state === 'on' ? `Washer ${fmtWatts(num(washerPower))}` : 'Washer idle' },
+    // short: the state alone, for the card's chips; done: the dishwasher's finish time.
+    washer: {
+      running: washer?.state === 'on',
+      text: washer?.state === 'on' ? `Washer ${fmtWatts(num(washerPower))}` : 'Washer idle',
+      short: washer?.state === 'on' ? fmtWatts(num(washerPower)) : 'Idle',
+    },
     dishwasher: {
       running: dwRunning,
       pct: dwRunning ? pct! : undefined,
       text: dwRunning ? `Dishwasher ${Math.round(pct!)}%` : isUnavailable(dwState) ? 'Dishwasher asleep' : 'Dishwasher idle',
+      short: dwRunning ? `${Math.round(pct!)}%` : isUnavailable(dwState) ? 'Asleep' : 'Idle',
+      done: dwRunning ? clockTime(dwFinish?.state) : '',
     },
-    purifier: { running: false, fault: purifier.activeFaults.length > 0, text: purifier.text },
+    purifier: { running: false, fault: purifier.activeFaults.length > 0, text: purifier.text, short: '' },
   };
 }
 
@@ -207,17 +234,15 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
   const fanSpeeds = speedCount(fanStep);
   const fanSpeed = speedOf(fanSlide.value, fanStep);
 
-  // What's running: lights, running appliances, else the first other device that's on.
-  // (Temperature, humidity and light level have their own line above it.)
-  const status: string[] = [];
-  if (lit) status.push(`${lit} light${lit > 1 ? 's' : ''}`);
-  runningApps.forEach((a) => status.push(appStatus[a].text));
-  if (dishShine) status.push('Dishes clean');
-  if (room.appliances?.includes('purifier') && appStatus.purifier.fault) status.push(appStatus.purifier.text);
+  // A line for what the chips can't show: clean dishes, a purifier fault, or
+  // another device that's on (not the quick one, whose chip already says so).
   // The washer's plug is always on, so a room with the washer never says "Washer on".
-  if (!status.length) status.push(others.length && !room.appliances?.includes('washer') ? `${others[0].name} on` : 'Off');
+  const notes: string[] = [];
+  if (dishShine) notes.push('Dishes clean');
+  if (room.appliances?.includes('purifier') && appStatus.purifier.fault) notes.push(appStatus.purifier.text);
+  const otherOn = others.find((c) => c.entity !== room.quick?.entity);
+  if (!notes.length && !lit && !runningApps.length && otherOn && !room.appliances?.includes('washer')) notes.push(`${otherOn.name} on`);
 
-  // The lights button always drives every light in the room together.
   // The lights button: a tap toggles every light in the room, a drag up or down
   // sets them all to one brightness (live, throttled), and a long press opens
   // the lights sheet (brightness, warmth, colour, each light). It shows the
@@ -271,26 +296,16 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
   };
   const quickName = room.quick?.kind === 'geyser' ? 'geyser' : (quick?.attributes.friendly_name as string | undefined) ?? 'fan';
   const fanLabel = room.controls.find((c) => c.entity === room.quick?.entity)?.name ?? 'Fan';
-  // While sliding, the subtitle shows the speed or brightness being set instead of the room status.
-  const subtitle = fanSlide.sliding
-    ? `${fanLabel} · ${fanSpeed ? `speed ${fanSpeed}/${fanSpeeds}` : 'off'}`
-    : bulbSlide.sliding
-      ? `Lights · ${bulbPct ? `${bulbPct}%` : 'off'}`
-      : status.join(' · ');
   const openDetail = () =>
     modal.open({ title: room.name, icon: room.icon as IconName, accent: lit ? 'var(--accent-light)' : undefined, body: <RoomDetail room={room} gates={gates} /> });
 
-  return (
-    <div
-      className={`room-row ${lit ? 'lit' : ''} ${held.length ? 'fan-held' : ''} ${isFan ? 'slidable' : ''} ${fanSlide.sliding ? 'sliding' : ''}`}
-      style={litRgb ? { ['--room-light' as string]: cssRgb(litRgb) } : undefined}
-      role="button"
-      tabIndex={0}
-      onClick={openDetail}
-      aria-keyshortcuts={isFan ? 'ArrowLeft ArrowRight' : undefined}
-      title={isFan ? `Slide across to set the ${fanLabel.toLowerCase()} speed` : undefined}
-      {...(isFan ? fanSlide.handlers : {})}
-    >
+  // While sliding, the chips show the value being set, so the note steps aside.
+  const note = fanSlide.sliding || bulbSlide.sliding ? '' : notes.join(' · ');
+  const heldOther = held.filter((f) => f.entity !== room.quick?.entity);
+  const dimmable = lights.some(canDim);
+
+  const layers = (
+    <>
       {/* Ambient state layers behind the content (transform/opacity animations only). */}
       {lightIds.length > 0 && (
         <span className="room-glows" aria-hidden="true">
@@ -340,60 +355,102 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
           </span>
         </span>
       )}
-      <div className="room-row-top">
-        <span className="room-row-icon"><Icon name={room.icon as IconName} size={22} /></span>
-        <span className="row-buttons">
-          {room.appliances?.filter((a) => a !== 'purifier').map((a) => (
-            <button
-              key={a}
-              className={`row-btn ${a} ${appStatus[a].running ? 'on' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                openDetail();
-              }}
-              aria-label={appStatus[a].text}
-              title={appStatus[a].text}
-            >
-              <Icon name={a} size={22} className={a === 'washer' && appStatus[a].running ? 'wobble' : undefined} />
-            </button>
-          ))}
-          {room.quick && (
-            <button
-              className={`row-btn ${room.quick.kind} ${quickOn ? 'on' : ''}`}
-              disabled={quickOffline}
-              onClick={toggleQuick}
-              aria-label={`${quickOn ? 'Turn off' : 'Turn on'} ${room.name} ${quickName}${quickHeld ? ' (manual override on)' : ''}`}
-              title={quickHeld ? 'Manual override: automations will not turn this fan on' : undefined}
-            >
-              {room.quick.kind === 'fan' ? <FanIcon on={quickOn} pct={fanSlide.value} size={22} /> : <Icon name="geyser" size={22} />}
-              {quickHeld && <span className="hold-badge"><Icon name="lock" size={11} /></span>}
-            </button>
-          )}
-          {lightIds.length > 0 && (
-            <button
-              className={`row-btn bulb ${bulbOn ? 'on' : ''} ${bulbSlide.sliding ? 'sliding' : ''}`}
-              style={bulbStyle}
-              onClick={toggleLights}
-              {...bulbSlide.handlers}
-              aria-label={`${lit ? 'Turn off' : 'Turn on'} ${room.name} lights`}
-              aria-keyshortcuts="ArrowUp ArrowDown"
-              title="Tap to switch, drag up or down to dim, hold for colour"
-            >
-              {bulbSlide.sliding && <span className="bulb-level" style={{ height: `${bulbPct}%` }} aria-hidden="true" />}
-              <LightIcon on={bulbOn} brightness={bulbPct / 100} color={litRgb} size={22} />
-            </button>
-          )}
+    </>
+  );
+
+  // The control chips: off is a plain icon; on grows and says what it's doing
+  // (the light and fan fill to their level, the geyser says how long it has
+  // been on, the dishwasher its progress and finish time). A held quick fan
+  // says "Held".
+  const label = (text: ReactNode) => <span className="row-btn-label">{text}</span>;
+  const chips = (
+    <span className="row-buttons">
+      {room.appliances?.filter((a) => a !== 'purifier').map((a) => (
+        <button
+          key={a}
+          className={`row-btn ${a} ${appStatus[a].running ? 'on' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            openDetail();
+          }}
+          aria-label={appStatus[a].text}
+          title={appStatus[a].text}
+        >
+          <Icon name={a} size={22} className={a === 'washer' && appStatus[a].running ? 'wobble' : undefined} />
+          {appStatus[a].running &&
+            label(
+              a === 'dishwasher' && appStatus.dishwasher.done ? (
+                <>
+                  {appStatus.dishwasher.short} · <span className="lbl-word">done </span>
+                  {appStatus.dishwasher.done}
+                </>
+              ) : (
+                appStatus[a].short
+              ),
+            )}
+        </button>
+      ))}
+      {room.quick && (
+        <button
+          className={`row-btn ${room.quick.kind} ${quickOn ? 'on' : ''} ${isFan ? 'lvl-fill' : ''} ${quickHeld && !quickOn ? 'held' : ''}`}
+          style={isFan ? { ['--level' as string]: `${fanSlide.value}%` } : undefined}
+          disabled={quickOffline}
+          onClick={toggleQuick}
+          aria-label={`${quickOn ? 'Turn off' : 'Turn on'} ${room.name} ${quickName}${quickHeld ? ' (manual override on)' : ''}`}
+          title={quickHeld ? 'Manual override: automations will not turn this fan on' : undefined}
+        >
+          {isFan ? <FanIcon on={quickOn} pct={fanSlide.value} size={22} /> : <Icon name="geyser" size={22} />}
+          {isFan
+            ? (fanSpeed > 0 || quickHeld) && label(fanSpeed ? `${fanSpeed}/${fanSpeeds}` : 'Held')
+            : quickOn && label(<>On · <Since at={quick?.last_changed} /></>)}
+          {quickHeld && <span className="hold-badge"><Icon name="lock" size={11} /></span>}
+        </button>
+      )}
+      {lightIds.length > 0 && (
+        <button
+          className={`row-btn bulb ${bulbOn ? 'on' : ''} ${bulbSlide.sliding ? 'sliding' : ''} ${dimmable ? 'lvl-fill' : ''}`}
+          style={{ ...bulbStyle, ['--level' as string]: `${bulbPct}%` }}
+          onClick={toggleLights}
+          {...bulbSlide.handlers}
+          aria-label={`${lit ? 'Turn off' : 'Turn on'} ${room.name} lights`}
+          aria-keyshortcuts="ArrowUp ArrowDown"
+          title="Tap to switch, drag up or down to dim, hold for colour"
+        >
+          <LightIcon on={bulbOn} brightness={bulbPct / 100} color={litRgb} size={22} />
+          {bulbOn && label(dimmable ? `${bulbPct}%` : 'On')}
+        </button>
+      )}
+    </span>
+  );
+
+  return (
+    <div
+      className={`room-row ${lit ? 'lit' : ''} ${held.length ? 'fan-held' : ''} ${isFan ? 'slidable' : ''} ${fanSlide.sliding ? 'sliding' : ''}`}
+      style={litRgb ? { ['--room-light' as string]: cssRgb(litRgb) } : undefined}
+      role="button"
+      tabIndex={0}
+      onClick={openDetail}
+      aria-keyshortcuts={isFan ? 'ArrowLeft ArrowRight' : undefined}
+      title={isFan ? `Slide across to set the ${fanLabel.toLowerCase()} speed` : undefined}
+      {...(isFan ? fanSlide.handlers : {})}
+    >
+      {layers}
+      <div className="room-row-head">
+        <Icon name={room.icon as IconName} size={16} />
+        <span className="room-row-name">
+          {room.name}
+          {occupied && <span className="presence-dot" title="Someone's here" />}
+          {doorOpen && <Icon name="doorOpen" size={14} className="door-warn" />}
         </span>
       </div>
-      <span className="room-row-name">
-        {room.name}
-        {occupied && <span className="presence-dot" title="Someone's here" />}
-        {doorOpen && <Icon name="doorOpen" size={14} className="door-warn" />}
-      </span>
       <Readings r={readings} />
-      <span className={`room-row-sub ${lit ? 'lit' : ''}`}>{subtitle}</span>
-      {held.length > 0 && (
-        <span className="hold-note">{held.length > 1 ? 'Fans' : held[0].name.toLowerCase().includes('fan') ? held[0].name : `${held[0].name} fan`} on manual override</span>
+      {note && <span className="room-row-sub">{note}</span>}
+      {chips}
+      {/* The quick fan's chip already says "Held"; other held fans get a line. */}
+      {heldOther.length > 0 && (
+        <span className="hold-note">
+          {heldOther.length > 1 ? 'Fans' : heldOther[0].name.toLowerCase().includes('fan') ? heldOther[0].name : `${heldOther[0].name} fan`} on manual override
+        </span>
       )}
     </div>
   );
