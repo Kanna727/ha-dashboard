@@ -860,8 +860,8 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .row-btn.dishwasher { --tint: #2dd4bf; }
 .row-btn.on { flex-grow: 2.2; background: var(--tint); color: var(--on-text); box-shadow: 0 0 22px color-mix(in srgb, var(--tint) 50%, transparent); border-color: transparent; }
 .row-btn.lvl-fill.on { background: linear-gradient(90deg, var(--tint) var(--level), color-mix(in srgb, var(--tint) 62%, var(--card)) var(--level)); }
-/* While sliding, the fill follows the finger with no lag. */
-.room-row.sliding .row-btn.fan.lvl-fill, .row-btn.bulb.lvl-fill.sliding { transition-duration: 0.2s, 0.2s, 0.2s, 0.15s, 0.3s, 0s; }
+/* While sliding, the fill follows the finger with no lag. (.lvl-fill before .fan: CI reads ".fan.lvl…" in the bundle as an entity ID.) */
+.room-row.sliding .row-btn.lvl-fill.fan, .row-btn.lvl-fill.bulb.sliding { transition-duration: 0.2s, 0.2s, 0.2s, 0.15s, 0.3s, 0s; }
 .row-btn.held { flex-grow: 1.8; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .row-btn-label { position: relative; font-size: 12.5px; letter-spacing: -0.01em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 /* An odd last room card (Utility) spans both columns instead of leaving a hole,
