@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/Kanna727/ha-dashboard/compare/v1.24.0...v1.25.0) (2026-10-19)
+
+
+### Features
+
+* **rooms:** two-tap turn-off for controls marked confirmOff ([#40](https://github.com/Kanna727/ha-dashboard/issues/40)) ([98f2519](https://github.com/Kanna727/ha-dashboard/commit/98f2519ddb70e3175647987e19fcc16332401516))
+
 # [1.24.0](https://github.com/Kanna727/ha-dashboard/compare/v1.23.0...v1.24.0) (2026-10-18)
 
 
