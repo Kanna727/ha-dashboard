@@ -34,6 +34,40 @@ const MIN_H = 136;
 const HOME_X = '18%'; // centre of the home circle (see .ef-home in CSS)
 const ROWS_X = '40%'; // left edge of the consumer rows
 
+// The home circle's rim, split into each consumer's share of the total (grey
+// for the plugs not listed), clockwise from the top, biggest first. Sized to
+// sit on .ef-home's 4 px border (112 px circle).
+const RIM_R = 54;
+const RIM_C = 2 * Math.PI * RIM_R;
+const RIM_GAP = 5;
+const OTHER_COLOR = '#64748b';
+
+function SplitRim({ parts }: { parts: { key: string; color: string; w: number }[] }) {
+  const sum = parts.reduce((s, p) => s + p.w, 0);
+  const gap = parts.length > 1 ? RIM_GAP : 0;
+  let at = 0;
+  return (
+    <svg className="ef-rim" viewBox="0 0 112 112" aria-hidden="true">
+      <g transform="rotate(-90 56 56)">
+        {parts.map((p) => {
+          const len = sum ? (p.w / sum) * RIM_C : 0;
+          const start = at;
+          at += len;
+          return (
+            <circle
+              key={p.key}
+              cx="56"
+              cy="56"
+              r={RIM_R}
+              style={{ stroke: p.color, strokeDasharray: `${Math.max(0.5, len - gap)} ${RIM_C}`, strokeDashoffset: -start }}
+            />
+          );
+        })}
+      </g>
+    </svg>
+  );
+}
+
 export function EnergyPanel() {
   const hass = useHass();
   const modal = useModal();
@@ -70,6 +104,13 @@ export function EnergyPanel() {
     return level;
   });
 
+  const topW = top.reduce((s, c) => s + c.w, 0);
+  const otherW = Math.max(0, (totalW ?? topW) - topW);
+  const rim = [
+    ...top.map((c) => ({ key: c.entity, color: c.color, w: c.w })),
+    ...(otherW >= 5 ? [{ key: 'other', color: OTHER_COLOR, w: otherW }] : []),
+  ];
+
   const rowsH = top.length ? top.length * ROW_H + (top.length - 1) * ROW_GAP : 0;
   const height = Math.max(rowsH, MIN_H);
   const offset = (height - rowsH) / 2;
@@ -100,7 +141,13 @@ export function EnergyPanel() {
             </g>
           ))}
         </svg>
-        <div className="ef-home" style={{ top: height / 2 }}>
+        {/* With nothing drawing, the plain blue ring stays. Otherwise the rim is
+            split by share and the circle glows in the biggest consumer's colour. */}
+        <div
+          className={`ef-home${rim.length ? ' split' : ''}`}
+          style={{ top: height / 2, ...(top[0] ? { ['--home-glow' as string]: top[0].color } : {}) }}
+        >
+          {rim.length > 0 && <SplitRim parts={rim} />}
           <Icon name="homePower" size={22} />
           <Watts w={totalW} className="ef-home-val" />
           <div className="flow-label">Home</div>
