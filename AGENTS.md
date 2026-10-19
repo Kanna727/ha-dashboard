@@ -40,7 +40,7 @@ vite.config.ts             singlefile plugin; dashboard-config plugin (virtual:d
 config/dashboard.config.example.ts   committed example (fictional home)
 config/dashboard.config.ts           the real config, gitignored
 src/main.tsx               boot: gets the config (embedded, device cache, or HA), then picks HaProvider or MockProvider
-src/App.tsx                layout detection (?layout= or viewport), theme, self-update
+src/App.tsx                layout detection (?layout= or viewport), self-update
 src/config/types.ts        DashboardConfig schema (rooms, controls, energy, climate, car, media, meals, ...)
 src/config/load.ts         config storage: CONFIG_DASHBOARD, device cache (dashConfig), fetchConfig
 src/config/entities.ts     reads window.__DASHBOARD_CONFIG__ (EMPTY fallback) and re-exports ROOMS, ENERGY, ...; RECOVERY rules
@@ -58,8 +58,8 @@ src/components/*           building blocks: Modal (ModalProvider + PanelHead), S
 src/commute/*              commute routes + Google Maps loader + full map (CommuteMap), used by CommutePanel's modal
 src/styles/fonts.css       Plus Jakarta Sans (latin subset only), inlined into the bundle
 src/layout/Layouts.tsx     TabletLayout (3 columns, each scrolls), DesktopLayout (4 columns), PhoneLayout (4 bottom tabs)
-src/theme/useSunTheme.ts   auto (sun.sun) / dark / light; ?theme= override; localStorage persistence
-src/update/useSelfUpdate.ts reloads when input_text.dashboard_build != "<version>/<config hash>"
+src/update/useSelfUpdate.ts reloads when input_text.dashboard_build != "<version>/<config hash>" (not in mock builds)
+src/update/previewUpdate.ts the deployed preview reloads itself when version.json changes (mock builds only)
 mock/fixtures.ts           state snapshot matching the example config
 mock/MockProvider.tsx      fake HassApi that applies service calls locally and jitters power sensors
 src/lib/fanSpeed.ts        fan percentage snapping / what to send to HA (unit-tested)
@@ -68,11 +68,26 @@ src/lib/lightColor.ts      light capabilities, kelvin/hue maths, colour wheel ma
 src/lib/throttle.ts        at most one send per 250 ms while dragging, final value on release (unit-tested; hooks/useThrottle)
 src/lib/thresholds.ts      numeric thresholds read from automation configs (fan on above X, lights on below Y) (unit-tested)
 src/lib/weather.ts         weather extras discovery, compass, UV bands, condition text, day range bars, nightAt (unit-tested)
+src/lib/skyScene.ts        page-sky scene from sun, moon, weather, wind and humidity (unit-tested); KIND (condition → scene)
+src/lib/astro.ts           low-precision sun/moon altitude + azimuth, plain-day model, page projection (unit-tested)
+src/lib/skyArt.ts          cloud mask SVGs (fractal noise + lighting), lightning bolts and strike planning (unit-tested)
+src/lib/tree.ts            procedurally grown tree (masks per limb), seeded rng (unit-tested)
+src/lib/terrain.ts         the ground box along the bottom: seeded-noise ridges (canopy, the tree's rise) (unit-tested)
+src/lib/city.ts            the city skyline: towers, a civic dome, metro viaduct, tree canopy (unit-tested)
+src/components/useBitmapMask.ts  draws an SVG mask once into a PNG (the sky's cloud masks)
+src/components/SkyBackdrop.tsx  the animated full-page sky behind every layout (mounted in App.tsx); ?skyTest panel in SkyTestPanel.tsx
+src/lib/skySim.ts          simulated sun for ?skyTest (unit-tested)
 src/ha/automations.ts      useGates(): every automation's config via automation/config, parsed and cached (dashGates)
 scripts/deploy.py          manual deploy: build, copy index.html to the share, push config, set helper
+scripts/build-preview.sh   builds the preview (mock + sky test panel) into dist-preview/ with version.json
+scripts/local-preview.mjs  local preview: mirror to BUILD_DIR, rebuild if sources changed, serve at localhost:4180
+scripts/local-preview-server.mjs  its static server (localhost only, no-store)
+.claude/settings.json      Claude Code Stop hook that runs the local preview after every agent turn
+scripts/ha-deploy-preview.sh asks HA to install a release's preview files (signed URLs → preview webhook)
 scripts/push-config.mjs    saves dist/dashboard-config.json into HA and updates the helper (HA_URL + HA_TOKEN)
 scripts/privacy-check.sh   blocks personal data in tracked files
-.github/workflows/         ci.yml (PRs), release.yml (semantic-release + deploy over Tailscale)
+.github/workflows/         ci.yml (PRs), release.yml (semantic-release + deploy + preview deploy over Tailscale),
+                           preview.yml (a preview of every PR push)
 docs/home-assistant.md     HA-side setup for automatic deploys
 ```
 
@@ -81,6 +96,7 @@ docs/home-assistant.md     HA-side setup for automatic deploys
 ```sh
 npm install
 npm run mock        # offline preview on :5173 with fake data (service calls logged to console)
+npm run preview:local   # rebuild the local preview and serve it at http://localhost:4180 (see Local preview)
 npm run dev         # live; set VITE_HA_URL=http://homeassistant.local when running off-box
 npm run typecheck
 npm test            # vitest unit tests (src/**/*.test.ts)
@@ -110,7 +126,12 @@ python3 scripts/deploy.py --build-only   # build with the real version, no copy
 - Running the Release workflow by hand (Actions → Release → Run workflow) redeploys the latest release when there is nothing new to release.
 - **Helper format:** `input_text.dashboard_build` holds `"<app version>/<config hash>"`. The release automation replaces the first half; `deploy.py --config-only` replaces the second. Open pages reload when it differs from what they run. The `'dev'` version turns self-update off.
 - The config is never deployed by CI (CI doesn't have it). Push it with `deploy.py --config-only` (needs `HA_URL` + an admin `HA_TOKEN`), or, as an agent with the HA MCP server, save `dist/dashboard-config.json` as the `dashboard-config` dashboard's config and update the helper's second half.
-- Secrets/vars in GitHub: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `HA_WEBHOOK_ID`, `PRIVACY_PATTERNS`; variable `HA_TAILNET_HOST`. The deploy job skips with a warning if they are missing.
+- Secrets/vars in GitHub: `TS_OAUTH_CLIENT_ID`, `TS_OAUTH_SECRET`, `HA_WEBHOOK_ID`, `HA_PREVIEW_WEBHOOK_ID`, `PRIVACY_PATTERNS`; variable `HA_TAILNET_HOST`. The deploy jobs skip with a warning if they are missing.
+- **Preview deploys** (the owner asked for the local test version to be deployed with every change, at an endpoint apart from the live dashboard): the preview is the mock build (fake data from the example config, no HA connection) built with `VITE_PREVIEW=1`, which opens the sky test panel by default and shows the build version in it. `scripts/build-preview.sh <version>` writes `dist-preview/index.html` and `version.json`. HA installs it at `www/dashboard/preview/` (URL `/local/dashboard/preview/index.html`) through a separate automation, "Dashboard - install preview", on its own webhook (`HA_PREVIEW_WEBHOOK_ID`), so the live install automation and files are never touched; Downloader's `subdir: preview` does the placing. Setup: docs/home-assistant.md section 6.
+  - **When:** every push to a same-repo pull request (`preview.yml`; forks and Dependabot get no secrets and must not run code on the HA origin), and every release (`release.yml`'s `deploy-preview`, which waits 60 s after the live deploy so the two automations' Downloader events don't interleave). The newest push wins; there is one preview.
+  - **Only release assets:** like the live deploy, HA only accepts download URLs of this repo's release assets (any page on `/local/` runs next to the devices' HA tokens). Releases carry `preview-index.html` and `preview-version.json` (`.releaserc.json`); pull requests upload theirs to a rolling `preview` pre-release (never "latest"; its tag doesn't match semantic-release's `v*`). Versions are semver so HA's check passes: the release version, or `0.0.0-pr<N>.<sha7>`.
+  - **Staying current:** HA serves `/local/` with a 31-day cache, so the page fetches `version.json` with `cache: 'no-store'` on load, every 5 minutes and when it becomes visible, and reloads with `?v=<version>` when it differs (one reload per version, so a stale file can't loop). `version.json` is installed after `index.html`. Mock builds skip `useSelfUpdate` (the mock helper says `dev`, which would otherwise look like a new deploy).
+
 
 ## Design
 
@@ -137,7 +158,7 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
   3. otherwise `homeassistant.reload_config_entry` targeted at the device.
 
   Every action needs a second tap within 4 s. Hints warn when a reload is account-wide (Alexa, Kia, Home Connect) or when the device is usually just switched off (TV, PCs). This lives in `RECOVERY` in `src/config/entities.ts`.
-- Theme tokens are in `:root` / `[data-theme]` at the top of `app.css`. Grid tracks use `minmax(0, …)`, and `.col > *` has `min-width: 0`, so wide images can't blow out a column. Keep those.
+- **Dark only.** The owner dropped the light theme and the theme button (there is no `?theme=`, `data-theme` or pre-paint script any more). Colour tokens are in `:root` at the top of `app.css`. The greeting and clock sit straight on the page sky, so they carry a soft text shadow. Grid tracks use `minmax(0, …)`, and `.col > *` has `min-width: 0`, so wide images can't blow out a column. Keep those.
 
 ## Loading, caching and connection status
 
@@ -146,7 +167,7 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - The connection is a page-wide singleton that retries with backoff (2 s doubling up to 30 s). Only `ERR_INVALID_AUTH` clears tokens.
 - `SyncIndicator` in the top bar shows "Syncing" or "Reconnecting" until live data arrives, then flashes "Synced" and hides.
 - `useSelfUpdate` acts only when the status is `live`. The cached snapshot can hold an older helper value, and acting on it would loop reloads.
-- `index.html` has a tiny pre-paint script that applies the last resolved theme (`dashThemeResolved`), so light mode doesn't flash dark. The font uses `font-display: block`, which is fine because it's inlined.
+- The font uses `font-display: block`, which is fine because it's inlined.
 - In the mock, `?mockSync=1500` simulates a slow connect and `?mockSync=reconnect` stays in the reconnecting state. `?mockFreeze=1` makes it deterministic for screenshot tests: no power jitter and no artificial delays; fake history is always seeded (mulberry32), aligned to 10-minute slots. `window.__mockPatch(entityId, { state })` changes a mock state from puppeteer. It exists only in mock builds.
 
 ## Weather icons
@@ -156,7 +177,6 @@ The visual design follows a reference screenshot the owner supplied: dark "panel
 - Only the big "now" icon animates. The hourly/daily strips and the top pill get static copies (`<animate*>` tags stripped), to keep CPU low on the kiosk.
 - Tweaks: raindrops are thickened (they almost vanish at 36–44 px); `cloudy` uses grey-recoloured overcast art; `pouring` gets a grey cloud with fatter drops, to tell it apart from `rainy`.
 - The URI cache is keyed by the **full SVG string**. Recoloured variants share length and suffix with their source, and an earlier shorter key made them collide.
-- On the light theme, `.wx-img` gets a soft drop shadow so white clouds stay visible.
 
 ## 3D car model
 
@@ -240,24 +260,45 @@ Forecasts come from `useForecast(hass, entity, 'daily'|'hourly')` in `src/ha/for
 `panels/WeatherPanel.tsx` (card) and `components/WeatherDetail.tsx` (its popup, from the chevron) read the current conditions through `useWeatherNow()` (`components/useWeather.ts`), which is also used by night mode.
 - **Sources:** the `WEATHER` entity's attributes (temperature, `apparent_temperature`, humidity, dew point, wind speed/gust/bearing, UV, visibility, pressure, cloud cover; whatever the integration provides) plus **extra sensors found on the weather entity's device**: condition text, rain chance, rain rate, thunderstorm chance, heat index, wind chill. `weatherExtras()` matches them by registry translation key (`tk` from `list_for_display`, now `RegistryEntity.translationKey`), else by entity ID suffix, else (rain rate) by device class `precipitation_intensity`; the result is cached in `localStorage` (`dashWeatherExtras`). Nothing to configure: switching the weather integration only changes `WEATHER` (and `OUTDOOR_TEMP`). Google Weather has all of them, but most are disabled by default in HA and must be enabled there.
 - **Why Google:** met.no's "current" condition is the next hour's forecast symbol, so any light-rain forecast (0.1–0.5 mm) showed as "rainy" under a dry, partly cloudy sky. Google Weather reports observed current conditions. Its free tier covers the integration's ~4.5k calls a month.
-- **Card:** big icon, temperature, the integration's own condition text in sentence case ("Light rain"), "Feels like" when it differs, the sky arc, then six compact reading tiles (rain chance, storms, wind with an arrow pointing where it blows, humidity + dew point, UV with its WHO band colour, visibility; the list in `stats()` is ordered by importance, and readings the integration lacks drop out). The hourly strip and day tiles show the rain chance (≥ 10 %) when the forecast has one, else millimetres. Header summary: today's high and low.
+- **Card:** big icon, temperature, the integration's own condition text in sentence case ("Light rain"), "Feels like" when it differs, sunrise/sunset (`SunTimes`), then six compact reading tiles (rain chance, storms, wind with an arrow pointing where it blows, humidity + dew point, UV with its WHO band colour, visibility; the list in `stats()` is ordered by importance, and readings the integration lacks drop out). The hourly strip and day tiles show the rain chance (≥ 10 %) when the forecast has one, else millimetres. Header summary: today's high and low.
 - **Popup:** every reading (4 columns, 2 on phones; heat index or wind chill only when they add something to the feels-like), a 24 h SVG chart (icons every 3 h, temperature line, rain-chance bars; it stretches to the card and scrolls sideways below 30 px per hour), and the coming days with rain chance and mm, wind and a low–high bar on a scale shared by all days.
-- **Tablet columns** use `grid-auto-rows: max-content`: a panel with `overflow: hidden` (this card, for its backdrop) has no automatic minimum height, so auto rows squashed it to the column height instead of letting the column scroll.
 - Mock: `weather.forecast_home` has the full attribute set and the six extra sensors on a `dev_weather` registry device; forecasts carry rain chance, wind and `is_daytime`.
 
-## Sun and moon arc
+## Sun and moon arc, sunrise and sunset
 
-`src/components/SkyArc.tsx` (in the Weather card, under the current conditions; it replaced the sunrise/sunset chip) draws the sun's arc from sunrise to sunset by day and the moon's from sunset to sunrise by night, with a dot for "now" that glides between once-a-minute positions. The maths is in `src/lib/sky.ts` (unit-tested): `sun.sun` only gives the *next* rising/setting, so today's sunrise is `next_rising − 24 h` by day and the last sunset `next_setting − 24 h` by night. HA has no moon sensor, so the phase is computed from the synodic month against a reference new moon, and `moonLitPath` draws the lit part (right while waxing, left while waning). Night mode reuses the component.
+`src/components/SkyArc.tsx` (on the night screen) draws the sun's arc from sunrise to sunset by day and the moon's from sunset to sunrise by night, with a dot for "now" that glides between once-a-minute positions. The maths is in `src/lib/sky.ts` (unit-tested): `sun.sun` only gives the *next* rising/setting, so today's sunrise is `next_rising − 24 h` by day and the last sunset `next_setting − 24 h` by night. HA has no moon sensor, so the phase is computed from the synodic month against a reference new moon, and `moonLitPath` draws the lit part (right while waxing, left while waning).
 
-## Weather backdrop
+The Weather card has no arc and no backdrop of its own any more: the page sky (see Page sky) shows the sun, moon and weather, and the owner asked for them to go. Under High/Low the card shows today's sunrise and sunset (`SunTimes` in `WeatherPanel.tsx`, `sunTimes()` in `lib/sky.ts`) in the order they come: sunrise then sunset by day, this evening's sunset then tomorrow's sunrise at night, each with its sunrise/sunset icon.
 
-`src/components/WeatherBackdrop.tsx` animates the Weather card's background from the weather entity's state plus `sun.sun` (day or night). Scenes: clear (sun rays, or stars and a moon glow), partly cloudy, cloudy, rain (heavy for `pouring`), storm (rain plus flashes), fog, snow and wind.
-- Transform/opacity animations only, no blur filters. Particle counts are capped (38 drops, 70 for heavy rain) so the kiosk can run it all day.
-- Clouds and fog are a 200%-wide repeating background tile slid by −50% for a seamless loop.
-- Particle positions are deterministic (seeded), so re-renders don't make them jump.
-- The panel needs `position: relative; overflow: hidden; isolation: isolate`. Its content sits at z-index 1, and the forecast tiles are semi-transparent so the sky shows through.
-- `prefers-reduced-motion` stops everything via the global rule.
-- To preview a scene in the mock: `__mockPatch('weather.forecast_home', { state: 'rainy' })` and `__mockPatch('sun.sun', { state: 'below_horizon' })`.
+## Page sky
+
+`components/SkyBackdrop.tsx` (mounted once in `App.tsx`) is a `position: fixed; z-index: -1` sky behind every layout, driven by `sun.sun`, the weather entity (state, `cloud_coverage`, `wind_speed` + unit, `wind_bearing`, `humidity`) and `HOME_ZONE`'s latitude/longitude. The owner asked for the whole dashboard's background to follow the weather and the time of day, then for the sun to rise on the right and set on the left, more frequent lightning, dense slow realistic clouds (moonlit at night), a tree and leaves for the wind, moisture, and the moon with its position and phase.
+- **Scene** (`skyScene()` in `src/lib/skyScene.ts`, pure, unit-tested):
+  - Sky colours: zenith/middle/horizon interpolated over sun-elevation stops (night −18°, blue hour −10°, civil twilight −4°, sunrise/sunset 0°, golden hour 5°, day 15°, high sun 45°), with a redder horizon in the evening (`rising` false). The weather greys, darkens or hazes them (`WEATHER` table) and sets the cloud cover (`cloud_coverage` refines it, in steps of 0.1, except for rain/fog/storm, which are always overcast).
+  - Cloud colours come from the same stops (shaded base and lit top: white by day, gold at golden hour, orange/pink at sunset, moonlight at night), plus how strongly the tops are lit: by the sun by day, by the moon at night (its phase and height, never below 0.12 for skyglow), less under overcast.
+  - **East is on the right.** `toScreen()` (`lib/astro.ts`) maps compass azimuth to x (`0.5 + 0.42 sin az`) and altitude to y, so the sun and moon rise on the right and set on the left. The sun uses `sun.sun`'s `azimuth`/`elevation`; without them, a plain-day model (`modelBody`: 06:00 east, noon south, 18:00 west) at the solar hour estimated from the rise/set times.
+  - **Moon:** with a location, its real altitude/azimuth (`moonPosition`, the Astronomy Answers / SunCalc formulas, ~1°); without one (or in `?skyTest`), the plain-day model delayed by phase × 24 h. The disc (inline SVG: `moonLitPath`, maria, earthshine) is turned so its lit limb points at the sun's position on the page. It's faint by day, and hidden behind overcast like the sun's disc (`clearView`).
+  - Wind: km/h (`windKmh` converts units), direction on the page from the bearing (blows towards bearing + 180°, east right; default leftwards), level 0–1 at 50 km/h. Moisture: `haze` from humidity above 55 % (more in rain/fog) and `dew` above 75 % (or rain).
+- **Layers** (DOM order = paint order): gradient, horizon glow, stars, `--bg` veil (`0.2 + 0.25 × day`; it keeps the sky dark enough for the panels), moon glow, moon, sun glow/disc/rays, clouds, city back (far and near skyline, windows, viaduct), metro trains, aviation lights, fog, haze, lightning glow/flash/bolt, city front (canopy, the tree's rise), rain/snow, tree, dew. So the sun and moon set behind the towers, low clouds sit behind them, and the bolt lands behind the canopy.
+- **Clouds** (`cloudSvg` in `lib/skyArt.ts`): an SVG `feTurbulence` tile (stitched, so it repeats sideways), thresholded by cover into a density mask (`shape`; full cover closes every gap), and a `lit` mask from `feDiffuseLighting` on a height map, lit from the sun's/moon's direction on the page (30° steps). Each is a **CSS mask over a flat colour** (`--cloud-shade`, `--cloud-lit` at `--cloud-lit-a`), so colours change with the time of day without re-rendering the images; only cover or light-direction changes rebuild them, and the browser rasterises them once. Two layers (far 1100 px tiles, near 1600 px) slide by one tile width; ~4 px/s on a still day plus 0.3 px/s per km/h (5 km/h steps), with the wind's direction.
+  - Height map = the cloud noise + a rounder billow noise (`0.0065`, 2 octaves), kept off its limits so nothing clips into flat plateaus, then blurred (8-bit heights otherwise light up as wood-grain contour lines). The noise is `feTile`d past both edges so the blur wraps instead of leaving a seam. Base frequencies are only mildly anisotropic; a big x/y ratio gave horizontal streaks.
+  - **The masks are bitmaps** (`useBitmapMask`): each SVG is drawn once into a canvas and used as a PNG blob URL (cached, oldest freed). Used directly as an SVG mask, the browser re-ran the filters for every tile it rasterised, and a drifting layer keeps exposing tiles: frames stalled 0.2–0.9 s now and then in any cloudy sky. A layer appears once its bitmaps are ready, and keeps the old ones until new ones are (no blink when the light direction changes).
+  - To inspect masks, draw each `mask-image` over a black div on white at its real height (puppeteer); headless screenshots of the sky alone hide most problems.
+- **Thunderstorm** (`Lightning` in `SkyBackdrop.tsx`, `planStrike`/`boltPaths` in `lib/skyArt.ts`): one strike at a time on a JS timer, 0.7–5 s apart and biased short (bursts), at a random place across the page (6–94 %). Each has 1–3 return strokes (WAAPI opacity keyframes); 65 % send a forked, tortuous bolt to the ground (`.sky-bolt`: the channel plus two wide faint halo strokes), the rest are in-cloud flashes. Every strike lights the clouds around it (`.sky-glow`: an 80vw cloud texture lit from below, `cloudSvg(tile, 'lit', 90, 18)`, under a static radial light) and, more softly, the sky (`.sky-flash`, a 200vw radial). The owner asked for strikes all over the page, not one side, and for the clouds to glow.
+  - **Keep strikes cheap** (the owner saw frame drops): the glow and flash stay mounted and are drawn once; a strike only sets their `transform` (to the strike's x) and flickers `opacity`, so nothing repaints. Things that caused drops and were removed: a glow inside the wide drifting cloud layers positioned by a CSS variable (repainted both layers per strike), `mix-blend-mode: plus-lighter` on it, a flash gradient positioned by a variable (full-screen repaint), CSS `drop-shadow` filters on the bolt (recomputed every frame of the flicker), and `getComputedStyle` per strike.
+  - The glow rests at opacity 0.01, not 0 (browsers drop a fully transparent mask layer and couldn't rasterise it within a 0.3 s strike). WAAPI ignores the global reduced-motion CSS, so `Lightning` checks `prefers-reduced-motion` itself.
+- **The city** (`lib/city.ts`, `lib/terrain.ts`; `CityBack`/`Metro`/`Beacons`/`CityFront` in `SkyBackdrop.tsx`): a skyline modelled on the owner's city (don't name it in tracked files). The owner first had a mountain-and-lake landscape, compared it with this city in the test panel and chose the city; the landscape was removed.
+  - **Shape:** a hazy far skyline and a nearer one of towers with setbacks, pointed crowns, slanted tops and masts, plus a wide domed civic building; an elevated metro viaduct; tree canopy along the street (a garden city, `CANOPY`, a fuzzy treeline ridge) and the rise the tree stands on (`RISE` in `terrain.ts`). It sits in a ground box 100vw × 50vh whose SVG viewBox is `LAND_H` (600) tall and as wide as the box's aspect (`useLandWidth`), so nothing stretches; it is built outwards from the centre, so the middle is the same on any width and wider screens see more. One cached result per width (`cityAt`).
+  - **Colours** come from `skyScene()` (`land`: far skyline, near skyline, viaduct/canopy, rise): each layer is the near-horizon sky mixed towards a ground colour (dark green by day, near black at night) by depth (0.5 far … 0.95 near), so distant towers fade into the sky; the dark veil is mixed in too, because the city is painted above `.sky-veil`. Plain fills set once a minute (no transitions), so the SVGs repaint only then.
+  - **Windows** (one path each for warm and cool light) are lit floor by floor (a few floors bright, the rest mostly dark) and fade in with `lights` (0 by day, 1 from about 6° below the horizon, a little on a dark rainy day). By day a faint window-grid pattern (`#sky-facade`) gives the glass texture, and the towers' sunward faces (`sunLeft`/`sunRight`, by the sun's side of the page) catch the light.
+  - **Moving parts** are composited only: two metro trains (one each way, `--train` a purple tint of the near skyline, lit windows by `--lit`) crossing in a fifth of a 64 s cycle, and red aviation lights blinking (opacity, `steps`) on the towers' tops at night.
+- **Wind shows only through what it moves** (the owner found gust streaks "like comets" and dropped the falling leaves): the tree, cloud and fog drift speed, and the rain's slant (`--rain-dx`/`--rain-rot`, streaks turned to match) and snow's drift (`--snow-dx`), all in 5 km/h or 0.1-level steps so readings don't restart animations. Drops start half their drift upwind so they still cover the page.
+- **Tree:** grown from a seed (`growTree` in `lib/tree.ts`: a crooked trunk, three main limbs branching 2–3 ways four levels deep, tapering, with clusters of small pointed leaves on the outer twigs and gaps between; scaled to fit its 300 × 400 box), standing on the near rise (bottom 4.5vh, 46vh tall). It's drawn once as SVG masks: the trunk, and one per limb (its branches and leaves). Each is a CSS mask over `--tree`, so the limbs are composited layers that sway about where they leave the trunk (`tree-sway`, each at its own pace) without repainting, and the whole tree leans downwind (0.5–6.5°). The owner found the first circle-clump tree cartoonish.
+- **Moisture:** a low haze over the far skyline (pale by day, sky-dark at night, `hazeColor`) and condensation beads along the bottom of the screen like a misted window (they looked like dust scattered over the sky), a few trickling down.
+- Only transform/opacity animate (the strike glow also blends); the global reduced-motion rule freezes it to a still scene, and night mode's `html.night` rule pauses it.
+- **See-through panels:** no `backdrop-filter` on panels (it would re-blur the animated sky under every panel each frame; keep it off). How solid panels and the cards inside them are follows daylight: `SkyBackdrop` sets `--panel-a` (48 % at night … 80 % by day) and `--card-a` (55 % … 100 %) on the root, in 0.1 daylight steps. Inside `.panel`, `--card`/`--card-hi`/`--tile`/`--tile-hover` are re-derived from their `*-base` colours at `--card-a`; top-bar pills follow `--panel-a` + 5 %. Pop-ups and sheets render outside `.panel`, so they stay solid. The owner found the scene hard to see through the panels at night; by day bright clouds behind see-through panels would wash out the muted text.
+- **`?skyTest`** (any build, like `?nightTest`; the deployed preview opens it by default): a floating panel (`components/SkyTestPanel.tsx`) with Time (a simulated 06:00/18:00 day, `simSun` in `src/lib/skySim.ts`), Play day (a day in a minute), Weather, Wind (km/h), Humidity and Moon phase; each has ⟲ to go back to live. Only the page sky follows it (the weather card and night mode stay live), nothing is sent to HA, and fades are shortened to 0.6 s (`.sky.testing`). It can be minimised to a chip.
+- Mock: the fixture's `sun.sun` is a night (elevation −38, azimuth 282) and the weather has wind, bearing and 92 % humidity. `__mockPatch('sun.sun', { state: 'above_horizon', attributes: { elevation: 1.5, azimuth: 255, rising: false } })` gives a sunset, or use `?skyTest`.
 
 ## Home energy panel
 
@@ -289,18 +330,27 @@ Each branch is a faint `.flow-track` plus `.flow-particles`: zero-length dashes 
 - Any public HA URL (Nabu Casa remote UI, Tailscale Funnel) exposes `/local/` to the internet, and such hostnames show up in certificate-transparency logs. That is why the per-home config lives behind the login and not in `/local/`.
 - HA's HTTP server settings (port, reverse proxy, IP ban) are UI-managed since 2026.8 (Settings → System → Network → HTTP server), not `configuration.yaml`. Behind a reverse proxy such as Funnel, "Trust X-Forwarded-For" must be on with the proxy's address trusted; a request carrying `X-Forwarded-For` from any other address gets HTTP 400.
 
+## Local preview (after every change)
+
+The owner develops with agents and tests each change in a browser on the PC, so **every change must land in the local preview at http://localhost:4180** (the same test build as the HA preview: fake data, sky test panel open, build version shown). An open tab picks up a new build within ~2 s by itself (`previewUpdate.ts` polls `version.json` every 2 s on localhost).
+- **Claude Code does it automatically:** the Stop hook in `.claude/settings.json` runs `node scripts/local-preview.mjs --hook` in the background when an agent finishes a turn (`asyncRewake`). It rebuilds only if the build inputs changed (a content hash of `src`, `mock`, `public`, `config`, `index.html`, package files, `vite.config.ts`, `tsconfig.json`; mtimes are useless on Google Drive). A failed build exits 2, which wakes the agent with the error; the same broken sources don't report again, and the last good build stays served. The hook starts in sessions opened after `.claude/` exists.
+- **Other agents** (no Claude hooks): run `npm run preview:local` (or `node scripts/local-preview.mjs`) after each change and fix any build error it prints. It takes a few seconds; with no source change the hook form (`--hook`) returns at once.
+- **Where it builds:** on a checkout that can't hold `node_modules` (Google Drive), set `BUILD_DIR` in the environment or in `.env.local` (`BUILD_DIR=...`, gitignored): the inputs are mirrored there and built there; elsewhere it builds in place. Output in `<build dir>/.local-preview/site` (swapped in atomically), with `npm install` when `package-lock.json` changes.
+- **The server** (`scripts/local-preview-server.mjs`) listens on 127.0.0.1 only (no firewall prompt, not reachable from other devices; use the HA preview for the iPad), sends `Cache-Control: no-store`, and answers `/__local-preview` with the site it serves and its pid, so the script starts it only when needed. `--stop` stops it; `--port <n>` or `LOCAL_PREVIEW_PORT` changes the port.
+
 ## Verifying UI changes
 
-- Always run `npm run typecheck`, `npm test` and `npm run build`. CI and the Release workflow run all three.
+- Always run `npm run typecheck`, `npm test` and `npm run build`. CI and the Release workflow run all three. The local preview (above) is for the owner's eyes, not a substitute.
 - **Unit tests** (`vitest`, config in `vitest.config.ts`) cover pure logic: fan-speed snapping (`src/lib/fanSpeed.ts`), meal "Next up", plug discovery, weather extras and formatting, `relTime`/`num`, weather hours/night, car distance, commute card extraction. They run in plain Node; `src/test/setup.ts` sets `window` to the global object and loads the example config, as `main.tsx` does. Put new pure helpers somewhere importable without React rendering and add a test beside them (`*.test.ts`, never imported by the app, so never bundled). vitest stays on 3.x: 4.x needs Vite 6+ and Node 20+.
+- To try a pull request on a real device, open the **preview** (`/local/dashboard/preview/index.html`), which every push deploys (see Releases and deploys). It's fake data, so it can't test the HA connection, login or config loading.
 - Take visual checks against a **production-mode mock build**, not the dev server. The dev server loads `@mdi/js` slowly, and headless screenshots then capture half-loaded pages.
   ```sh
   VITE_MOCK=1 npx vite build --outDir <scratch>/dist-mock --emptyOutDir
   ```
   Serve it (`python -m http.server`) and use `puppeteer-core` with the local Chrome, installed in the **scratch dir, not the repo**. Wait for the forecast (`.wx-img`) before capturing. Chrome's `--screenshot` flag fires before async data lands, and `--virtual-time-budget` hangs (clock and jitter intervals).
 - `page.setViewport` gives exact phone sizes; or wrap the page in an HTML file with a 412×915 iframe.
-- Sizes checked so far: 1180×820 (iPad landscape), 412/600 wide (phone), 1920×1080 (desktop), in both themes.
-- **Visual checks in CI** (`npm run test:visual`, Playwright, `playwright.config.ts`, `tests/visual/`): the `visual` CI job builds the mock, serves it with `vite preview` on :4173 and screenshots tablet (1180×820), phone (412×915) and desktop (1920×1080) in both themes with `?mockFreeze=1`, a fixed clock (`page.clock.setFixedTime`), UTC, en-US and reduced motion, comparing against `tests/visual/__screenshots__` (1 % pixel tolerance). Diffs are uploaded as the `visual-diffs` artifact on failure. Baselines must come from Linux: after an intended visual change, add the `update-baselines` label to the PR (or run the **Update visual baselines** workflow on its branch: `gh workflow run visual-baselines.yml --ref <branch>`), which commits new baselines there, then re-run CI on the branch (`gh workflow run ci.yml --ref <branch>`). Locally, `PW_CHANNEL=chrome npx playwright test` runs against an installed Chrome; don't commit baselines made on Windows/macOS.
+- Sizes checked so far: 1180×820 (iPad landscape), 412/600 wide (phone), 1920×1080 (desktop).
+- **Visual checks in CI** (`npm run test:visual`, Playwright, `playwright.config.ts`, `tests/visual/`): the `visual` CI job builds the mock, serves it with `vite preview` on :4173 and screenshots tablet (1180×820), phone (412×915) and desktop (1920×1080) with `?mockFreeze=1`, a fixed clock (`page.clock.setFixedTime`), UTC, en-US and reduced motion, comparing against `tests/visual/__screenshots__` (1 % pixel tolerance). Diffs are uploaded as the `visual-diffs` artifact on failure. Baselines must come from Linux: after an intended visual change, add the `update-baselines` label to the PR (or run the **Update visual baselines** workflow on its branch: `gh workflow run visual-baselines.yml --ref <branch>`), which commits new baselines there, then re-run CI on the branch (`gh workflow run ci.yml --ref <branch>`). Locally, `PW_CHANNEL=chrome npx playwright test` runs against an installed Chrome; don't commit baselines made on Windows/macOS.
 - README screenshots live in `docs/screenshots/` and come from the mock build only.
 - **Test the production boot before releasing** anything that touches `main.tsx`, `config/load.ts`, `entities.ts`, `HaProvider` or `useSelfUpdate`: build with `BUILD_HASH=dev` (turns self-update off), copy `dist/index.html` to `www/dashboard-test/index.html` on the share, and have the owner open `/local/dashboard-test/index.html?layout=phone&v=<anything>` while logged in. Delete the folder afterwards. An agent can't log in, so the owner has to check it; an agent can still read the console in its own browser for errors before the login redirect.
 - HA serves `/local/` with `Cache-Control: public, max-age=2678400` (31 days). A re-copied test page needs a fresh `?v=` or the browser keeps the old file. Kiosks are covered: self-update reloads with `?v=<helper value>`.
@@ -317,7 +367,7 @@ Each branch is a faint `.flow-track` plus `.flow-particles`: zero-length dashes 
 - **The API key and coordinates are not in this repo.** At runtime `CommuteCard` calls `lovelace/config` for `COMMUTE.dashboard` over the authenticated WebSocket, then `extractCommuteConfig()` finds the card (nested stacks included). Never hardcode the key; `/local/` is public. CI checks `grep -c AIza dist/index.html` is `0`.
 - The commute window (days and hours) is `COMMUTE` in the config. Auto-refresh (every 2 min), the leave-later comparison and the traffic alert only run inside that window, or while a searched destination is active.
 - Browser notifications are left out: the iPad WebView doesn't support them, and a permission prompt on a kiosk is noise.
-- The map is rebuilt when the theme flips, because Maps `colorScheme` can only be set at creation.
+- The map uses Maps' dark `colorScheme` (set at creation), to match the dark-only dashboard.
 - The mock returns no Lovelace config, so the card shows its "not configured" message. The real map can only be tested on the deployed page after login.
 - If the Routes API returns a bare 403 ("caller does not have permission"), check billing on the key's Google Cloud project first; `computeRouteMatrix` or the legacy Directions endpoint name the billing problem.
 
@@ -326,7 +376,6 @@ Each branch is a faint `.flow-track` plus `.flow-particles`: zero-length dashes 
 - **Car offline:** when the car's lock and fuel entities are both `unavailable` (the Kia Connect integration isn't returning data, typically an expired login; HA raises no repair or reauth flow for it), `CarPanel` treats the car as offline. It fetches the last numeric fuel/range/odometer/12V-battery readings from 14 days of history and shows them dimmed with "Offline · <age>", in the card and the detail modal. That query takes seconds on the Pi, so `loadLastKnown` keeps **one module-level result shared by the card and the modal** (in-flight request deduped, reused for 10 min, dropped when the car is back); a per-component fetch left the modal blank until it returned. Tyre warnings are back-filled too, via `fetchLastStates` (newest non-unavailable state per entity; `fetchHistory` keeps only numbers): dimmed, with a "Tyre pressure: last known, from <age>" note, and a last-known low tyre shows a "Low tyre (last known)" chip. Doors and lock are deliberately **not** back-filled: a stale "closed"/"locked" would mislead, so they stay unknown; the panel gets a "Kia Connect not responding" chip instead of the lock chip, and the detail modal a `.notice-banner` telling the owner to reconfigure the integration in HA. Lock is disabled and lock/door state reads "unknown"; never present an unavailable lock as "Unlocked". In the mock, `__mockPatch` the lock, fuel, range and odometer to `unavailable` to see it (mock history returns fixed car readings from 3 h ago, after a 1.5 s delay to mimic the Pi).
 - `relTime()` returns '' for missing or unparseable times, so an unavailable timestamp sensor never renders as "NaNd ago". A sleeping dishwasher shows "Asleep".
 - `app.css` has a global `.stale` class (red, bold; the commute card's stale-data indicator). Don't reuse that name for other states; the car's dimmed last-known tyres use `.last-known`.
-- The theme is applied in a layout effect. The body background transition only switches on after the first second (`html.theme-anim`), to avoid a dark flash on load.
 - The AC setpoint is clamped to 16–30 °C in the UI, even though devices may report a wider range.
 - Fan tile icons (`mdiCeilingFan`, a side view) spin around the vertical axis (`spin-y`), not in a flat circle. That's what the owner asked for.
 

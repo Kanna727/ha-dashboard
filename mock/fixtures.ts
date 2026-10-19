@@ -28,6 +28,9 @@ const list: HassEntity[] = [
   e('sun.sun', 'below_horizon', {
     next_rising: new Date(Date.now() + 9 * 3600_000).toISOString(),
     next_setting: new Date(Date.now() + 21 * 3600_000).toISOString(),
+    elevation: -38.4,
+    azimuth: 282,
+    rising: false,
   }),
   e('weather.forecast_home', 'partlycloudy', {
     temperature: 27.9,
@@ -38,7 +41,7 @@ const list: HassEntity[] = [
     uv_index: 0,
     pressure: 1009.6,
     pressure_unit: 'hPa',
-    wind_bearing: 225,
+    wind_bearing: 240,
     wind_speed: 8.6,
     wind_gust_speed: 19,
     wind_speed_unit: 'km/h',

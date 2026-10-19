@@ -1,19 +1,27 @@
-/* ---------- tokens ---------- */
-:root,
-[data-theme='dark'] {
+/* ---------- tokens (dark only) ---------- */
+:root {
   --bg: #07090f;
   --bg-glow-1: rgba(255, 176, 64, 0.16);
   --bg-glow-2: rgba(52, 211, 153, 0.07);
   --panel: #10141d;
   --panel-border: rgba(255, 255, 255, 0.06);
-  --card: #161b26;
-  --card-hi: #1b2130;
+  --card-base: #161b26;
+  --card-hi-base: #1b2130;
+  --card: var(--card-base);
+  --card-hi: var(--card-hi-base);
   --border: rgba(255, 255, 255, 0.07);
   --text: #f2f4f8;
   --muted: #8a93a6;
   --label: #7c8598;
-  --tile: #1a2030;
-  --tile-hover: #212838;
+  --tile-base: #1a2030;
+  --tile-hover-base: #212838;
+  --tile: var(--tile-base);
+  --tile-hover: var(--tile-hover-base);
+  /* How solid the panels and the cards inside them are. SkyBackdrop sets these
+     from daylight: see-through at night so the scene shows, nearly solid by day
+     so muted text stays readable over bright clouds. Pop-ups stay solid. */
+  --panel-a: 80%;
+  --card-a: 100%;
   --shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
   --accent: #8b7cf6;
   --accent-light: #fbbf24;
@@ -26,34 +34,6 @@
   --danger: #f87171;
   --on-text: #0b0f17;
   color-scheme: dark;
-}
-
-[data-theme='light'] {
-  --bg: #eef0f5;
-  --bg-glow-1: rgba(251, 191, 36, 0.22);
-  --bg-glow-2: rgba(52, 211, 153, 0.14);
-  --panel: #ffffff;
-  --panel-border: rgba(15, 23, 42, 0.06);
-  --card: #f4f6fa;
-  --card-hi: #ffffff;
-  --border: rgba(15, 23, 42, 0.08);
-  --text: #0f172a;
-  --muted: #64748b;
-  --label: #7b8497;
-  --tile: #eef1f6;
-  --tile-hover: #e5e9f1;
-  --shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-  --accent: #7c6cf0;
-  --accent-light: #f59e0b;
-  --accent-fan: #0ea5e9;
-  --accent-switch: #8b5cf6;
-  --accent-energy: #10b981;
-  --accent-ac: #0ea5e9;
-  --ok: #059669;
-  --warn: #ea580c;
-  --danger: #dc2626;
-  --on-text: #ffffff;
-  color-scheme: light;
 }
 
 /* ---------- base ---------- */
@@ -72,7 +52,6 @@ body {
   -webkit-user-select: none;
   user-select: none;
 }
-html.theme-anim body { transition: background-color 0.6s ease; }
 button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; padding: 0; touch-action: manipulation; }
 button:disabled { opacity: 0.4; cursor: default; }
 h1, h2, h3 { margin: 0; }
@@ -93,12 +72,17 @@ h1, h2, h3 { margin: 0; }
 
 /* ---------- panels ---------- */
 .panel {
-  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  background: color-mix(in srgb, var(--panel) var(--panel-a), transparent);
+  --card: color-mix(in srgb, var(--card-base) var(--card-a), transparent);
+  --card-hi: color-mix(in srgb, var(--card-hi-base) var(--card-a), transparent);
+  --tile: color-mix(in srgb, var(--tile-base) var(--card-a), transparent);
+  --tile-hover: color-mix(in srgb, var(--tile-hover-base) var(--card-a), transparent);
   border: 1px solid var(--panel-border);
   border-radius: 28px;
   padding: 18px 18px 20px;
   box-shadow: var(--shadow);
-  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  /* No backdrop blur: the page sky (SkyBackdrop) animates behind every panel,
+     and re-blurring it each frame is too much for the kiosk. */
 }
 .panel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; min-height: 36px; }
 .panel-head .label { flex: 1; }
@@ -140,7 +124,7 @@ h1, h2, h3 { margin: 0; }
 
 .pill {
   display: inline-flex; align-items: center; gap: 10px; height: 58px; padding: 0 20px;
-  border-radius: 20px; background: color-mix(in srgb, var(--panel) 85%, transparent);
+  border-radius: 20px; background: color-mix(in srgb, var(--panel) calc(var(--panel-a) + 5%), transparent);
   border: 1px solid var(--panel-border); font-size: 17px; font-weight: 600; white-space: nowrap;
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); position: relative;
 }
@@ -175,7 +159,6 @@ h1, h2, h3 { margin: 0; }
 }
 .avatar:first-child { margin-left: 0; }
 .avatar.away { background: var(--tile); color: var(--muted); }
-.auto-dot { position: absolute; top: 10px; right: 10px; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-light); }
 
 .round {
   position: relative; width: 46px; height: 46px; border-radius: 50%; flex-shrink: 0;
@@ -199,6 +182,9 @@ button.wide { width: 100%; }
 /* ---------- top bar ---------- */
 .topbar { display: flex; align-items: center; gap: 16px; padding: 4px 4px 18px; }
 .hello { flex: 1; min-width: 0; }
+/* The greeting and clock sit straight on the page sky: a soft shadow keeps them readable over bright clouds. */
+.hello, .big-clock { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 2px 14px rgba(0, 0, 0, 0.6); }
+.hello .muted { color: #c3cad6; }
 .hello h1 { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hello .muted { font-size: 17px; margin-top: 4px; font-weight: 500; }
 .topbar-pills { display: flex; gap: 12px; align-items: center; }
@@ -322,24 +308,23 @@ button.wide { width: 100%; }
 .wx-temp { font-size: 58px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; }
 .wx-temp sup { font-size: 0.4em; vertical-align: top; position: relative; top: 0.25em; }
 .wx-cond { font-size: 19px; font-weight: 700; margin: 4px 0 2px; }
-.sun-chip { position: absolute; top: 0; right: 0; padding: 7px 12px; font-size: 13px; color: var(--text); }
+.wx-sun { display: flex; gap: 14px; margin-top: 6px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.wx-sun span { display: inline-flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
+.wx-sun svg { color: var(--accent-light); }
 .wx-days { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
 .wx-day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 4px; border-radius: 18px; background: var(--card); }
 .wx-dname { font-weight: 700; font-size: 14px; }
 .wx-hi { font-weight: 800; font-size: 17px; }
 .wx-rain { font-size: 11px; font-weight: 700; color: var(--accent-fan); }
 
-/* colour weather art: tight crop + a soft shadow so white clouds hold up on the light theme */
+/* colour weather art: tight crop */
 .wx-img { display: block; flex-shrink: 0; user-select: none; -webkit-user-drag: none; }
-[data-theme='light'] .wx-img { filter: drop-shadow(0 1px 2px rgba(15, 23, 42, 0.25)); }
 .wx-now-img { margin: -12px -8px -12px -14px; }
 .wx-day .wx-img { margin: -6px 0; }
 .wx-hour .wx-img { margin: -4px 0; }
 
-/* ---------- live weather backdrop ---------- */
-.weather-panel { position: relative; overflow: hidden; isolation: isolate; }
-.weather-panel > :not(.wx-bg) { position: relative; z-index: 1; }
-/* Sun / moon arc (components/SkyArc.tsx). The body glides between its
+/* ---------- sun / moon arc ---------- */
+/* Sun / moon arc on the night screen (components/SkyArc.tsx). The body glides between its
    once-a-minute positions; only transform and opacity animate. */
 .sky-arc { margin: 6px auto 10px; max-width: 340px; }
 .sky-arc svg { display: block; width: 100%; height: 64px; overflow: visible; }
@@ -356,84 +341,153 @@ button.wide { width: 100%; }
 .moon-lit { fill: #f1f5f9; }
 .sky-labels { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); margin-top: 2px; }
 .sky-phase { color: var(--text); opacity: 0.75; }
-.weather-panel .wx-day, .weather-panel .wx-hour.now, .weather-panel .sun-chip { background: color-mix(in srgb, var(--card) 72%, transparent); }
-.wx-bg { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; border-radius: inherit;
-  --cloud: rgba(255, 255, 255, 0.16); --drop: rgba(170, 205, 255, 0.5); }
-[data-theme='light'] .wx-bg { --cloud: rgba(120, 140, 170, 0.18); --drop: rgba(40, 110, 220, 0.4); }
-.wx-bg.heavy { --drop: rgba(170, 205, 255, 0.65); }
-.wx-bg > * { position: absolute; will-change: transform, opacity; }
-.wx-sky { inset: 0; transition: background 1.5s ease; }
-.wx-scrim { inset: 0; background: linear-gradient(to bottom, transparent 55%, color-mix(in srgb, var(--panel) 55%, transparent)); }
-
-.wx-bg.clear.day .wx-sky { background: linear-gradient(160deg, rgba(56, 140, 255, 0.34), rgba(255, 180, 60, 0.12) 65%, transparent); }
-.wx-bg.clear.night .wx-sky { background: linear-gradient(170deg, rgba(40, 60, 140, 0.55), rgba(10, 15, 40, 0.15)); }
-.wx-bg.partly.day .wx-sky { background: linear-gradient(165deg, rgba(70, 140, 230, 0.30), rgba(70, 140, 230, 0.06) 70%, transparent); }
-.wx-bg.partly.night .wx-sky { background: linear-gradient(170deg, rgba(35, 50, 110, 0.45), rgba(10, 15, 40, 0.1)); }
-.wx-bg.cloudy .wx-sky { background: linear-gradient(170deg, rgba(125, 135, 155, 0.32), rgba(60, 65, 80, 0.12)); }
-.wx-bg.rain .wx-sky { background: linear-gradient(175deg, rgba(60, 82, 115, 0.50), rgba(20, 30, 45, 0.2)); }
-.wx-bg.storm .wx-sky { background: linear-gradient(175deg, rgba(60, 48, 100, 0.55), rgba(15, 15, 30, 0.25)); }
-.wx-bg.fog .wx-sky { background: linear-gradient(180deg, rgba(170, 176, 188, 0.30), rgba(170, 176, 188, 0.08)); }
-.wx-bg.snow .wx-sky { background: linear-gradient(180deg, rgba(170, 200, 240, 0.30), rgba(170, 200, 240, 0.06)); }
-.wx-bg.wind .wx-sky { background: linear-gradient(165deg, rgba(90, 170, 205, 0.26), transparent 75%); }
-.wx-bg.cloudy, .wx-bg.rain, .wx-bg.storm { --cloud: rgba(170, 178, 192, 0.20); }
-.wx-bg.rain.heavy, .wx-bg.storm { --cloud: rgba(120, 128, 145, 0.30); }
-
-/* sun / moon */
-.wx-sunglow { width: 70%; aspect-ratio: 1; top: -28%; right: -22%; border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 205, 90, 0.55), rgba(255, 170, 60, 0.18) 38%, transparent 68%); animation: wx-pulse 7s ease-in-out infinite; }
-.wx-sunglow.soft { opacity: 0.6; }
-.wx-rays { width: 160%; aspect-ratio: 1; top: -80%; right: -80%;
-  background: repeating-conic-gradient(rgba(255, 210, 100, 0.16) 0deg 5deg, transparent 5deg 22deg);
-  -webkit-mask-image: radial-gradient(circle, #000 8%, transparent 55%); mask-image: radial-gradient(circle, #000 8%, transparent 55%);
-  animation: spin 90s linear infinite; }
-.wx-moonglow { width: 55%; aspect-ratio: 1; top: -22%; right: -14%; border-radius: 50%;
-  background: radial-gradient(circle, rgba(190, 210, 255, 0.30), transparent 65%); animation: wx-pulse 9s ease-in-out infinite; }
-.wx-stars { inset: 0; background-repeat: no-repeat; animation: wx-twinkle 4s ease-in-out infinite alternate; }
-.wx-stars.a { background-image:
-  radial-gradient(1.6px 1.6px at 8% 12%, #fff, transparent), radial-gradient(1.2px 1.2px at 22% 30%, #fff, transparent),
-  radial-gradient(1.8px 1.8px at 38% 8%, #fff, transparent), radial-gradient(1.2px 1.2px at 55% 22%, #fff, transparent),
-  radial-gradient(1.5px 1.5px at 66% 40%, #fff, transparent), radial-gradient(1.2px 1.2px at 78% 18%, #fff, transparent),
-  radial-gradient(1.6px 1.6px at 92% 34%, #fff, transparent), radial-gradient(1.2px 1.2px at 14% 46%, #fff, transparent); }
-.wx-stars.b { animation-delay: -2s; background-image:
-  radial-gradient(1.3px 1.3px at 4% 28%, #fff, transparent), radial-gradient(1.7px 1.7px at 30% 16%, #fff, transparent),
-  radial-gradient(1.2px 1.2px at 47% 38%, #fff, transparent), radial-gradient(1.5px 1.5px at 61% 6%, #fff, transparent),
-  radial-gradient(1.2px 1.2px at 72% 28%, #fff, transparent), radial-gradient(1.6px 1.6px at 86% 10%, #fff, transparent),
-  radial-gradient(1.2px 1.2px at 96% 22%, #fff, transparent); }
-
-/* clouds: a 2x-wide repeating tile slid left by half its width = seamless loop */
-.wx-clouds { top: 0; left: 0; width: 200%; height: 62%; background-repeat: repeat-x; background-size: 50% 100%; }
-.wx-clouds.far { opacity: 0.7; animation: wx-drift 140s linear infinite; background-image:
-  radial-gradient(70px 22px at 12% 30%, var(--cloud), transparent 70%), radial-gradient(110px 30px at 40% 18%, var(--cloud), transparent 70%),
-  radial-gradient(80px 24px at 68% 42%, var(--cloud), transparent 70%), radial-gradient(120px 34px at 90% 22%, var(--cloud), transparent 70%); }
-.wx-clouds.near { animation: wx-drift 75s linear infinite; background-image:
-  radial-gradient(130px 42px at 20% 22%, var(--cloud), transparent 70%), radial-gradient(90px 34px at 30% 34%, var(--cloud), transparent 70%),
-  radial-gradient(150px 46px at 72% 26%, var(--cloud), transparent 70%), radial-gradient(100px 36px at 84% 40%, var(--cloud), transparent 70%); }
-.wx-bg.cloudy .wx-clouds.near, .wx-bg.rain .wx-clouds.near, .wx-bg.storm .wx-clouds.near { height: 75%; opacity: 1.0; }
-
-/* fog bands drift in opposite directions */
-.wx-fog { left: 0; width: 200%; height: 100%; top: 0; background-repeat: repeat-x; background-size: 50% 100%; }
-.wx-fog.a { animation: wx-drift 50s linear infinite; background-image:
-  radial-gradient(60% 9% at 30% 55%, rgba(220, 225, 232, 0.34), transparent 70%), radial-gradient(55% 8% at 78% 72%, rgba(220, 225, 232, 0.3), transparent 70%); }
-.wx-fog.b { animation: wx-drift 70s linear infinite reverse; background-image:
-  radial-gradient(50% 8% at 15% 82%, rgba(220, 225, 232, 0.28), transparent 70%), radial-gradient(60% 10% at 65% 40%, rgba(220, 225, 232, 0.26), transparent 70%); }
-
-/* rain, snow, wind particles */
-.wx-drop { top: -40px; width: 1.6px; height: calc(20px * var(--s)); border-radius: 2px;
-  background: linear-gradient(to bottom, transparent, var(--drop)); animation: wx-fall linear infinite; }
-.wx-bg.heavy .wx-drop { width: 2px; height: calc(28px * var(--s)); }
-.wx-flake { top: -10px; width: calc(5px * var(--s)); height: calc(5px * var(--s)); border-radius: 50%;
-  background: rgba(255, 255, 255, 0.85); animation: wx-snow linear infinite; }
-.wx-gust { left: -160px; width: calc(140px * var(--s)); height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, transparent, rgba(220, 240, 255, 0.45), transparent); animation: wx-gust linear infinite; }
-.wx-flash { inset: 0; background: rgba(230, 230, 255, 0.9); opacity: 0; animation: wx-flash 8s linear infinite; }
-
+/* shared by the page sky (fog, stars) */
 @keyframes wx-drift { to { transform: translate3d(-50%, 0, 0); } }
-@keyframes wx-pulse { 50% { transform: scale(1.08); opacity: 0.8; } }
 @keyframes wx-twinkle { from { opacity: 0.35; } to { opacity: 1; } }
-@keyframes wx-fall { from { transform: translate3d(0, 0, 0) rotate(12deg); } to { transform: translate3d(-120px, 760px, 0) rotate(12deg); } }
-@keyframes wx-snow { 0% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(18px, 380px, 0); } 100% { transform: translate3d(-6px, 760px, 0); } }
-@keyframes wx-gust { from { transform: translate3d(0, 0, 0); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { transform: translate3d(1400px, -20px, 0); opacity: 0; } }
-@keyframes wx-flash { 0%, 89%, 92%, 95%, 100% { opacity: 0; } 90% { opacity: 0.35; } 93.5% { opacity: 0.5; } }
+
+/* ---------- page sky (components/SkyBackdrop.tsx) ----------
+   Fixed behind every layout; layers paint in DOM order. The colours come from
+   lib/skyScene.ts as custom properties (the sky ones registered, so a new
+   reading fades in); a --bg veil over the gradient and stars keeps the sky
+   dark enough for the panels, with the sun, moon, clouds, weather, tree, leaves and dew
+   above it. Only transform/opacity animate. */
+@property --sky-top { syntax: '<color>'; inherits: true; initial-value: #03050d; }
+@property --sky-mid { syntax: '<color>'; inherits: true; initial-value: #060a1a; }
+@property --sky-low { syntax: '<color>'; inherits: true; initial-value: #0b1229; }
+.sky { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  transition: --sky-top 8s ease, --sky-mid 8s ease, --sky-low 8s ease;
+  --veil: calc(0.2 + 0.25 * var(--day, 1)); --drop: rgba(170, 205, 255, 0.32);
+  --tree: color-mix(in srgb, var(--sky-low) 16%, #040705); --tree-a: 0.92; }
+.sky > * { position: absolute; left: 0; top: 0; }
+.sky-grad { inset: 0; background: linear-gradient(to bottom, var(--sky-top), var(--sky-mid) 58%, var(--sky-low)); }
+.sky-horizon { left: -20%; right: -20%; top: auto; bottom: -30vh; height: 75vh; border-radius: 50%; opacity: var(--horizon); transition: opacity 8s ease;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--sky-low) 85%, #ffb070), transparent); }
+.sky-veil { inset: 0; background: var(--bg); opacity: var(--veil); transition: opacity 8s ease; }
+
+.sky-stars { inset: 0 0 25%; opacity: var(--stars); transition: opacity 8s ease;
+  -webkit-mask-image: linear-gradient(#000 40%, transparent); mask-image: linear-gradient(#000 40%, transparent); }
+.sky-stars i { position: absolute; inset: 0; background-repeat: repeat; animation: wx-twinkle 5s ease-in-out infinite alternate; will-change: opacity; }
+.sky-stars .a { background-size: 420px 300px; background-image:
+  radial-gradient(1.5px 1.5px at 8% 12%, #fff, transparent), radial-gradient(1.1px 1.1px at 24% 54%, #fff, transparent),
+  radial-gradient(1.8px 1.8px at 41% 18%, #fff, transparent), radial-gradient(1.1px 1.1px at 57% 72%, #fff, transparent),
+  radial-gradient(1.4px 1.4px at 69% 36%, #fff, transparent), radial-gradient(1.1px 1.1px at 83% 8%, #fff, transparent),
+  radial-gradient(1.6px 1.6px at 93% 61%, #fff, transparent); }
+.sky-stars .b { animation-delay: -2.5s; background-size: 340px 260px; background-image:
+  radial-gradient(1.2px 1.2px at 4% 38%, #fff, transparent), radial-gradient(1.6px 1.6px at 31% 9%, #fff, transparent),
+  radial-gradient(1.1px 1.1px at 48% 46%, #fff, transparent), radial-gradient(1.4px 1.4px at 66% 82%, #fff, transparent),
+  radial-gradient(1.1px 1.1px at 76% 24%, #fff, transparent), radial-gradient(1.5px 1.5px at 90% 52%, #fff, transparent); }
+
+/* sun and moon: placed from their altitude and azimuth (east on the right), gliding between once-a-minute updates */
+.sky-body { width: 90vmin; height: 90vmin;
+  transform: translate3d(calc(var(--x) * 100vw - 45vmin), calc(var(--y) * 100vh - 45vmin), 0); transition: transform 60s linear; }
+.sky-body > * { position: absolute; inset: 0; border-radius: 50%; }
+.sky-sun { opacity: var(--sun); transition: opacity 8s ease;
+  background: radial-gradient(circle, rgba(255, 236, 190, 0.9), rgba(255, 220, 150, 0.45) 6%, rgba(255, 190, 90, 0.16) 28%, transparent 62%); }
+.sky-body > .sky-sundisc { inset: 47.2%; opacity: var(--disc); transition: opacity 8s ease;
+  background: radial-gradient(circle, #fffdf4 52%, color-mix(in srgb, var(--sky-low) 30%, #ffe7a8) 68%, transparent 72%); }
+.sky-body > .sky-rays { inset: -40%; border-radius: 0; opacity: calc(var(--sun) * 0.8);
+  background: repeating-conic-gradient(rgba(255, 220, 130, 0.10) 0deg 4deg, transparent 4deg 18deg);
+  -webkit-mask-image: radial-gradient(circle, #000 6%, transparent 50%); mask-image: radial-gradient(circle, #000 6%, transparent 50%);
+  animation: spin 160s linear infinite; will-change: transform; }
+.sky-moonglow { width: 60vmin; height: 60vmin; border-radius: 50%; opacity: var(--moon-glow); transition: opacity 8s ease, transform 60s linear;
+  transform: translate3d(calc(var(--mx) * 100vw - 30vmin), calc(var(--my) * 100vh - 30vmin), 0);
+  background: radial-gradient(circle, rgba(205, 220, 255, 0.4), rgba(170, 190, 255, 0.1) 35%, transparent 68%); }
+.sky-moon { width: 7vmin; height: 7vmin; min-width: 34px; min-height: 34px; overflow: visible; opacity: var(--moon); transition: opacity 8s ease, transform 60s linear;
+  transform: translate3d(calc(var(--mx) * 100vw - 50%), calc(var(--my) * 100vh - 50%), 0);
+  filter: drop-shadow(0 0 10px rgba(220, 230, 255, 0.45)); }
+.moon-earthshine { fill: #2b3449; opacity: 0.55; }
+.moon-maria { fill: #8e94a4; opacity: 0.32; }
+
+/* clouds: fractal-noise tiles (lib/skyArt.ts) used as masks over flat shade
+   and lit colours, slid by one tile width for a seamless loop */
+.sky-cloud { width: calc(100vw + var(--tile)); height: 68vh; will-change: transform;
+  animation-name: sky-drift; animation-timing-function: linear; animation-iteration-count: infinite; }
+.sky-cloud.far { height: 52vh; opacity: 0.8; }
+.sky.cloudy .sky-cloud.near, .sky.rain .sky-cloud.near, .sky.storm .sky-cloud.near, .sky.snow .sky-cloud.near { height: 88vh; }
+.sky.cloudy .sky-cloud.far, .sky.rain .sky-cloud.far, .sky.storm .sky-cloud.far, .sky.snow .sky-cloud.far { height: 72vh; }
+.sky-cloud > div { position: absolute; inset: 0;
+  -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x; -webkit-mask-size: var(--tile) 100%; mask-size: var(--tile) 100%; }
+.sky-cloud .shade { background: var(--cloud-shade); transition: background-color 8s ease; }
+.sky-cloud .lit { background: var(--cloud-lit); opacity: var(--cloud-lit-a); transition: background-color 8s ease, opacity 8s ease; }
+@keyframes sky-drift { to { transform: translate3d(calc(-1 * var(--tile)), 0, 0); } }
+
+.sky-fog { width: 200%; height: 100%; background-repeat: repeat-x; background-size: 50% 100%; will-change: transform; }
+.sky-fog.a { animation: wx-drift 110s linear infinite; background-image:
+  radial-gradient(60% 10% at 30% 60%, rgba(215, 222, 232, 0.22), transparent 70%), radial-gradient(55% 9% at 78% 80%, rgba(215, 222, 232, 0.2), transparent 70%); }
+.sky-fog.b { animation: wx-drift 150s linear infinite reverse; background-image:
+  radial-gradient(50% 9% at 15% 88%, rgba(215, 222, 232, 0.18), transparent 70%), radial-gradient(60% 11% at 65% 45%, rgba(215, 222, 232, 0.16), transparent 70%); }
+/* moisture: a low haze that thickens with humidity */
+.sky-haze { inset: 35% 0 0; opacity: calc(var(--haze) * 0.75); transition: opacity 8s ease;
+  background: linear-gradient(to bottom, transparent, var(--haze-color) 85%); }
+
+/* lightning (Lightning in SkyBackdrop.tsx): one strike at a time. The glow (a
+   cloud texture lit from below, under a radial light) and the flash are drawn
+   once and only moved (transform) and flickered (opacity) per strike. */
+.sky-glow { width: 80vw; height: 85vh; opacity: 0.01; will-change: transform, opacity; /* kept rasterised between strikes */
+  -webkit-mask-size: 1600px 100%; mask-size: 1600px 100%; -webkit-mask-repeat: repeat-x; mask-repeat: repeat-x;
+  background: radial-gradient(ellipse 50% 60% at 50% 34%, #fff, rgba(225, 230, 255, 0.8) 30%, rgba(180, 190, 255, 0.25) 62%, rgba(160, 170, 255, 0.07) 84%, transparent); }
+.sky-flash { width: 200vw; height: 100vh; opacity: 0; will-change: transform, opacity;
+  background: radial-gradient(ellipse 30% 80% at 50% 12%, rgba(230, 234, 255, 0.95), rgba(200, 210, 255, 0.4) 45%, rgba(190, 200, 255, 0.14) 85%, rgba(190, 200, 255, 0.1)); }
+.sky-bolt { top: 3vh; width: 26vw; height: 84vh; opacity: 0; overflow: visible; will-change: opacity; }
+.sky-bolt path { fill: none; stroke: #f8f9ff; stroke-width: 2.6px; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sky-bolt path.halo { stroke: rgba(200, 208, 255, 0.4); stroke-width: 9px; }
+.sky-bolt path.halo.wide { stroke: rgba(160, 170, 255, 0.12); stroke-width: 34px; }
+.sky-bolt path.fork { stroke-width: 1.1px; opacity: 0.8; }
+
+.sky-drop { top: -60px; width: 1.5px; height: calc(26px * var(--s)); border-radius: 2px; will-change: transform;
+  background: linear-gradient(to bottom, transparent, var(--drop)); animation: sky-fall linear infinite; }
+.sky.heavy .sky-drop { width: 2px; height: calc(36px * var(--s)); }
+.sky-flake { top: -12px; width: calc(6px * var(--s)); height: calc(6px * var(--s)); border-radius: 50%; will-change: transform;
+  background: rgba(255, 255, 255, 0.7); animation: sky-snow linear infinite; }
+@keyframes sky-fall { from { transform: translate3d(calc(var(--rain-dx) * -0.5), 0, 0) rotate(var(--rain-rot)); } to { transform: translate3d(calc(var(--rain-dx) * 0.5), 115vh, 0) rotate(var(--rain-rot)); } }
+@keyframes sky-snow { 0% { transform: translate3d(calc(var(--snow-dx) * -0.5), 0, 0); } 50% { transform: translate3d(3vw, 55vh, 0); } 100% { transform: translate3d(calc(var(--snow-dx) * 0.5), 110vh, 0); } }
+/* the ground box along the bottom (lib/terrain.ts, lib/city.ts): the city's back and front SVGs */
+.sky-land { top: auto; bottom: 0; width: 100%; height: 50vh; }
+/* the city (lib/city.ts): metro trains crossing on the viaduct, aviation lights on the towers */
+.sky-train { top: auto; left: 0; border-radius: 2px 2px 1px 1px; will-change: transform; animation: sky-train 64s linear infinite;
+  background: var(--train); transform: translate3d(-30vh, 0, 0); }
+/* a lit strip of windows, broken between the coaches */
+.sky-train::before { content: ''; position: absolute; left: 3%; right: 3%; top: 28%; height: 34%; opacity: var(--lit);
+  background: repeating-linear-gradient(to right, #fff3d6 0 4.5%, transparent 4.5% 5.5%, #fff3d6 5.5% 15.6%, transparent 15.6% 16.67%); }
+.sky-train.back { animation-direction: reverse; animation-delay: -32s; }
+/* across the screen in the first fifth of the cycle, then gone until the next */
+@keyframes sky-train { 0% { transform: translate3d(-30vh, 0, 0); } 22%, 100% { transform: translate3d(calc(100vw + 4vh), 0, 0); } }
+.sky-beacons { inset: 0; transition: opacity 8s ease; }
+.sky-beacons i { position: absolute; width: 4px; height: 4px; margin: 0 0 -2px -2px; border-radius: 50%; will-change: opacity;
+  background: #ff3b30; box-shadow: 0 0 6px 2px rgba(255, 59, 48, 0.6); animation: sky-beacon 1.8s steps(1) infinite; }
+@keyframes sky-beacon { 0% { opacity: 1; } 30%, 100% { opacity: 0; } }
+
+/* wind: a grown tree (masks from lib/tree.ts) on the near hill, leaning downwind, its limbs swaying */
+.sky-tree { left: auto; top: auto; right: -5vw; bottom: 4.5vh; height: 46vh; aspect-ratio: 3 / 4; opacity: var(--tree-a); }
+.tree-lean { position: absolute; inset: 0; transform-origin: 50% 100%; transform: rotate(var(--lean)); transition: transform 3s ease; }
+.tree-part { position: absolute; inset: 0; background: var(--tree);
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.tree-part.limb { animation: tree-sway ease-in-out infinite alternate; will-change: transform; }
+@keyframes tree-sway { from { transform: rotate(calc(var(--sway) * -0.35)); } to { transform: rotate(var(--sway)); } }
+/* moisture: condensation beads on the glass; a few trickle down */
+.sky-dew { inset: 0; }
+.sky-dew i { position: absolute; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.7) 0 12%, rgba(255, 255, 255, 0.06) 30%, transparent 62%, rgba(255, 255, 255, 0.18) 74%, rgba(0, 0, 0, 0.16) 86%, transparent 90%); }
+.sky-dew i.trickle { border-radius: 50% 50% 50% 50% / 60% 60% 42% 42%; animation: dew-trickle linear infinite; will-change: transform, opacity; }
+@keyframes dew-trickle { 0%, 35% { transform: translate3d(0, 0, 0); opacity: 1; } 90% { opacity: 1; } 100% { transform: translate3d(0.5vw, 45vh, 0); opacity: 0; } }
+
+/* ?skyTest panel (components/SkyTestPanel.tsx); fades shortened so scrubbing follows at once */
+.sky.testing, .sky.testing > *, .sky.testing .sky-body > *, .sky.testing .sky-cloud > div, .sky.testing .tree-lean { transition-duration: 0.6s !important; }
+.sky-test { position: fixed; left: max(16px, env(safe-area-inset-left)); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px); z-index: 85;
+  width: min(340px, calc(100vw - 32px)); display: grid; gap: 8px; padding: 12px 14px; border-radius: 18px; font-size: 13px; font-weight: 600;
+  background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--panel-border); box-shadow: var(--shadow); user-select: none; }
+.sky-test-head { display: flex; align-items: center; gap: 8px; }
+.sky-test-build { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: -4px; font-variant-numeric: tabular-nums; }
+.sky-test-head strong { flex: 1; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label); }
+.sky-test-head button { width: 28px; height: 28px; border-radius: 9px; background: var(--card); font-size: 16px; }
+.sky-test-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 74px 26px; align-items: center; gap: 8px; }
+.sky-test-row input[type='range'] { width: 100%; accent-color: var(--accent); }
+.sky-test-row select { grid-column: 2 / -1; min-width: 0; padding: 7px 8px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); font: inherit; }
+.sky-test-row > .sky-test-btn { grid-column: 2 / -1; justify-self: start; }
+.sky-test-val { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sky-test-btn { padding: 7px 12px; border-radius: 10px; background: var(--card); }
+.sky-test-live { width: 26px; height: 26px; border-radius: 8px; background: var(--card); font-size: 14px; }
+button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label); }
 
 /* hourly strip (rest of today) */
 .wx-hours { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; margin: 0 -4px 12px; padding: 0 4px; scroll-snap-type: x proximity; }
@@ -1180,8 +1234,7 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 
 .layout.tablet { height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 .layout.tablet .cols { flex: 1; min-height: 0; align-items: stretch; }
-/* max-content rows: a panel with overflow: hidden (the Weather card) has no automatic minimum height, so auto rows squashed it to fit the column instead of letting the column scroll. */
-.layout.tablet .col { overflow-y: auto; scrollbar-width: none; padding-bottom: 4px; grid-auto-rows: max-content; }
+.layout.tablet .col { overflow-y: auto; scrollbar-width: none; padding-bottom: 4px; }
 .layout.tablet .col::-webkit-scrollbar { display: none; }
 @media (max-width: 1250px) {
   .layout.tablet .hello h1 { font-size: 28px; }

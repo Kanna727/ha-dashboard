@@ -2,14 +2,9 @@
 
 A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lovelace on a wall-mounted iPad, a phone and the desktop, and keeps itself up to date: merge a PR and every screen in the house reloads into the new release.
 
-![Tablet layout, dark theme](docs/screenshots/tablet-dark.png)
+![Tablet layout at dusk, city skyline](docs/screenshots/tablet.png)
 
-<table>
-  <tr>
-    <td width="62%"><img src="docs/screenshots/tablet-light.png" alt="Tablet layout, light theme"></td>
-    <td><img src="docs/screenshots/phones.png" alt="Phone layout, dark and light"></td>
-  </tr>
-</table>
+<p align="center"><img src="docs/screenshots/phones.png" width="62%" alt="Phone layout: a morning and a moonlit night"></p>
 
 <sub>Screenshots use the built-in mock with a fictional home.</sub>
 
@@ -18,11 +13,11 @@ A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lo
 - **Three layouts**: a 3-column tablet kiosk, a 4-column desktop, and a phone layout with bottom tabs (`?layout=tablet|desktop|phone`, or picked from the viewport).
 - **Rooms at a glance**: one-tap lights and fan/geyser buttons, presence, temperature and humidity. Each room's fan speed is drawn across its card; slide sideways to change it.
 - **Live energy tree**: particles flow to the top consumers right now, each at a speed set by that plug's own draw; 30 days of daily kWh in the Power popup. New smart plugs are discovered automatically.
-- **Weather** with animated skies, a sun/moon arc and a rain-coming heads-up, plus a car card (optionally a 3D model of your car in your paint colour, showing open doors, lights, heaters and warnings where they are on the car, that you can turn and sit inside; with remote climate, refresh, hazards and horn), commute traffic (Google Routes), media, appliances and a meal plan.
+- **Weather** with hourly and daily forecasts, sunrise and sunset, and a rain-coming heads-up, plus a car card (optionally a 3D model of your car in your paint colour, showing open doors, lights, heaters and warnings where they are on the car, that you can turn and sit inside; with remote climate, refresh, hazards and horn), commute traffic (Google Routes), media, appliances and a meal plan.
 - **Alive, not busy**: lit rooms glow, a soft breeze drifts across rooms with a fan on, cards zoom into their details, and banners (with a soft chime) say when the washer is done or a door is left open.
 - **Night screen** on the kiosk: a dim, burn-in-safe clock after a few idle minutes at night.
 - **Instant loads**: a single self-contained file that paints from a cached snapshot in ~80 ms, then syncs live over the HA WebSocket API.
-- **Themes** follow the sun (`?theme=auto|dark|light`).
+- **A living city skyline** behind everything, in a dark theme: towers that light up floor by floor at night, a metro line, and a sky that follows the sun, the moon's place and phase, clouds, rain, thunderstorms and humidity; the wind shows in the swaying tree, drifting clouds and slanting rain. Add `?skyTest` to try any hour and weather.
 - **Installable on the phone**: open it over HTTPS and choose "Install app" / "Add to Home Screen" for a full-screen app.
 
 ## Quick start
@@ -30,11 +25,14 @@ A fast, kiosk-friendly Home Assistant dashboard written in React. It replaces Lo
 ```sh
 npm install
 npm run mock     # offline preview with fake data on http://localhost:5173
+npm run preview:local   # the test build at http://localhost:4180; open tabs reload on each rebuild
 npm run dev      # live against HA (set VITE_HA_URL=http://homeassistant.local off-box)
 npm run build    # dist/index.html (the app) + dist/dashboard-config.json (your config)
 ```
 
 Each device logs in to HA once through the normal OAuth screen and keeps its own token.
+
+Working with Claude Code, the local preview rebuilds by itself after every agent turn (a Stop hook in `.claude/settings.json`), so a tab on http://localhost:4180 always shows the latest change. If the repo lives somewhere that can't hold `node_modules` (such as Google Drive), put `BUILD_DIR=<a local folder>` in `.env.local`.
 
 ## Your config
 
@@ -68,11 +66,16 @@ HA stays off the internet and GitHub never holds an HA token. One-time setup: [d
 
 **Manual deploy** (no CI, or for testing): mount the HA `config` Samba share, then run `python scripts/deploy.py`.
 
+### Preview
+
+Every push to a pull request, and every release, also deploys a **preview** next to the live dashboard, at `/local/dashboard/preview/index.html` (add `?layout=tablet|phone|desktop`). It's the same test version as `npm run mock`: fake data from the example config and no connection to your home, with the sky test panel open to try any hour, weather, wind, humidity and moon phase. Use it to check a pull request on the iPad or a phone before merging. The live dashboard is never touched, and the preview reloads itself when a newer build lands. One-time setup: section 6 of [docs/home-assistant.md](docs/home-assistant.md).
+
 ## Kiosk URLs
 
 ```
 http://homeassistant.local/local/dashboard/index.html?layout=tablet
 http://homeassistant.local/local/dashboard/index.html?layout=phone
+http://homeassistant.local/local/dashboard/preview/index.html?layout=tablet   # preview (fake data)
 ```
 
 ## Security and privacy

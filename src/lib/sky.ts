@@ -18,6 +18,22 @@ export function skyWindow(aboveHorizon: boolean, nextRising?: string, nextSettin
   return aboveHorizon ? { body: 'sun', start: rise - DAY_MS, end: set } : { body: 'moon', start: set - DAY_MS, end: rise };
 }
 
+// Today's sunrise and sunset, in the order they come: by day sunrise then
+// sunset; after sunset, this evening's sunset then tomorrow's sunrise.
+export function sunTimes(aboveHorizon: boolean, nextRising?: string, nextSetting?: string): { kind: 'sunrise' | 'sunset'; at: number }[] {
+  const w = skyWindow(aboveHorizon, nextRising, nextSetting);
+  if (!w) return [];
+  return w.body === 'sun'
+    ? [
+        { kind: 'sunrise', at: w.start },
+        { kind: 'sunset', at: w.end },
+      ]
+    : [
+        { kind: 'sunset', at: w.start },
+        { kind: 'sunrise', at: w.end },
+      ];
+}
+
 // How far through the window `now` is, 0–1.
 export function skyProgress(w: SkyWindow, now: number): number {
   const span = w.end - w.start;

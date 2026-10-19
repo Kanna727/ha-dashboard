@@ -1,11 +1,12 @@
 {
   "name": "ha-dashboard",
   "private": true,
-  "version": "1.21.0",
+  "version": "1.24.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "mock": "VITE_MOCK=1 vite",
+    "preview:local": "node scripts/local-preview.mjs",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",

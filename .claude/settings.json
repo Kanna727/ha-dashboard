@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/local-preview.mjs\" --hook",
+            "timeout": 300,
+            "asyncRewake": true
+          }
+        ]
+      }
+    ]
+  }
+}

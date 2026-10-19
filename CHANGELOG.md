@@ -1,3 +1,24 @@
+# [1.24.0](https://github.com/Kanna727/ha-dashboard/compare/v1.23.0...v1.24.0) (2026-10-18)
+
+
+### Features
+
+* **preview:** deploy a preview of every PR and release to /local/dashboard/preview ([#38](https://github.com/Kanna727/ha-dashboard/issues/38)) ([886816f](https://github.com/Kanna727/ha-dashboard/commit/886816f72cdd722b2710db2f79b0a5c1ff680b17))
+
+# [1.23.0](https://github.com/Kanna727/ha-dashboard/compare/v1.22.0...v1.23.0) (2026-10-18)
+
+
+### Features
+
+* **sky:** living city sky behind the dashboard, dark theme only ([#37](https://github.com/Kanna727/ha-dashboard/issues/37)) ([82501ed](https://github.com/Kanna727/ha-dashboard/commit/82501ed1de5055742d39da108775464939a567cd))
+
+# [1.22.0](https://github.com/Kanna727/ha-dashboard/compare/v1.21.0...v1.22.0) (2026-10-17)
+
+
+### Features
+
+* **rooms:** show light level and flag readings that keep fans or lights off ([#36](https://github.com/Kanna727/ha-dashboard/issues/36)) ([ee2010d](https://github.com/Kanna727/ha-dashboard/commit/ee2010dce3f84c13122f0764974f44acbe21be9d))
+
 # [1.21.0](https://github.com/Kanna727/ha-dashboard/compare/v1.20.0...v1.21.0) (2026-10-16)
 
 

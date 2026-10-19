@@ -3,11 +3,11 @@ import { useHass, type ForecastDay } from '../ha/api';
 import { useForecast } from '../ha/forecast';
 import { useEntity } from '../ha/store';
 import { WeatherIcon } from '../components/WeatherIcon';
-import { WeatherBackdrop } from '../components/WeatherBackdrop';
+import { Icon } from '../components/Icon';
 import { WeatherDetail, WeatherStats } from '../components/WeatherDetail';
 import { useWeatherNow } from '../components/useWeather';
-import { SkyArc } from '../components/SkyArc';
 import { PanelHead, useModal } from '../components/Modal';
+import { sunTimes } from '../lib/sky';
 import { nightAt, showRainChance } from '../lib/weather';
 
 export { nightAt };
@@ -31,6 +31,24 @@ export function rainNote(f: ForecastDay): string {
   return f.precipitation ? `${f.precipitation.toFixed(1)}mm` : '';
 }
 
+const hhmm = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+
+// Today's sunrise and sunset (the page sky shows where the sun and moon are).
+function SunTimes({ sun }: { sun: ReturnType<typeof useEntity> }) {
+  const times = sunTimes(sun?.state === 'above_horizon', sun?.attributes.next_rising as string, sun?.attributes.next_setting as string);
+  if (!times.length) return null;
+  return (
+    <div className="wx-sun">
+      {times.map(({ kind, at }) => (
+        <span key={kind} title={kind === 'sunrise' ? 'Sunrise' : 'Sunset'}>
+          <Icon name={kind} size={16} />
+          {hhmm(at)}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function WeatherPanel({ days = 5 }: { days?: number }) {
   const hass = useHass();
   const modal = useModal();
@@ -45,7 +63,6 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
 
   return (
     <section className="panel weather-panel">
-      <WeatherBackdrop condition={now.condition} night={night} />
       <PanelHead
         label="Weather"
         summary={today ? `H ${Math.round(today.temperature)}°${today.templow !== undefined ? ` · L ${Math.round(today.templow)}°` : ''}` : undefined}
@@ -59,9 +76,9 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
           <div className="wx-temp">{now.temp !== undefined ? Math.round(now.temp) : '–'}<sup>°</sup></div>
           <div className="wx-cond">{now.label}</div>
           {feels && <div className="muted">Feels like {Math.round(now.feelsLike!)}°</div>}
+          <SunTimes sun={sun} />
         </div>
       </div>
-      <SkyArc sun={sun} />
       <WeatherStats now={now} hourly={hourly} compact />
       {hourly.length > 0 && (
         <div className="wx-hours" aria-label="Hourly forecast">
