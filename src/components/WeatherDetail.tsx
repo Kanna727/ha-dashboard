@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { SUN, WEATHER } from '../config/entities';
 import { useHass, type ForecastDay } from '../ha/api';
 import { useForecast } from '../ha/forecast';
@@ -129,22 +129,22 @@ const BAR_BOTTOM = 150;
 const BAR_H = 32;
 const CHART_H = 172;
 
-// Width of an element, kept current.
+// Width of an element, kept current. A callback ref, because the element only
+// appears once the forecast has loaded (a mount-time effect would miss it).
 function useWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
+  const [el, setEl] = useState<T | null>(null);
   const [width, setWidth] = useState(0);
   useEffect(() => {
-    const el = ref.current;
     if (!el) return;
     const ro = new ResizeObserver(() => setWidth(el.clientWidth));
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
-  return [ref, width] as const;
+  }, [el]);
+  return [setEl, width] as const;
 }
 
 // Next `count` hours: icons on top, the temperature line, then rain-chance bars
-// (mm when the forecast has no chance) above the hour labels.
+// (mm when the forecast has no chance) above a label for every hour.
 export function HourlyChart({ hourly, count = 24, minSlot = MIN_SLOT }: { hourly: ForecastDay[]; count?: number; minSlot?: number }) {
   const sun = useEntity(SUN);
   const [wrap, wrapWidth] = useWidth<HTMLDivElement>();
@@ -191,9 +191,9 @@ export function HourlyChart({ hourly, count = 24, minSlot = MIN_SLOT }: { hourly
                     <WeatherIcon condition={h.condition} size={28} night={night(h)} />
                   </foreignObject>
                   <text className="wx-chart-temp" x={x(i)} y={y(h.temperature) - 9}>{Math.round(h.temperature)}°</text>
-                  <text className="wx-chart-time" x={x(i)} y={CHART_H - 4}>{i === 0 ? 'Now' : t.toLocaleTimeString([], { hour: '2-digit', hour12: false })}</text>
                 </>
               )}
+              <text className={`wx-chart-time ${i === 0 ? 'now' : ''}`} x={x(i)} y={CHART_H - 4}>{i === 0 ? 'Now' : t.toLocaleTimeString([], { hour: '2-digit', hour12: false })}</text>
             </g>
           );
         })}
