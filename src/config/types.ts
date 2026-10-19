@@ -6,8 +6,11 @@ export interface ControlDef {
   entity: string;
   name: string;
   icon?: string; // key into icons map in components/Icon.tsx
-  // Shown but not toggleable from the dashboard (e.g. fridge, PC).
+  // Shown but not toggleable from the dashboard (e.g. fridge).
   readOnly?: boolean;
+  // Turning off takes a second tap within 4 s (e.g. a PC on a smart plug,
+  // where a stray tap would cut its power). Turning on is still one tap.
+  confirmOff?: boolean;
 }
 
 export interface RoomDef {

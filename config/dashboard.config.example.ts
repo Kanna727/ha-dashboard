@@ -74,7 +74,7 @@ const config: DashboardConfig = {
       controls: [
         { entity: 'light.workroom_workroom_light', name: 'Light' },
         { entity: 'fan.work_room_fan', name: 'Fan' },
-        { entity: 'switch.workroom_pc', name: 'PC', icon: 'pc', readOnly: true },
+        { entity: 'switch.workroom_pc', name: 'PC', icon: 'pc', confirmOff: true },
       ],
     },
     {
