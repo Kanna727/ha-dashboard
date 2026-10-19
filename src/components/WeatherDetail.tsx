@@ -16,7 +16,7 @@ const thisHour = (hourly: ForecastDay[]) => {
   return hourly.find((h) => Date.parse(h.datetime) > now - 3_600_000);
 };
 
-export interface Stat {
+interface Stat {
   key: string;
   icon: IconName;
   label: string;
@@ -28,7 +28,7 @@ export interface Stat {
 }
 
 // Every reading worth showing, best first; ones the integration lacks drop out.
-export function stats(n: WeatherNow, hourly: ForecastDay[]): Stat[] {
+function stats(n: WeatherNow, hourly: ForecastDay[]): Stat[] {
   const out: (Stat | false)[] = [];
   const rain = n.rainChance ?? thisHour(hourly)?.precipitation_probability;
   const raining = n.rainRate !== undefined && n.rainRate > 0;
@@ -93,13 +93,13 @@ export function stats(n: WeatherNow, hourly: ForecastDay[]): Stat[] {
   return out.filter((s): s is Stat => !!s);
 }
 
-// Readings grid. Compact (the card) keeps the first six; the popup shows all.
-export function WeatherStats({ now, hourly, compact }: { now: WeatherNow; hourly: ForecastDay[]; compact?: boolean }) {
+// Every current reading, as tiles (the popup).
+export function WeatherStats({ now, hourly }: { now: WeatherNow; hourly: ForecastDay[] }) {
   const list = stats(now, hourly);
   if (!list.length) return null;
   return (
-    <div className={`wx-stats ${compact ? 'compact' : ''}`}>
-      {(compact ? list.slice(0, 6) : list).map((s) => (
+    <div className="wx-stats">
+      {list.map((s) => (
         <div key={s.key} className={`wx-stat ${s.tone ?? ''}`}>
           <div className="wx-stat-head">
             <Icon name={s.icon} size={15} className="wx-stat-icon" />

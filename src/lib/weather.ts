@@ -71,9 +71,6 @@ export function conditionText(state: string | undefined, text?: string): string 
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// Rain chance worth calling out in the hourly strip.
-export const showRainChance = (p: number | undefined) => p !== undefined && p >= 10;
-
 // Night for an hour, from sun.sun's next rising/setting (works either side of sunset).
 export function nightAt(t: number, rising?: string, setting?: string) {
   if (!rising || !setting) {
@@ -134,23 +131,4 @@ export function rainOutlook(
   const peak = Math.max(...slots.map((h) => h.precipitation_probability ?? 0));
   if (peak >= 20) return { text: `Small chance of rain (up to ${Math.round(peak)}%)`, tone: 'chance' };
   return { text: `No rain expected in the next ${horizonH} hours`, tone: 'dry' };
-}
-
-const MIN_HOURS = 6; // late evening: spill into tomorrow so the strip isn't nearly empty
-
-// Rest of today's hourly forecast (from the current hour), at least MIN_HOURS long.
-export function hoursForToday<T extends { datetime: string }>(hourly: T[], now = new Date()): T[] {
-  const start = new Date(now);
-  start.setMinutes(0, 0, 0);
-  const midnight = new Date(now);
-  midnight.setHours(24, 0, 0, 0);
-  const upcoming = hourly.filter((h) => new Date(h.datetime).getTime() >= start.getTime());
-  const today = upcoming.filter((h) => new Date(h.datetime) < midnight);
-  return today.length >= MIN_HOURS ? today : upcoming.slice(0, MIN_HOURS);
-}
-
-// An hour's or day's rain line: the chance when the forecast has one, else millimetres.
-export function rainNote(f: { precipitation?: number; precipitation_probability?: number }): string {
-  if (f.precipitation_probability !== undefined) return showRainChance(f.precipitation_probability) ? `${Math.round(f.precipitation_probability)}%` : '';
-  return f.precipitation ? `${f.precipitation.toFixed(1)}mm` : '';
 }

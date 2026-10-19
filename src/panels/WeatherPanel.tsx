@@ -1,52 +1,47 @@
-import { useState } from 'react';
+import type { HassEntity } from 'home-assistant-js-websocket';
 import { SUN, WEATHER } from '../config/entities';
 import { useHass } from '../ha/api';
 import { useForecast } from '../ha/forecast';
 import { useEntity } from '../ha/store';
-import { WeatherDetail } from '../components/WeatherDetail';
-import { DESIGN_BODIES, WX_DESIGNS, type WxDesign } from '../components/WeatherDesigns';
-import { useWeatherNow } from '../components/useWeather';
+import { useNow } from '../hooks/useNow';
+import { Icon } from '../components/Icon';
+import { WeatherIcon } from '../components/WeatherIcon';
+import { DailyList, HourlyChart, WeatherDetail } from '../components/WeatherDetail';
+import { WeatherDials } from '../components/WeatherDials';
+import { useWeatherNow, type WeatherNow } from '../components/useWeather';
 import { PanelHead, useModal } from '../components/Modal';
+import { sunTimes } from '../lib/sky';
+import { rainOutlook } from '../lib/weather';
 
-export { hoursForToday, nightAt, rainNote } from '../lib/weather';
+const RAINING = ['rainy', 'pouring', 'lightning-rainy'];
+const hhmm = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
-const DESIGN_KEY = 'dashWxDesign';
-const isDesign = (v: string | null): v is WxDesign => WX_DESIGNS.some((d) => d.id === v);
-
-// Which card design to show while the owner chooses: ?wx=<id> (any build) wins,
-// then this device's pick from the mock-build picker, then Tiles.
-function useWeatherDesign(): [WxDesign, (d: WxDesign) => void] {
-  const [design, setDesign] = useState<WxDesign>(() => {
-    const q = new URLSearchParams(window.location.search).get('wx');
-    if (isDesign(q)) return q;
-    try {
-      const saved = localStorage.getItem(DESIGN_KEY);
-      if (isDesign(saved)) return saved;
-    } catch {
-      /* storage blocked */
-    }
-    return 'tiles';
-  });
-  const pick = (d: WxDesign) => {
-    setDesign(d);
-    try {
-      localStorage.setItem(DESIGN_KEY, d);
-    } catch {
-      /* storage blocked: this visit only */
-    }
-  };
-  return [design, pick];
+// Today's sunrise and sunset (the page sky shows where the sun and moon are).
+function SunTimes({ sun }: { sun: HassEntity | undefined }) {
+  const times = sunTimes(sun?.state === 'above_horizon', sun?.attributes.next_rising as string, sun?.attributes.next_setting as string);
+  if (!times.length) return null;
+  return (
+    <div className="wx-sun">
+      {times.map(({ kind, at }) => (
+        <span key={kind} title={kind === 'sunrise' ? 'Sunrise' : 'Sunset'}>
+          <Icon name={kind} size={16} />
+          {hhmm(at)}
+        </span>
+      ))}
+    </div>
+  );
 }
 
-function DesignPicker({ value, onPick }: { value: WxDesign; onPick: (d: WxDesign) => void }) {
+// When rain or storms are likely in the next 12 hours (or that none are).
+function Outlook({ now, hourly }: { now: WeatherNow; hourly: Parameters<typeof rainOutlook>[0] }) {
+  const time = useNow(60_000).getTime();
+  const raining = (now.rainRate ?? 0) > 0 || RAINING.includes(now.condition ?? '');
+  const o = rainOutlook(hourly, time, raining);
+  if (!o.text) return null;
   return (
-    <div className="wx-picker" role="radiogroup" aria-label="Weather card design">
-      <span className="wx-picker-label">Design</span>
-      {WX_DESIGNS.map((d) => (
-        <button key={d.id} role="radio" aria-checked={value === d.id} className={`chip-btn ${value === d.id ? 'active' : ''}`} onClick={() => onPick(d.id)}>
-          {d.label}
-        </button>
-      ))}
+    <div className={`wx-outlook ${o.tone}`}>
+      <Icon name={o.tone === 'storm' ? 'storm' : o.tone === 'dry' ? 'uv' : 'umbrella'} size={18} />
+      <span>{o.text}</span>
     </div>
   );
 }
@@ -58,13 +53,11 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
   const sun = useEntity(SUN);
   const daily = useForecast(hass, WEATHER, 'daily');
   const hourly = useForecast(hass, WEATHER, 'hourly');
-  const [design, setDesign] = useWeatherDesign();
-  const Body = DESIGN_BODIES[design];
   const today = daily[0];
+  const feels = now.feelsLike !== undefined && now.temp !== undefined && Math.round(now.feelsLike) !== Math.round(now.temp);
 
   return (
-    <section className={`panel weather-panel wx-design-${design}`}>
-      {import.meta.env.VITE_MOCK && <DesignPicker value={design} onPick={setDesign} />}
+    <section className="panel weather-panel">
       <PanelHead
         label="Weather"
         summary={today ? `H ${Math.round(today.temperature)}°${today.templow !== undefined ? ` · L ${Math.round(today.templow)}°` : ''}` : undefined}
@@ -72,7 +65,19 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
           modal.open({ title: 'Weather', icon: 'weather', accent: 'var(--accent-fan)', wide: true, subtitle: now.label, body: <WeatherDetail /> })
         }
       />
-      <Body now={now} sun={sun} hourly={hourly} daily={daily} days={days} />
+      <div className="wx-now">
+        <WeatherIcon condition={now.condition} night={sun?.state === 'below_horizon'} size={96} animated className="wx-now-img" />
+        <div>
+          <div className="wx-temp">{now.temp !== undefined ? Math.round(now.temp) : '–'}<sup>°</sup></div>
+          <div className="wx-cond">{now.label}</div>
+          {feels && <div className="muted">Feels like {Math.round(now.feelsLike!)}°</div>}
+          <SunTimes sun={sun} />
+        </div>
+      </div>
+      <Outlook now={now} hourly={hourly} />
+      <WeatherDials now={now} hourly={hourly} />
+      <HourlyChart hourly={hourly} count={12} minSlot={22} />
+      <DailyList days={daily.slice(0, days)} compact />
     </section>
   );
 }
