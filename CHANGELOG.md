@@ -1,3 +1,10 @@
+# [1.28.0](https://github.com/Kanna727/ha-dashboard/compare/v1.27.0...v1.28.0) (2026-10-19)
+
+
+### Features
+
+* **rooms:** control chips on the room cards ([#42](https://github.com/Kanna727/ha-dashboard/issues/42)) ([c84f06f](https://github.com/Kanna727/ha-dashboard/commit/c84f06fb6789232cabc79aa57dcb71a37749ef2b))
+
 # [1.27.0](https://github.com/Kanna727/ha-dashboard/compare/v1.26.0...v1.27.0) (2026-10-19)
 
 
