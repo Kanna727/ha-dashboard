@@ -24,6 +24,16 @@ const white = { supported_color_modes: ['color_temp'], min_color_temp_kelvin: 27
 const rgbw = { supported_color_modes: ['color_temp', 'hs', 'xy'], min_color_temp_kelvin: 2202, max_color_temp_kelvin: 6535 };
 const fan = { percentage_step: 16.666666666666668 };
 
+// Car service items: [id, name, interval km, interval months, remaining km, remaining months].
+const CAR_SERVICE: [string, string, number, number | null, number, number | null][] = [
+  ['engine_oil', 'Engine Oil', 10000, 12, -420, 0],
+  ['oil_filter', 'Oil Filter', 10000, 12, -420, 0],
+  ['tyre_rotation', 'Tyre Rotation', 10000, 12, 2100, 3],
+  ['cabin_air_filter', 'Cabin Air Filter', 20000, 24, 6200, 9],
+  ['spark_plug', 'Spark Plug', 60000, null, 41580, null],
+  ['engine_coolant', 'Engine Coolant', 210000, null, 191580, null],
+];
+
 const list: HassEntity[] = [
   e('sun.sun', 'below_horizon', {
     next_rising: new Date(Date.now() + 9 * 3600_000).toISOString(),
@@ -249,7 +259,46 @@ const list: HassEntity[] = [
   e('climate.car_climate_control', 'off', { hvac_modes: ['off', 'auto'], min_temp: 14, max_temp: 30, target_temp_step: 0.5, temperature: 22, unit_of_measurement: '°C' }),
   e('sensor.car_location_last_updated', new Date(Date.now() - 3 * 3600_000).toISOString()),
   e('sensor.car_last_updated_at', new Date(Date.now() - 40 * 60_000).toISOString()),
-
+  // Discovered from the car's device (panels/useCarExtras.ts): service schedule,
+  // trips, cabin air, address, hazards, valet mode. Entity IDs like Kia Connect's newer ones.
+  ...CAR_SERVICE.map(([id, name, intervalKm, intervalMonths, remainingKm, remainingMonths]) =>
+    e(`binary_sensor.garage_car_${id}`, remainingKm <= 0 || (remainingMonths ?? 1) <= 0 ? 'on' : 'off', {
+      friendly_name: `MY CAR ${name}`,
+      device_class: 'problem',
+      interval_km: intervalKm,
+      interval_months: intervalMonths,
+      remaining_km: remainingKm,
+      ...(remainingMonths === null ? {} : { remaining_months: remainingMonths }),
+    }),
+  ),
+  e('binary_sensor.garage_car_oil_level_warning', 'off', { friendly_name: 'MY CAR Oil Level Warning', device_class: 'problem' }),
+  e('binary_sensor.garage_car_hazard_lights', 'off', { friendly_name: 'MY CAR Hazard Lights', device_class: 'light' }),
+  e('binary_sensor.car_accessory', 'off'),
+  e('sensor.garage_car_last_trip_start', new Date(Date.now() - 2.5 * 3600_000).toISOString()),
+  e('sensor.garage_car_last_trip_end', new Date(Date.now() - 2 * 3600_000).toISOString()),
+  e('sensor.garage_car_last_trip_distance', '14', { unit_of_measurement: 'km' }),
+  e('sensor.garage_car_last_trip_drive_time', '32', { unit_of_measurement: 'min' }),
+  e('sensor.garage_car_last_trip_idle_time', '6', { unit_of_measurement: 'min' }),
+  e('sensor.garage_car_last_trip_average_speed', '26', { unit_of_measurement: 'km/h' }),
+  e('sensor.garage_car_last_trip_top_speed', '68', { unit_of_measurement: 'km/h' }),
+  e('sensor.garage_car_last_trip_hard_braking', '0'),
+  e('sensor.garage_car_last_trip_rapid_acceleration', '1'),
+  e('sensor.garage_car_last_trip_speeding', '0'),
+  e('sensor.garage_car_trips_today', '2'),
+  e('sensor.garage_car_distance_today', '21', { unit_of_measurement: 'km' }),
+  e('sensor.garage_car_drive_time_today', '47', { unit_of_measurement: 'min' }),
+  e('sensor.garage_car_trips_this_month', '38'),
+  e('sensor.garage_car_distance_this_month', '912', { unit_of_measurement: 'km' }),
+  e('sensor.garage_car_drive_time_this_month', '1630', { unit_of_measurement: 'min' }),
+  e('sensor.garage_car_idle_time_this_month', '210', { unit_of_measurement: 'min' }),
+  e('sensor.garage_car_average_speed_this_month', '31', { unit_of_measurement: 'km/h' }),
+  e('sensor.garage_car_top_speed_this_month', '104', { unit_of_measurement: 'km/h' }),
+  e('sensor.garage_car_cabin_pm2_5', '18', { unit_of_measurement: 'µg/m³', device_class: 'pm25', measured_at: new Date(Date.now() - 2 * 3600_000).toISOString() }),
+  e('sensor.garage_car_geocoded_location', 'Maple Court, Oakridge, Springfield', { address: { residential: 'Maple Court', suburb: 'Oakridge', city: 'Springfield' } }),
+  e('sensor.car_last_scanned_at', new Date(Date.now() - 5 * 60_000).toISOString()),
+  e('sensor.car_vehicle_identification_number', 'TESTVIN0000000000', { model_year: 2024, trim: 'Sport', exterior_color: 'Graphite' }),
+  e('button.car_start_valet_mode', 'unknown'),
+  e('button.car_stop_valet_mode', 'unknown'),
 ];
 
 export const FIXTURES: HassEntities = Object.fromEntries(list.map((x) => [x.entity_id, x]));
@@ -280,6 +329,7 @@ export const REGISTRY = {
     { id: 'dev_cb_door', name: 'Common Bath Door Sensor', areaId: 'common_bathroom', model: 'Door sensor', disabled: false },
     { id: 'dev_dot_bed', name: 'Bedroom Dot', areaId: 'bedroom', model: 'Echo Dot', disabled: false },
     { id: 'dev_weather', name: 'Forecast Home', areaId: null, model: null, disabled: false },
+    { id: 'dev_car', name: 'MY CAR', areaId: null, model: 'Sport (2024)', disabled: false },
   ],
   entities: [
     ...PLUGS.flatMap(([deviceId, sw, power]) => [
@@ -301,6 +351,11 @@ export const REGISTRY = {
     { entityId: 'sensor.forecast_home_thunderstorm_probability', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'thunderstorm_probability' },
     { entityId: 'sensor.forecast_home_heat_index', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'heat_index' },
     { entityId: 'sensor.forecast_home_wind_chill', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'wind_chill' },
+    // The car: configured entities (skipped by discovery) and the extras it finds.
+    ...list
+      .map((x) => x.entity_id)
+      .filter((id) => /^[a-z_]+\.(garage_)?car_/.test(id))
+      .map((entityId) => ({ entityId, deviceId: 'dev_car', platform: 'kia_uvo' })),
   ],
 };
 

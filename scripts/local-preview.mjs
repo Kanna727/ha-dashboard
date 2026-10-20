@@ -105,11 +105,17 @@ function ping() {
   });
 }
 
-async function ensureServer(site) {
-  const up = await ping();
-  if (up && up.site === site) return 'running';
+async function ensureServer(site, assets) {
+  let up = await ping();
+  if (up && up.site === site && up.assets === assets) return 'running';
+  if (up?.site === site && up.pid) {
+    // Our own server from an older version of this script: restart it.
+    process.kill(up.pid);
+    await new Promise((r) => setTimeout(r, 300));
+    up = await ping();
+  }
   if (up) return `port ${PORT} is busy with something else; pass --port <n> or free it`;
-  const child = spawn(process.execPath, [path.join(ROOT, 'scripts', 'local-preview-server.mjs'), site, String(PORT)], {
+  const child = spawn(process.execPath, [path.join(ROOT, 'scripts', 'local-preview-server.mjs'), site, String(PORT), assets], {
     detached: true,
     stdio: 'ignore',
     windowsHide: true,
@@ -140,6 +146,9 @@ async function main() {
   const work = buildDir();
   const out = path.join(work, '.local-preview');
   const site = path.join(out, 'site');
+  // The owner's car photo and 3D model (never in a build): files missing from
+  // the site are served from here, so they survive rebuilds.
+  const assets = path.join(out, 'assets');
   const stampFile = path.join(out, 'stamp.json');
   const stamp = readJson(stampFile);
   const fp = fingerprint();
@@ -147,11 +156,11 @@ async function main() {
   // In the hook, rebuild only when the sources changed since the last attempt,
   // failed or not, so a broken build wakes the agent once, not on every turn.
   if (HOOK && stamp.fingerprint === fp && fs.existsSync(path.join(site, 'index.html'))) {
-    await ensureServer(site);
+    await ensureServer(site, assets);
     return;
   }
 
-  fs.mkdirSync(out, { recursive: true });
+  fs.mkdirSync(assets, { recursive: true });
   if (work !== ROOT) mirror(work);
   const lockHash = hashFile(path.join(work, 'package-lock.json'));
   if (!fs.existsSync(path.join(work, 'node_modules')) || stamp.lockHash !== lockHash) {
@@ -170,7 +179,8 @@ async function main() {
   const vite = path.join(work, 'node_modules', 'vite', 'bin', 'vite.js');
   const b = run(process.execPath, [vite, 'build', '--outDir', next, '--emptyOutDir', '--logLevel', 'warn'], {
     cwd: work,
-    env: { ...process.env, VITE_MOCK: '1', VITE_PREVIEW: '1', BUILD_HASH: version },
+    // LOCAL_CAR: the real config's car photo and model settings (vite.config.ts).
+    env: { ...process.env, VITE_MOCK: '1', VITE_PREVIEW: '1', LOCAL_CAR: '1', BUILD_HASH: version },
   });
   fs.writeFileSync(stampFile, JSON.stringify({ fingerprint: fp, lockHash, version: b.ok ? version : stamp.version }));
   if (!b.ok) fail(b.out.slice(-3000));
@@ -182,7 +192,7 @@ async function main() {
   fs.renameSync(next, site);
   fs.rmSync(old, { recursive: true, force: true });
 
-  const server = await ensureServer(site);
+  const server = await ensureServer(site, assets);
   console.log(`Local preview ${version}: http://localhost:${PORT}/index.html (server ${server})`);
 }
 

@@ -8,7 +8,12 @@ import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { CarScene } from '../car3d/CarScene';
 import { carVisual, type CarVisual } from '../lib/carVisual';
-import { ClimateControl, RemoteActions } from './CarActions';
+import { heading8, pm25Band } from '../lib/carInfo';
+import { ClimateControl, RemoteActions, StageActions, StageClimate, StageRefresh } from './CarActions';
+import { CabinAirTile, DrivingSection, placeOf, ServiceCard, useCarSensors, VehicleLine } from './CarInfo';
+import { useCarExtras, useCarService } from './useCarExtras';
+import { CarCard } from './CarCard';
+import { CarDetailsInfo } from './CarDetailsInfo';
 
 export function distanceKm(a: HassEntity | undefined, b: HassEntity | undefined): number | undefined {
   const la1 = a?.attributes.latitude as number | undefined;
@@ -86,9 +91,9 @@ function useLastKnown(offline: boolean): LastKnown | null {
   return last;
 }
 
-const fmtInt = (n: number | undefined) => (n === undefined ? '–' : Math.round(n).toString());
+export const fmtInt = (n: number | undefined) => (n === undefined ? '–' : Math.round(n).toString());
 
-function useCar() {
+export function useCar() {
   const lock = useEntity(CAR.lock);
   const fuel = useEntity(CAR.fuel);
   const range = useEntity(CAR.range);
@@ -100,19 +105,40 @@ function useCar() {
   const battery = useEntity(CAR_DETAIL.battery12v);
   const doors = useEntities(CAR.doors);
   const warnings = useEntities(CAR.warnings.map((w) => w.entity));
+  const openingStates = useEntities(CAR_DETAIL.openings.flatMap((o) => o.entities));
+
+  const found = useCarExtras();
+  const x = useCarSensors(found.sensors);
+  const { service, problems } = useCarService(found);
 
   const offline = isUnavailable(lock) && isUnavailable(fuel);
   const last = useLastKnown(offline);
   const openCount = doors.filter((d) => d?.state === 'on').length;
-  const activeWarnings = CAR.warnings.filter((_, i) => warnings[i]?.state === 'on');
+  // Names of the open opening groups ("Doors", "Tailgate"), in config order.
+  let k = 0;
+  const openNames = CAR_DETAIL.openings.filter((o) => o.entities.map(() => openingStates[k++]?.state === 'on').some(Boolean)).map((o) => o.name);
+  // Configured warnings plus problem sensors found on the car's device.
+  const activeWarnings = [...CAR.warnings.filter((_, i) => warnings[i]?.state === 'on'), ...problems.filter((p) => p.on)];
   const km = distanceKm(tracker, home);
   const where = km === undefined ? undefined : km < 0.2 ? 'At home' : `${km < 10 ? km.toFixed(1) : Math.round(km)} km away`;
   const moving = engine?.state === 'on';
+  const speed = tracker?.attributes.speed as number | undefined;
+  const bearing = tracker?.attributes.heading as number | undefined;
   return {
+    x,
+    service,
+    problems,
+    serviceDue: service.filter((s) => s.due),
+    hazards: !offline && x.hazard_lights?.state === 'on',
+    accessory: !offline && !moving && x.accessory?.state === 'on',
+    place: placeOf(x),
+    // The tracker's speed is only current while the engine runs.
+    motion: moving && typeof speed === 'number' ? `${Math.round(speed)} km/h${typeof bearing === 'number' ? ` ${heading8(bearing)}` : ''}` : undefined,
     lock,
     tracker,
     offline,
     openCount,
+    openNames,
     activeWarnings,
     where,
     moving,
@@ -130,7 +156,23 @@ function useCar() {
 
 // What the 3D model should show (lib/carVisual). Memoised on the entity
 // objects, so the viewer only hears about real changes.
-function useCarVisual(offline: boolean, locked: boolean | undefined, tyres: (string | undefined)[]): CarVisual {
+function useCarVisual(
+  offline: boolean,
+  locked: boolean | undefined,
+  tyres: (string | undefined)[],
+  extra: {
+    hazards?: string;
+    serviceDue: string[];
+    problems: { entity: string; name: string; on: boolean }[];
+    motion?: string;
+    battery12v?: number;
+    cabinAir?: { value: number; label: string; poor: boolean };
+    accessory?: string;
+  },
+): CarVisual {
+  const cabinKey = extra.cabinAir ? `${extra.cabinAir.value}${extra.cabinAir.label}` : '';
+  const dueKey = extra.serviceDue.join();
+  const problemKey = extra.problems.map((p) => `${p.entity}=${p.on}`).join();
   const st = CAR_DETAIL.status;
   const openings = useEntities(CAR.doors);
   const warnings = useEntities(CAR.warnings.map((w) => w.entity));
@@ -160,10 +202,24 @@ function useCarVisual(offline: boolean, locked: boolean | undefined, tyres: (str
       defrostRear: rearHeat,
       steeringHeat: wheelHeat,
       seats: { FL: sFL, FR: sFR, RL: sRL, RR: sRR },
-      warnings: CAR.warnings.map((w, i) => ({ ...w, state: warnings[i]?.state })),
+      warnings: [...CAR.warnings.map((w, i) => ({ ...w, state: warnings[i]?.state })), ...extra.problems.map((p) => ({ ...p, state: p.on ? 'on' : 'off' }))],
+      hazards: extra.hazards,
+      serviceDue: extra.serviceDue,
+      motion: extra.motion,
+      battery12v: extra.battery12v,
+      cabinAir: extra.cabinAir,
+      accessory: extra.accessory,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offline, locked, tyreKey, openings, warnings, singles, signals, faults]);
+  }, [offline, locked, tyreKey, openings, warnings, singles, signals, faults, extra.hazards, dueKey, problemKey, extra.motion, extra.battery12v, cabinKey, extra.accessory]);
+}
+
+// Cabin PM2.5 for the model's label.
+function cabinAir(e: HassEntity | undefined) {
+  const v = num(e);
+  if (v === undefined) return undefined;
+  const b = pm25Band(v);
+  return { value: v, label: b.label, poor: b.tone === 'warn' || b.tone === 'danger' };
 }
 
 // Simple top-down silhouette for the tyre diagram.
@@ -182,13 +238,13 @@ function CarTopView() {
   );
 }
 
-function CarImage({ className }: { className?: string }) {
+export function CarImage({ className }: { className?: string }) {
   const [ok, setOk] = useState(true);
   if (!ok) return <Icon name="car" size={72} className={`car-fallback ${className ?? ''}`} />;
   return <img src={CAR_DETAIL.image} alt="" className={className} onError={() => setOk(false)} draggable={false} />;
 }
 
-function LockButton({ locked, disabled }: { locked: boolean; disabled: boolean }) {
+export function LockButton({ locked, disabled }: { locked: boolean; disabled: boolean }) {
   const hass = useHass();
   const [confirm, setConfirm] = useState(false);
   useEffect(() => {
@@ -249,7 +305,8 @@ function OfflineNotice({ seenAgo }: { seenAgo: string }) {
   );
 }
 
-function CarDetail() {
+// The popup's building blocks.
+export function useCarDetail() {
   const hass = useHass();
   const car = useCar();
   const climate = useEntity(CAR_DETAIL.climate);
@@ -258,115 +315,249 @@ function CarDetail() {
   const tyres = useEntities(TYRES());
   const tyreState = (i: number) => (isUnavailable(tyres[i]) ? car.lastTyres?.[TYRES()[i]] : tyres[i]?.state);
   const anyTyre = tyres.some((_, i) => tyreState(i) === 'on');
+  const lowTyres = TYRES().filter((_, i) => tyreState(i) === 'on').length;
   const tyresFromHistory = car.offline && tyres.some((_, i) => isUnavailable(tyres[i]) && tyreState(i) !== undefined);
   const fuelPct = car.fuelPct;
-  const visual = useCarVisual(car.offline, car.offline ? undefined : car.locked, TYRES().map((_, i) => tyreState(i)));
+  const visual = useCarVisual(
+    car.offline,
+    car.offline ? undefined : car.locked,
+    TYRES().map((_, i) => tyreState(i)),
+    {
+      hazards: car.x.hazard_lights?.state,
+      serviceDue: car.serviceDue.map((s) => s.name),
+      problems: car.problems,
+      motion: car.motion,
+      battery12v: car.battery12vPct,
+      cabinAir: cabinAir(car.x.cabin_pm2_5),
+      accessory: car.offline ? undefined : car.x.accessory?.state,
+    },
+  );
   const lat = car.tracker?.attributes.latitude as number | undefined;
   const lng = car.tracker?.attributes.longitude as number | undefined;
 
   const model = CAR_DETAIL.model;
+  // With the 3D model, everything it shows (fuel, odometer, 12V, cabin air,
+  // lock, openings, tyres, warnings, lamps, heaters, driving) is left out of
+  // the rest of the popup, so nothing is said twice.
+  const onModel = !!model;
   const heroNums = (
     <div className="car-hero-nums">
       <span className="hero-pct">{fmtInt(car.fuelPct)}<sup>%</sup></span>
       <span className="hero-range"><strong>{fmtInt(car.rangeKm)}</strong><span className="muted">km range</span></span>
+      {onModel && car.odoKm !== undefined && (
+        <span className="hero-odo"><strong>{Math.round(car.odoKm).toLocaleString()}</strong><span className="muted">km odometer</span></span>
+      )}
     </div>
   );
   const fuelBar = <div className="progress thick"><i className={fuelPct !== undefined && fuelPct <= 15 ? 'low' : ''} style={{ width: `${fuelPct ?? 0}%` }} /></div>;
+  const findCar = (
+    <button
+      className="big-btn square"
+      disabled={lat === undefined}
+      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank')}
+    >
+      <Icon name="pin" size={24} />
+      Find car
+      {relTime(locationAt?.state) && <span className="find-age">{relTime(locationAt?.state)}</span>}
+    </button>
+  );
+  const where = (car.place || car.where) && (
+    <div className="car-where">
+      <Icon name="pin" size={16} />
+      <span>{car.where === 'At home' ? 'At home' : [car.place, car.where].filter(Boolean).join(' · ')}</span>
+    </div>
+  );
 
+  const parts = {
+    notice: car.offline ? <OfflineNotice seenAgo={car.seenAgo} /> : null,
+    // With a 3D model the hero is the interactive stage; else the photo.
+    hero: model ? (
+      <div className="car-hero car-stage">
+        {heroNums}
+        <CarScene model={model} fallback={<CarImage className="car-hero-img" />} visual={visual} />
+        {/* Exterior view only: actions on the left, A/C on the right (hidden inside). */}
+        <div className="stage-ctl stage-left">
+          <StageActions
+            locked={car.locked}
+            offline={car.offline}
+            findUrl={lat === undefined ? undefined : `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`}
+            locationAge={relTime(locationAt?.state)}
+            valetStart={car.x.start_valet_mode?.entity_id}
+            valetStop={car.x.stop_valet_mode?.entity_id}
+          />
+        </div>
+        <div className="stage-ctl stage-right">
+          <StageClimate />
+        </div>
+        <StageRefresh updatedState={updated?.state} />
+        {fuelBar}
+      </div>
+    ) : (
+      <div className="car-hero">
+        {heroNums}
+        <CarImage className="car-hero-img" />
+        {fuelBar}
+      </div>
+    ),
+    stats: onModel ? null : (
+      <div className={`stat-tiles ${car.x.cabin_pm2_5 ? '' : 'three'}`}>
+        <div className="stat-tile"><div className="label">Fuel</div><div className="stat-val">{fmtInt(car.fuelPct)}<small>%</small></div></div>
+        <div className="stat-tile"><div className="label">Odometer</div><div className="stat-val">{car.odoKm !== undefined ? Math.round(car.odoKm).toLocaleString() : '–'}<small>km</small></div></div>
+        <div className="stat-tile"><div className="label">12V battery</div><div className="stat-val">{fmtInt(car.battery12vPct)}<small>%</small></div></div>
+        <CabinAirTile x={car.x} />
+      </div>
+    ),
+    // With the 3D model the A/C, lock, find, horn and valet live on the stage.
+    comfort: onModel ? null : (
+      <div className="comfort">
+        <div className="comfort-head">
+          <h3>Comfort</h3>
+          <span className="muted small">Remote climate runs for a limited time, then the car switches it off</span>
+        </div>
+        {CAR_DETAIL.actions?.climate ? (
+          <ClimateControl />
+        ) : (
+          <button
+            className={`action ${climate?.state === 'on' ? 'active' : ''}`}
+            style={{ ['--tint' as string]: 'var(--accent-fan)' }}
+            disabled={isUnavailable(climate)}
+            onClick={() => hass.callService('switch', 'toggle', {}, { entity_id: CAR_DETAIL.climate })}
+          >
+            <span className="action-icon"><Icon name="ac" size={24} /></span>
+            <span className="action-label">Climate</span>
+            <span className="action-sub">{isUnavailable(climate) ? 'Unavailable' : climate?.state === 'on' ? 'Running' : 'Pre-cool the cabin'}</span>
+          </button>
+        )}
+      </div>
+    ),
+    // With the 3D model every remote action is on the stage.
+    remote: onModel ? null : <RemoteActions updatedState={updated?.state} valetStart={car.x.start_valet_mode?.entity_id} valetStop={car.x.stop_valet_mode?.entity_id} />,
+    driving: <DrivingSection x={car.x} />,
+    status: onModel ? null : (
+      <div className="car-status card">
+        <header className="panel-head">
+          <h2 className="label">Car status</h2>
+          {anyTyre && <span className="chip warn">{tyresFromHistory ? 'Low tyre (last known)' : 'Tyre check suggested'}</span>}
+          {car.activeWarnings.map((w) => <span key={w.entity} className="chip warn">{w.name}</span>)}
+          {car.hazards && <span className="chip warn"><Icon name="hazard" size={14} /> Hazards on</span>}
+          {car.accessory && <span className="chip"><Icon name="power" size={14} /> Accessory on</span>}
+        </header>
+        <div className="tyre-grid">
+          <Tyre entity={CAR_DETAIL.tyres.frontLeft} label="Front left" last={car.lastTyres?.[CAR_DETAIL.tyres.frontLeft]} />
+          <div className="car-top"><CarTopView /></div>
+          <Tyre entity={CAR_DETAIL.tyres.frontRight} label="Front right" last={car.lastTyres?.[CAR_DETAIL.tyres.frontRight]} />
+          <Tyre entity={CAR_DETAIL.tyres.rearLeft} label="Rear left" last={car.lastTyres?.[CAR_DETAIL.tyres.rearLeft]} />
+          <Tyre entity={CAR_DETAIL.tyres.rearRight} label="Rear right" last={car.lastTyres?.[CAR_DETAIL.tyres.rearRight]} />
+        </div>
+        {tyresFromHistory && <div className="muted small tyre-note">Tyre pressure: last known{car.seenAgo ? `, from ${car.seenAgo}` : ''}</div>}
+        <div className="chips-row">
+          {CAR_DETAIL.openings.map((o) => <Opening key={o.name} {...o} />)}
+        </div>
+      </div>
+    ),
+    actions: onModel ? null : (
+      <div className="car-actions">
+        <div>
+          <div className="label">{car.offline ? 'Status' : car.moving ? `Driving${car.motion ? ` · ${car.motion}` : ''}` : 'Parked'}</div>
+          <div className="car-lock-state">{car.offline ? 'Offline' : car.locked ? 'Locked' : 'Unlocked'}</div>
+          <div className="muted small">
+            {car.offline ? 'Lock and doors unknown' : car.openCount ? `${car.openCount} opening${car.openCount > 1 ? 's' : ''} open` : 'Everything is closed'}
+          </div>
+        </div>
+        {findCar}
+        <LockButton locked={car.locked} disabled={car.offline} />
+        {where}
+      </div>
+    ),
+    service: <ServiceCard items={car.service} />,
+    vehicle: <VehicleLine x={car.x} updatedAt={updated?.state} />,
+    findCar,
+    where,
+    lock: <LockButton locked={car.locked} disabled={car.offline} />,
+  };
+  return { car, parts, lowTyres, onModel };
+}
+
+export type CarDetailData = ReturnType<typeof useCarDetail>;
+
+// Without a 3D model: the photo hero and every section in two columns.
+function ModalCurrent({ d }: { d: CarDetailData }) {
+  const { parts } = d;
+  const model = !!CAR_DETAIL.model;
   return (
     <div className="car-detail">
-      {car.offline && <OfflineNotice seenAgo={car.seenAgo} />}
-      {/* With a 3D model the hero becomes a full-width stage above both columns. */}
-      {model && (
-        <div className="car-hero car-stage">
-          {heroNums}
-          <CarScene model={model} fallback={<CarImage className="car-hero-img" />} visual={visual} />
-          {fuelBar}
-        </div>
-      )}
+      {parts.notice}
+      {model && parts.hero}
       <div className="car-left">
-        {!model && (
-          <div className="car-hero">
-            {heroNums}
-            <CarImage className="car-hero-img" />
-            {fuelBar}
-          </div>
-        )}
-        <div className="stat-tiles three">
-          <div className="stat-tile"><div className="label">Fuel</div><div className="stat-val">{fmtInt(car.fuelPct)}<small>%</small></div></div>
-          <div className="stat-tile"><div className="label">Odometer</div><div className="stat-val">{car.odoKm !== undefined ? Math.round(car.odoKm).toLocaleString() : '–'}<small>km</small></div></div>
-          <div className="stat-tile"><div className="label">12V battery</div><div className="stat-val">{fmtInt(car.battery12vPct)}<small>%</small></div></div>
-        </div>
-        <div className="comfort">
-          <div className="comfort-head">
-            <h3>Comfort</h3>
-            <span className="muted small">Remote climate runs for a limited time, then the car switches it off</span>
-          </div>
-          {CAR_DETAIL.actions?.climate ? (
-            <ClimateControl />
-          ) : (
-            <button
-              className={`action ${climate?.state === 'on' ? 'active' : ''}`}
-              style={{ ['--tint' as string]: 'var(--accent-fan)' }}
-              disabled={isUnavailable(climate)}
-              onClick={() => hass.callService('switch', 'toggle', {}, { entity_id: CAR_DETAIL.climate })}
-            >
-              <span className="action-icon"><Icon name="ac" size={24} /></span>
-              <span className="action-label">Climate</span>
-              <span className="action-sub">{isUnavailable(climate) ? 'Unavailable' : climate?.state === 'on' ? 'Running' : 'Pre-cool the cabin'}</span>
-            </button>
-          )}
-        </div>
-        <RemoteActions updatedState={updated?.state} />
+        {!model && parts.hero}
+        {parts.stats}
+        {parts.comfort}
+        {parts.remote}
+        {parts.driving}
       </div>
-
       <div className="car-right">
-        <div className="car-status card">
-          <header className="panel-head">
-            <h2 className="label">Car status</h2>
-            {anyTyre && <span className="chip warn">{tyresFromHistory ? 'Low tyre (last known)' : 'Tyre check suggested'}</span>}
-            {car.activeWarnings.map((w) => <span key={w.entity} className="chip warn">{w.name}</span>)}
-          </header>
-          <div className="tyre-grid">
-            <Tyre entity={CAR_DETAIL.tyres.frontLeft} label="Front left" last={car.lastTyres?.[CAR_DETAIL.tyres.frontLeft]} />
-            <div className="car-top"><CarTopView /></div>
-            <Tyre entity={CAR_DETAIL.tyres.frontRight} label="Front right" last={car.lastTyres?.[CAR_DETAIL.tyres.frontRight]} />
-            <Tyre entity={CAR_DETAIL.tyres.rearLeft} label="Rear left" last={car.lastTyres?.[CAR_DETAIL.tyres.rearLeft]} />
-            <Tyre entity={CAR_DETAIL.tyres.rearRight} label="Rear right" last={car.lastTyres?.[CAR_DETAIL.tyres.rearRight]} />
-          </div>
-          {tyresFromHistory && <div className="muted small tyre-note">Tyre pressure: last known{car.seenAgo ? `, from ${car.seenAgo}` : ''}</div>}
-          <div className="chips-row">
-            {CAR_DETAIL.openings.map((o) => <Opening key={o.name} {...o} />)}
-          </div>
-        </div>
-        <div className="car-actions">
-          <div>
-            <div className="label">{car.offline ? 'Status' : car.moving ? 'Driving' : 'Parked'}</div>
-            <div className="car-lock-state">{car.offline ? 'Offline' : car.locked ? 'Locked' : 'Unlocked'}</div>
-            <div className="muted small">
-              {car.offline ? 'Lock and doors unknown' : car.openCount ? `${car.openCount} opening${car.openCount > 1 ? 's' : ''} open` : 'Everything is closed'}
-            </div>
-          </div>
-          <button
-            className="big-btn square"
-            disabled={lat === undefined}
-            onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank')}
-          >
-            <Icon name="pin" size={24} />
-            Find car
-            {relTime(locationAt?.state) && <span className="find-age">{relTime(locationAt?.state)}</span>}
-          </button>
-          <LockButton locked={car.locked} disabled={car.offline} />
-        </div>
+        {parts.status}
+        {parts.actions}
+        {parts.service}
       </div>
+      {parts.vehicle}
     </div>
+  );
+}
+
+// With the 3D model: the stage, then the information (CarDetailsInfo).
+// Without one (photo only): the two-column layout with every section.
+function CarDetail() {
+  const d = useCarDetail();
+  if (!d.onModel) return <ModalCurrent d={d} />;
+  return (
+    <div className="car-detail-model">
+      {d.parts.notice}
+      {d.parts.hero}
+      <CarDetailsInfo x={d.car.x} service={d.car.service} />
+      {d.parts.vehicle}
+    </div>
+  );
+}
+
+// The modal's header parts are components, so they follow the car while it's open
+// (modal.open() renders what it's given; values computed at open time go stale).
+function CarSubtitle() {
+  const car = useCar();
+  const status = car.offline ? 'Offline' : car.moving ? 'Driving' : 'Parked';
+  if (CAR_DETAIL.model) {
+    // Lock and openings are on the 3D model; the header says where the car is.
+    const place = car.where === 'At home' ? 'At home' : [car.place, car.where].filter(Boolean).join(' · ');
+    return (
+      <span>
+        <span className={`dot ${car.offline ? 'off' : 'on'}`} /> <strong>{status}</strong>
+        {place && <span className="muted"> · {place}</span>}
+      </span>
+    );
+  }
+  return (
+    <span>
+      <span className={`dot ${car.offline ? 'off' : 'on'}`} /> <strong>{status}</strong>
+      <span className="muted">
+        {car.offline ? ' · lock and doors unknown' : ` · ${car.locked ? 'Locked' : 'Unlocked'}, ${car.openCount ? `${car.openCount} open` : 'all closed'}`}
+      </span>
+    </span>
+  );
+}
+
+function CarAside() {
+  const car = useCar();
+  return (
+    <span className="pill small-pill">
+      <span className={`dot ${car.offline ? 'off' : 'on'}`} />
+      {car.offline ? (car.seenAgo ? `Last data ${car.seenAgo}` : 'No data') : CAR_DETAIL.model ? 'Connected' : `Connected${car.where ? ` · ${car.where}` : ''}`}
+    </span>
   );
 }
 
 export function CarPanel() {
   const modal = useModal();
   const car = useCar();
-  const fuelPct = car.fuelPct;
   const status = car.offline ? 'Offline' : car.moving ? 'Driving' : 'Parked';
 
   const openDetail = () =>
@@ -375,47 +566,21 @@ export function CarPanel() {
       icon: 'car',
       accent: 'var(--accent-energy)',
       wide: true,
-      subtitle: (
-        <span>
-          <span className={`dot ${car.offline ? 'off' : 'on'}`} /> <strong>{status}</strong>
-          <span className="muted">
-            {car.offline ? ' · lock and doors unknown' : ` · ${car.locked ? 'Locked' : 'Unlocked'}, ${car.openCount ? `${car.openCount} open` : 'all closed'}`}
-          </span>
-        </span>
-      ),
-      aside: (
-        <span className="pill small-pill">
-          <span className={`dot ${car.offline ? 'off' : 'on'}`} />
-          {car.offline ? (car.seenAgo ? `Last data ${car.seenAgo}` : 'No data') : `Connected${car.where ? ` · ${car.where}` : ''}`}
-        </span>
-      ),
+      subtitle: <CarSubtitle />,
+      aside: <CarAside />,
       body: <CarDetail />,
     });
 
   return (
     <section className={`panel car-panel ${car.offline ? 'offline' : ''}`}>
-      <PanelHead label={CAR.name} summary={car.offline ? (car.seenAgo ? `Offline · ${car.seenAgo}` : 'Offline') : car.where ?? status} onMore={openDetail} />
-      <div className="car-summary" onClick={openDetail} role="button" tabIndex={0}>
-        <div>
-          <div className="hero-pct">{fmtInt(car.fuelPct)}<sup>%</sup></div>
-          <div className="muted">{fmtInt(car.rangeKm)} km range</div>
-        </div>
-        <CarImage className="car-thumb" />
-      </div>
-      <div className="progress thick"><i className={fuelPct !== undefined && fuelPct <= 15 ? 'low' : ''} style={{ width: `${fuelPct ?? 0}%` }} /></div>
-      <div className="chips-row">
-        {car.offline ? (
-          <span className="chip big warn" onClick={openDetail} role="button" tabIndex={0}>
-            <Icon name="alert" size={16} /> Kia Connect not responding
-          </span>
-        ) : (
-          <>
-            <span className={`chip big ${car.locked ? 'ok' : 'warn'}`}><Icon name={car.locked ? 'lock' : 'unlock'} size={16} /> {car.locked ? 'Locked' : 'Unlocked'}</span>
-            {car.activeWarnings.length > 0 && <span className="chip big warn"><Icon name="alert" size={16} /> {car.activeWarnings[0].name}</span>}
-            {car.activeWarnings.length === 0 && car.odoKm !== undefined && <span className="chip big">{Math.round(car.odoKm).toLocaleString()} km</span>}
-          </>
-        )}
-      </div>
+      <PanelHead
+        label={CAR.name}
+        summary={car.offline ? (car.seenAgo ? `Offline · ${car.seenAgo}` : 'Offline') : car.moving ? `Driving${car.motion ? ` · ${car.motion}` : ''}` : (car.where ?? status)}
+        onMore={openDetail}
+      />
+      <CarCard car={car} open={openDetail} />
     </section>
   );
 }
+
+export type CarData = ReturnType<typeof useCar>;

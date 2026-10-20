@@ -87,6 +87,19 @@ const FOCUS_TURN_MS = 1600;
 const FOCUS_DWELL_MS = 3500;
 const FOCUS_SPIN_MS = 15000; // free turntable between rounds of issues
 const BLINK_MS = 400;
+// Indicator/hazard amber. The model's lit signal twins glow through a reddish
+// texture; the owner asked for this colour instead.
+const SIGNAL_COLOR = '#cc5d29';
+// Sequential indicators: each blink lights the lamp from its inner edge to its
+// outer edge over SWEEP_MS, then it stays lit until the off half of the blink.
+const SWEEP_MS = 260;
+// How far the sweep has got, 0..1; shared by every tinted indicator material
+// (the parsed model is cached, so the materials outlive a viewer).
+const signalSweep = { value: 1 };
+// 1 while the indicators are lit (the on half of a blink), for the tail-lamp segments.
+const signalOn = { value: 0 };
+// A texel counts as "white" (part of a lamp's white segment) when bright and unsaturated.
+const WHITE_GLSL = 'max(t.r, max(t.g, t.b)) > 0.45 && min(t.r, min(t.g, t.b)) > 0.7 * max(t.r, max(t.g, t.b))';
 
 const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 const OUTSIDE_FOV = 30;
@@ -647,13 +660,65 @@ export class CarViewer {
       if (!m) continue;
       const base = name.slice(0, m.index);
       const unlit = [...byName.entries()].filter(([n]) => n !== name && n.startsWith(`${base}_`) && /^\d+$/.test(n.slice(base.length + 1))).map(([, o]) => o);
-      this.lamps.push({ lit, unlit, signal: m[1] === 'Turn_Signal' });
+      // The model switches its lights off by scaling the lit twin to ~0 (1e-10),
+      // so showing it needs the unlit twin's scale as well as `visible`.
+      if (lit.scale.x < 1e-6 && unlit[0]) lit.scale.copy(unlit[0].scale);
+      const signal = m[1] === 'Turn_Signal';
+      if (signal) tintSignal(lit, this.frame);
+      this.lamps.push({ lit, unlit, signal });
     }
+    this.prepareTailSignals();
     this.setLamps();
+  }
+
+  // The white segments of the rear lamps at the indicators' height (the light
+  // bar's segment on the tailgate, just inside the corner) join the rear
+  // indicator: one sweep from their inner edge to the indicators' outer edge,
+  // like the real car. They are texture detail inside the tail lens, so they're
+  // found by sampling its glow texture, and recoloured in its shader.
+  private prepareTailSignals() {
+    const { forward, center, left } = this.frame;
+    // World matrices must reflect the lit twins' restored scale.
+    this.model?.updateMatrixWorld(true);
+    const meshesOf = (o: Object3D) => {
+      const out: Mesh[] = [];
+      o.traverse((m) => (m as Mesh).isMesh && out.push(m as Mesh));
+      return out;
+    };
+    const rearSignals = this.lamps.filter((l) => l.signal).flatMap((l) => meshesOf(l.lit)).filter((m) => meshSpan(m, center, forward, left).along < 0);
+    if (!rearSignals.length) return;
+    const spans = rearSignals.map((m) => meshSpan(m, center, forward, left));
+    const band = { min: Math.min(...spans.map((x) => x.yMin)) - 0.05, max: Math.max(...spans.map((x) => x.yMax)) + 0.05 };
+    let inner = Math.min(...spans.map((x) => x.inner));
+    let outer = Math.max(...spans.map((x) => x.outer));
+
+    const tails = this.lamps
+      .filter((l) => !l.signal)
+      .flatMap((l) => [l.lit, ...l.unlit].flatMap(meshesOf))
+      .filter((m) => meshSpan(m, center, forward, left).along < 0 && !!(m.material as MeshStandardMaterial).emissiveMap);
+    const found: { mesh: Mesh; white: { inner: number; outer: number } }[] = [];
+    for (const mesh of tails) {
+      mesh.userData.tailWhite ??= whiteSpan(mesh, center, left, band) ?? null;
+      const white = mesh.userData.tailWhite as { inner: number; outer: number } | null;
+      if (!white) continue;
+      found.push({ mesh, white });
+      inner = Math.min(inner, white.inner);
+      outer = Math.max(outer, white.outer);
+    }
+    // One range for the whole rear sweep: the indicators share it too.
+    for (const m of rearSignals) {
+      const u = m.userData.signalUniforms as { uInner: { value: number }; uOuter: { value: number } } | undefined;
+      if (u) {
+        u.uInner.value = inner;
+        u.uOuter.value = outer;
+      }
+    }
+    for (const { mesh } of found) tintTail(mesh, { center, left, inner, outer, band });
   }
 
   private setLamps() {
     const v = this.visual;
+    signalOn.value = v?.signals && this.blinkOn ? 1 : 0;
     for (const l of this.lamps) {
       const on = l.signal ? !!v?.signals && this.blinkOn : !!v?.headlamps;
       l.lit.visible = on;
@@ -916,10 +981,16 @@ export class CarViewer {
       if (this.controls.update(dt)) this.dirty = true;
     }
     if (this.visual?.signals) {
-      const on = Math.floor(now / BLINK_MS) % 2 === 0;
+      const phase = now % (2 * BLINK_MS);
+      const on = phase < BLINK_MS;
       if (on !== this.blinkOn) {
         this.blinkOn = on;
         this.setLamps();
+      }
+      const sweep = this.opts.reducedMotion ? 1 : Math.min(1, phase / SWEEP_MS);
+      if (on && sweep !== signalSweep.value) {
+        signalSweep.value = sweep;
+        this.dirty = true;
       }
     }
     if (this.mixer) {
@@ -1072,4 +1143,193 @@ function plateTexture(text: string, flipY: boolean): CanvasTexture {
   t.flipY = flipY;
   t.colorSpace = SRGBColorSpace;
   return t;
+}
+
+// A lit indicator glows flat SIGNAL_COLOR: its own material copy (the original
+// may be shared with other lamps), no textures, no lighting and no tone mapping,
+// so the colour shows as given. It is drawn only up to the sweep: fragments
+// further from the car's centre line than inner + sweep × (outer − inner) are
+// discarded, so the light runs outwards. Done once per mesh of the cached model.
+function tintSignal(root: Object3D, frame: { left: Vector3; center: Vector3 }) {
+  root.updateMatrixWorld(true);
+  root.traverse((o) => {
+    const mesh = o as Mesh;
+    if (!mesh.isMesh || mesh.userData.signalTint) return;
+    mesh.userData.signalTint = true;
+    // The lamp's span across the car, from its vertices in world space.
+    const pos = mesh.geometry.getAttribute('position');
+    const v = new Vector3();
+    let inner = Infinity;
+    let outer = 0;
+    for (let i = 0; i < pos.count; i++) {
+      const d = Math.abs(v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).sub(frame.center).dot(frame.left));
+      inner = Math.min(inner, d);
+      outer = Math.max(outer, d);
+    }
+    const uniforms = {
+      uSweep: signalSweep,
+      uInner: { value: Number.isFinite(inner) ? inner : 0 },
+      uOuter: { value: outer },
+      uCenter: { value: frame.center.clone() },
+      uLeft: { value: frame.left.clone() },
+    };
+    mesh.userData.signalUniforms = uniforms;
+    const tint = (m: Material) => {
+      const c = m.clone() as MeshStandardMaterial;
+      c.map = null;
+      c.emissiveMap = null;
+      c.color?.set(0x000000);
+      c.emissive?.set(SIGNAL_COLOR);
+      c.emissiveIntensity = 1;
+      c.toneMapped = false;
+      c.onBeforeCompile = (shader) => {
+        Object.assign(shader.uniforms, uniforms);
+        shader.vertexShader = shader.vertexShader
+          .replace('#include <common>', '#include <common>\nuniform vec3 uCenter;\nuniform vec3 uLeft;\nvarying float vAcross;')
+          .replace(
+            '#include <project_vertex>',
+            '#include <project_vertex>\nvAcross = abs(dot((modelMatrix * vec4(transformed, 1.0)).xyz - uCenter, uLeft));',
+          );
+        shader.fragmentShader = shader.fragmentShader
+          .replace('#include <common>', '#include <common>\nuniform float uSweep;\nuniform float uInner;\nuniform float uOuter;\nvarying float vAcross;')
+          .replace('#include <clipping_planes_fragment>', '#include <clipping_planes_fragment>\nif (vAcross > mix(uInner, uOuter, uSweep) + 0.002) discard;');
+      };
+      c.customProgramCacheKey = () => 'signal-sweep';
+      return c;
+    };
+    mesh.material = Array.isArray(mesh.material) ? mesh.material.map(tint) : tint(mesh.material);
+  });
+}
+
+// Where a mesh sits relative to the car: average position along it, its span
+// across (distance from the centre line) and its height range, in world space.
+function meshSpan(mesh: Mesh, center: Vector3, forward: Vector3, left: Vector3) {
+  mesh.updateMatrixWorld(true);
+  const pos = mesh.geometry.getAttribute('position');
+  const v = new Vector3();
+  const step = Math.max(1, Math.floor(pos.count / 400));
+  let along = 0;
+  let n = 0;
+  let inner = Infinity;
+  let outer = 0;
+  let yMin = Infinity;
+  let yMax = -Infinity;
+  for (let i = 0; i < pos.count; i += step) {
+    v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+    yMin = Math.min(yMin, v.y);
+    yMax = Math.max(yMax, v.y);
+    v.sub(center);
+    along += v.dot(forward);
+    const d = Math.abs(v.dot(left));
+    inner = Math.min(inner, d);
+    outer = Math.max(outer, d);
+    n++;
+  }
+  return { along: n ? along / n : 0, inner, outer, yMin, yMax };
+}
+
+// The span across the car of a mesh's white glow texels within a height band,
+// by sampling its emissive texture over each triangle (the white is texture
+// detail, so vertices alone miss it). Undefined when there is none.
+function whiteSpan(mesh: Mesh, center: Vector3, left: Vector3, band: { min: number; max: number }) {
+  const img = (mesh.material as MeshStandardMaterial).emissiveMap?.image as CanvasImageSource & { width: number; height: number } | undefined;
+  const uv = mesh.geometry.getAttribute('uv');
+  if (!img?.width || !uv) return undefined;
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width;
+  canvas.height = img.height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) return undefined;
+  ctx.drawImage(img, 0, 0);
+  const px = ctx.getImageData(0, 0, img.width, img.height).data;
+  const pos = mesh.geometry.getAttribute('position');
+  const index = mesh.geometry.index;
+  const tris = index ? index.count / 3 : pos.count / 3;
+  const P = [new Vector3(), new Vector3(), new Vector3()];
+  const U = [0, 0, 0];
+  const V = [0, 0, 0];
+  const p = new Vector3();
+  const N = 6;
+  let inner = Infinity;
+  let outer = 0;
+  mesh.updateMatrixWorld(true);
+  for (let t = 0; t < tris; t++) {
+    for (let k = 0; k < 3; k++) {
+      const i = index ? index.getX(3 * t + k) : 3 * t + k;
+      P[k].fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+      U[k] = uv.getX(i);
+      V[k] = uv.getY(i);
+    }
+    if (Math.max(P[0].y, P[1].y, P[2].y) < band.min || Math.min(P[0].y, P[1].y, P[2].y) > band.max) continue;
+    for (let a = 0; a <= N; a++) {
+      for (let b = 0; a + b <= N; b++) {
+        const w0 = a / N;
+        const w1 = b / N;
+        const w2 = 1 - w0 - w1;
+        p.set(0, 0, 0).addScaledVector(P[0], w0).addScaledVector(P[1], w1).addScaledVector(P[2], w2);
+        if (p.y < band.min || p.y > band.max) continue;
+        const u = U[0] * w0 + U[1] * w1 + U[2] * w2;
+        const v = V[0] * w0 + V[1] * w1 + V[2] * w2;
+        const x = Math.min(img.width - 1, Math.floor((((u % 1) + 1) % 1) * img.width));
+        const y = Math.min(img.height - 1, Math.floor((((v % 1) + 1) % 1) * img.height)); // glTF: flipY false
+        const o = 4 * (y * img.width + x);
+        const hi = Math.max(px[o], px[o + 1], px[o + 2]);
+        const lo = Math.min(px[o], px[o + 1], px[o + 2]);
+        if (hi <= 115 || lo <= 0.7 * hi) continue;
+        const d = Math.abs(p.sub(center).dot(left));
+        inner = Math.min(inner, d);
+        outer = Math.max(outer, d);
+      }
+    }
+  }
+  return Number.isFinite(inner) ? { inner, outer } : undefined;
+}
+
+// While the indicators are lit, the tail lens's white texels inside the band
+// and reached by the sweep show SIGNAL_COLOR (written after tone mapping, so
+// exactly that colour); the rest of the lens is untouched. Once per mesh.
+function tintTail(mesh: Mesh, r: { center: Vector3; left: Vector3; inner: number; outer: number; band: { min: number; max: number } }) {
+  const prev = mesh.userData.tailUniforms as { uInner: { value: number }; uOuter: { value: number } } | undefined;
+  if (prev) {
+    prev.uInner.value = r.inner;
+    prev.uOuter.value = r.outer;
+    return;
+  }
+  const hex = SIGNAL_COLOR.replace('#', '');
+  const uniforms = {
+    uSweep: signalSweep,
+    uSignalOn: signalOn,
+    uInner: { value: r.inner },
+    uOuter: { value: r.outer },
+    uYMin: { value: r.band.min },
+    uYMax: { value: r.band.max },
+    uCenter: { value: r.center.clone() },
+    uLeft: { value: r.left.clone() },
+    uSignal: { value: new Vector3(parseInt(hex.slice(0, 2), 16) / 255, parseInt(hex.slice(2, 4), 16) / 255, parseInt(hex.slice(4, 6), 16) / 255) },
+  };
+  mesh.userData.tailUniforms = uniforms;
+  const patch = (m: Material) => {
+    const c = m.clone() as MeshStandardMaterial;
+    c.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, uniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform vec3 uCenter;\nuniform vec3 uLeft;\nvarying float vAcross;\nvarying float vY;')
+        .replace(
+          '#include <project_vertex>',
+          '#include <project_vertex>\nvec4 tailWorld = modelMatrix * vec4(transformed, 1.0);\nvAcross = abs(dot(tailWorld.xyz - uCenter, uLeft));\nvY = tailWorld.y;',
+        );
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          '#include <common>',
+          '#include <common>\nuniform float uSweep;\nuniform float uSignalOn;\nuniform float uInner;\nuniform float uOuter;\nuniform float uYMin;\nuniform float uYMax;\nuniform vec3 uSignal;\nvarying float vAcross;\nvarying float vY;',
+        )
+        .replace(
+          '#include <dithering_fragment>',
+          `#include <dithering_fragment>\nif (uSignalOn > 0.5 && vY >= uYMin && vY <= uYMax && vAcross <= mix(uInner, uOuter, uSweep) + 0.002) {\n  vec3 t = texture2D(emissiveMap, vEmissiveMapUv).rgb;\n  if (${WHITE_GLSL}) gl_FragColor = vec4(uSignal, 1.0);\n}`,
+        );
+    };
+    c.customProgramCacheKey = () => 'tail-signal';
+    return c;
+  };
+  mesh.material = Array.isArray(mesh.material) ? mesh.material.map(patch) : patch(mesh.material);
 }

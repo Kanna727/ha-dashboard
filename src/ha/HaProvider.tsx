@@ -17,6 +17,7 @@ import {
   type HassApi,
   type HistoryPoint,
   type LastState,
+  type StatChange,
   type StatPoint,
   type TodoItem,
 } from './api';
@@ -138,6 +139,25 @@ export const haApi: HassApi = {
         start: typeof r.start === 'number' ? r.start : Date.parse(r.start),
         mean: r.mean ?? undefined,
       }));
+    }
+    return out;
+  },
+  async fetchStatChanges(ids, days, period) {
+    const conn = await getConnection();
+    const start = new Date(Date.now() - days * 86_400_000);
+    start.setHours(0, 0, 0, 0);
+    const res = await conn.sendMessagePromise<Record<string, { start: number | string; change?: number | null }[]>>({
+      type: 'recorder/statistics_during_period',
+      start_time: start.toISOString(),
+      statistic_ids: ids,
+      period,
+      types: ['change'],
+    });
+    const out: Record<string, StatChange[]> = {};
+    for (const id of ids) {
+      out[id] = (res[id] ?? []).flatMap((r) =>
+        typeof r.change === 'number' ? [{ start: typeof r.start === 'number' ? r.start : Date.parse(r.start), change: r.change }] : [],
+      );
     }
     return out;
   },

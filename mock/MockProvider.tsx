@@ -4,6 +4,8 @@ import type { HassEntity } from 'home-assistant-js-websocket';
 import { HassContext, HassStatusContext, type HassApi, type HistoryPoint } from '../src/ha/api';
 import { store } from '../src/ha/store';
 import { hsToRgb, kelvinToRgb } from '../src/lib/lightColor';
+import { bucketStart } from '../src/lib/driveHistory';
+import { CAR_TEST, CarTestPanel } from './CarTestPanel';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
@@ -226,6 +228,36 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         }));
         return Object.fromEntries(ids.map((id, n) => [id, n === 0 ? series.slice(-3) : series.slice(0, -3)]));
       },
+      async fetchStatChanges(ids, days, period) {
+        // (The car chart always asks for daily rows; weeks and months are summed by the caller.)
+        // Seeded driving: about 5 months of odometer statistics; the trips and
+        // drive-time counters only for the last 3 weeks (newer sensors), like the real car.
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const rand = seeded(42);
+        const daysBack = Math.min(days, 150);
+        const daily = Array.from({ length: daysBack + 1 }, (_, i) => {
+          const start = today.getTime() - (daysBack - i) * 86_400_000;
+          const trips = rand() < 0.3 ? 0 : 1 + Math.floor(rand() * 4);
+          const km = trips ? Math.round(trips * (4 + rand() * 16)) : 0;
+          return { start, trips, km, minutes: Math.round(km * (1.8 + rand())) };
+        });
+        const series = (pick: (d: (typeof daily)[number]) => number, sinceDays = Infinity) => {
+          const m = new Map<number, number>();
+          for (const d of daily) {
+            if (today.getTime() - d.start > sinceDays * 86_400_000) continue;
+            const k = bucketStart(d.start, period);
+            m.set(k, (m.get(k) ?? 0) + pick(d));
+          }
+          return [...m].map(([start, change]) => ({ start, change }));
+        };
+        return Object.fromEntries(
+          ids.map((id) => [
+            id,
+            id.endsWith('_odometer') ? series((d) => d.km) : id.endsWith('_trips_today') ? series((d) => d.trips, 21) : id.endsWith('_drive_time_today') ? series((d) => d.minutes, 21) : [],
+          ]),
+        );
+      },
       async fetchLastStates(entityIds) {
         if (entityIds.some((id) => CAR_LAST_STATES[id])) if (!FROZEN) await new Promise((r) => setTimeout(r, 1500));
         return Object.fromEntries(
@@ -261,7 +293,10 @@ export default function MockProvider({ children }: { children: ReactNode }) {
 
   return (
     <HassContext.Provider value={api}>
-      <HassStatusContext.Provider value={mockStatus}>{children}</HassStatusContext.Provider>
+      <HassStatusContext.Provider value={mockStatus}>
+        {children}
+        {CAR_TEST && <CarTestPanel patch={patch} />}
+      </HassStatusContext.Provider>
     </HassContext.Provider>
   );
 }
