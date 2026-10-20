@@ -8,6 +8,7 @@ import { bucketStart } from '../src/lib/driveHistory';
 import { CAR_TEST, CarTestPanel } from './CarTestPanel';
 import { installMockCommute, MOCK_COMMUTE_CARD } from './commute';
 import { CommuteTestPanel } from './CommuteTestPanel';
+import { MEALS_TEST, MealsTestPanel } from './MealsTestPanel';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
@@ -300,6 +301,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         {children}
         {CAR_TEST && <CarTestPanel patch={patch} />}
         {CAR_TEST && <CommuteTestPanel />}
+        {(CAR_TEST || MEALS_TEST) && <MealsTestPanel />}
       </HassStatusContext.Provider>
     </HassContext.Provider>
   );

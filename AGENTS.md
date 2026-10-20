@@ -56,6 +56,7 @@ src/components/*           building blocks: Modal (ModalProvider + PanelHead), S
                            DishRack + useDishShine (the dishwasher's dishes on the Utility card), FanIcon (spinning blades), LightIcon (bulb that lights up),
                            LightSheet (lights sheet) with Slider and ColorWheel
 src/commute/*              commute data (routes.ts, useCommute), map + search (GoogleMap, views), shared parts, popup (CommuteDetail)
+src/meals/*                meals panel helpers: plan maths (plan.ts), clock + Today/Tomorrow (useMeals), shared parts
 src/styles/fonts.css       Plus Jakarta Sans (latin subset only), inlined into the bundle
 src/layout/Layouts.tsx     TabletLayout (3 columns, each scrolls), DesktopLayout (4 columns), PhoneLayout (4 bottom tabs)
 src/update/useSelfUpdate.ts reloads when input_text.dashboard_build != "<version>/<config hash>" (not in mock builds)
@@ -63,6 +64,7 @@ src/update/previewUpdate.ts the deployed preview reloads itself when version.jso
 mock/fixtures.ts           state snapshot matching the example config
 mock/MockProvider.tsx      fake HassApi that applies service calls locally and jitters power sensors
 mock/CarTestPanel.tsx      ?carTest panel: toggles every car state the card and 3D model react to (mock builds only)
+mock/MealsTestPanel.tsx    ?mealsTest panel: pins the meals clock to a time and day (mock builds only)
 src/lib/fanSpeed.ts        fan percentage snapping / what to send to HA (unit-tested)
 src/lib/dishes.ts          dish dirt by progress, dishwasher finish time and shine window (unit-tested)
 src/lib/lightColor.ts      light capabilities, kelvin/hue maths, colour wheel mapping, "mixed" detection (unit-tested)
@@ -373,7 +375,7 @@ The owner develops with agents and tests each change in a browser on the PC, so 
 ## Verifying UI changes
 
 - Always run `npm run typecheck`, `npm test` and `npm run build`. CI and the Release workflow run all three. The local preview (above) is for the owner's eyes, not a substitute.
-- **Unit tests** (`vitest`, config in `vitest.config.ts`) cover pure logic: fan-speed snapping (`src/lib/fanSpeed.ts`), meal "Next up", plug discovery, weather extras, rain outlook and formatting, `relTime`/`num`, weather night, car distance, car extras discovery and service schedule (`lib/carInfo.ts`), driving history buckets (`lib/driveHistory.ts`), commute card extraction and route maths (polyline, speed stretches, traffic level). They run in plain Node; `src/test/setup.ts` sets `window` to the global object and loads the example config, as `main.tsx` does. Put new pure helpers somewhere importable without React rendering and add a test beside them (`*.test.ts`, never imported by the app, so never bundled). vitest stays on 3.x: 4.x needs Vite 6+ and Node 20+.
+- **Unit tests** (`vitest`, config in `vitest.config.ts`) cover pure logic: fan-speed snapping (`src/lib/fanSpeed.ts`), meal "Next up" and slot states (`src/meals/plan.ts`), plug discovery, weather extras, rain outlook and formatting, `relTime`/`num`, weather night, car distance, car extras discovery and service schedule (`lib/carInfo.ts`), driving history buckets (`lib/driveHistory.ts`), commute card extraction and route maths (polyline, speed stretches, traffic level). They run in plain Node; `src/test/setup.ts` sets `window` to the global object and loads the example config, as `main.tsx` does. Put new pure helpers somewhere importable without React rendering and add a test beside them (`*.test.ts`, never imported by the app, so never bundled). vitest stays on 3.x: 4.x needs Vite 6+ and Node 20+.
 - To try a pull request on a real device, open the **preview** (`/local/dashboard/preview/index.html`), which every push deploys (see Releases and deploys). It's fake data, so it can't test the HA connection, login or config loading.
 - Take visual checks against a **production-mode mock build**, not the dev server. The dev server loads `@mdi/js` slowly, and headless screenshots then capture half-loaded pages.
   ```sh
@@ -433,7 +435,10 @@ The room cards colour a reading red when it is what keeps the room's fan or ligh
 
 ## Meals panel
 
-`panels/MealsPanel.tsx` shows the day's delivered meals per person from `MEALS` in the config (days without a plan show "No delivery planned"). Today/Tomorrow toggle, and the next meal is highlighted with a "Next up" tag: the first slot whose `end` (HH:MM) hasn't passed, else tomorrow's first slot, at which point the panel defaults to the Tomorrow tab. Each row shows the eating window (`time`); `delivery` is informational. The chevron opens the week: only the days that have a plan (Monday first, Sunday last; `plannedDays`), plus the kitchen notes when `notes` isn't empty. It sits last in tablet column 3, column 3 on desktop, and the phone's More tab. `fetchTodo` in the API is left unused.
+`panels/MealsPanel.tsx` is a **menu board** (the owner picked it on 2026-10-21 from three candidate designs: "up next" hero, timeline, menu board): `MEALS.people` across (initial avatars, colours from `meals/parts.tsx`), `MEALS.slots` down. A dish everyone has spans the row with a "Both" tag (`shared`, case-insensitive). The next meal's row is highlighted and shows "by <end>" (`clock`) instead of its eating window (`time`); meals whose window has passed are ticked and faded (`slotStates`). Next meal = the first slot whose `end` (HH:MM) hasn't passed, else tomorrow's first slot, at which point the Today/Tomorrow toggle in the header defaults to Tomorrow; a manual tap holds only until that default flips (`useMealDay`). A day without a plan shows "No deliveries <day> · Eating out" and the next planned day's first meal (`nextPlanned`). `delivery` isn't shown.
+- **Week popup** (chevron): one row per planned day (Monday first, Sunday last; `plannedDays`) with the meals as columns and today's row highlighted, a person filter (Everyone or one person) and the kitchen notes when `notes` isn't empty. At 600 px and below each day stacks its meals, every cell naming its meal, so phones don't scroll sideways.
+- It sits last in tablet column 3, column 3 on desktop, and the phone's More tab. `fetchTodo` in the API is left unused.
+- **Mock:** the **Meals test panel** (`mock/MealsTestPanel.tsx`, a "Meals test" chip in preview builds, open at once with `?mealsTest`) pins the meals clock (`setMealsClock` in `meals/useMeals.ts`; nothing else sets it) to breakfast, lunch, dinner or evening time and to any weekday (Sunday has no plan in the example), and "Same breakfast for everyone" copies the first person's breakfasts to everyone to show the merged row. Only the meals panel follows it.
 
 ## Building on Windows
 

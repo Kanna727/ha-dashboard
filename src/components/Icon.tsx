@@ -103,6 +103,9 @@ import {
   mdiSwapHorizontal,
   mdiMagnify,
   mdiMotorbike,
+  mdiWhiteBalanceSunny,
+  mdiWeatherNight,
+  mdiChefHat,
 } from '@mdi/js';
 
 export const ICONS = {
@@ -211,6 +214,9 @@ export const ICONS = {
   swap: mdiSwapHorizontal,
   search: mdiMagnify,
   motorbike: mdiMotorbike,
+  sun: mdiWhiteBalanceSunny,
+  night: mdiWeatherNight,
+  chef: mdiChefHat,
 } as const;
 
 export type IconName = keyof typeof ICONS;
