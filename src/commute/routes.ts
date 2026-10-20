@@ -23,15 +23,27 @@ export interface CommuteConfig {
 
 export interface Route {
   seconds: number;
+  // Travel time without traffic (Routes API staticDuration), when given.
+  staticSeconds?: number;
   meters: number;
+  // Google's short route name, e.g. "NH 48" or "Ring Rd".
+  description?: string;
   encodedPolyline: string;
   intervals: { start: number; end?: number; speed: Speed }[];
 }
 
-export const SPEED_COLORS: Record<Speed, string> = { NORMAL: '#4285F4', SLOW: '#FBBC04', TRAFFIC_JAM: '#EA4335' };
-export const ALT_ROUTE_COLOR = '#9e9e9e';
+// Speed colours in the dashboard's palette (blue = moving freely, amber, red).
+export const SPEED_COLORS: Record<Speed, string> = { NORMAL: '#60a5fa', SLOW: '#fbbf24', TRAFFIC_JAM: '#f87171' };
+export const ALT_ROUTE_COLOR = '#8a93a6';
+
+// The mock's test panel can pin the window open or shut (null = follow the clock).
+let forcedWindow: boolean | null = null;
+export const forceCommuteWindow = (v: boolean | null) => {
+  forcedWindow = v;
+};
 
 export function inCommuteWindow(now = new Date()): boolean {
+  if (forcedWindow !== null) return forcedWindow;
   const h = now.getHours();
   return COMMUTE.windowDays.includes(now.getDay()) && h >= COMMUTE.windowStartHour && h < COMMUTE.windowEndHour;
 }
@@ -85,7 +97,7 @@ function parseSeconds(d: string | undefined): number {
   return d ? parseInt(d.replace('s', ''), 10) : Infinity;
 }
 
-interface RoutesRequest {
+export interface RoutesRequest {
   apiKey: string;
   origin: LatLng;
   dest: LatLng;
@@ -96,7 +108,7 @@ interface RoutesRequest {
 }
 
 // Google Routes API v2, traffic-aware, with per-segment speed readings.
-export async function computeRoutes(req: RoutesRequest): Promise<Route[]> {
+export async function googleComputeRoutes(req: RoutesRequest): Promise<Route[]> {
   const detailed = req.departureOffsetMin === undefined;
   const body: Record<string, unknown> = {
     origin: { location: { latLng: { latitude: req.origin.lat, longitude: req.origin.lng } } },
@@ -117,7 +129,7 @@ export async function computeRoutes(req: RoutesRequest): Promise<Route[]> {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': req.apiKey,
       'X-Goog-FieldMask': detailed
-        ? 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.travelAdvisory.speedReadingIntervals'
+        ? 'routes.duration,routes.staticDuration,routes.distanceMeters,routes.description,routes.polyline.encodedPolyline,routes.travelAdvisory.speedReadingIntervals'
         : 'routes.duration',
     },
     body: JSON.stringify(body),
@@ -134,12 +146,16 @@ export async function computeRoutes(req: RoutesRequest): Promise<Route[]> {
   return data.routes.map(
     (r: {
       duration?: string;
+      staticDuration?: string;
       distanceMeters?: number;
+      description?: string;
       polyline?: { encodedPolyline?: string };
       travelAdvisory?: { speedReadingIntervals?: { startPolylinePointIndex?: number; endPolylinePointIndex?: number; speed?: Speed }[] };
     }) => ({
       seconds: parseSeconds(r.duration),
+      staticSeconds: r.staticDuration ? parseSeconds(r.staticDuration) : undefined,
       meters: r.distanceMeters ?? 0,
+      description: r.description || undefined,
       encodedPolyline: r.polyline?.encodedPolyline ?? '',
       intervals: (r.travelAdvisory?.speedReadingIntervals ?? []).map((i) => ({
         start: i.startPolylinePointIndex ?? 0,
@@ -150,4 +166,102 @@ export async function computeRoutes(req: RoutesRequest): Promise<Route[]> {
   );
 }
 
+// The route source: Google in the app; the mock swaps in fake routes.
+let routesImpl = googleComputeRoutes;
+export const setRoutesImpl = (fn: typeof googleComputeRoutes) => {
+  routesImpl = fn;
+};
+export const computeRoutes = (req: RoutesRequest) => routesImpl(req);
+
 export const fmtMin = (seconds: number) => `${Math.round(seconds / 60)} min`;
+export const mins = (seconds: number) => Math.round(seconds / 60);
+export const kmText = (meters: number) => `${(meters / 1000).toFixed(1)} km`;
+// "8:21", without AM/PM (like the room chips; the dashboard's clock is 24 h).
+export const clock = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M$/i, '');
+
+// Google's encoded polyline format (precision 5).
+export function decodePolyline(encoded: string): LatLng[] {
+  const out: LatLng[] = [];
+  let i = 0;
+  let lat = 0;
+  let lng = 0;
+  const next = () => {
+    let result = 0;
+    let shift = 0;
+    let b: number;
+    do {
+      b = encoded.charCodeAt(i++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20 && i <= encoded.length);
+    return result & 1 ? ~(result >> 1) : result >> 1;
+  };
+  while (i < encoded.length) {
+    lat += next();
+    lng += next();
+    out.push({ lat: lat / 1e5, lng: lng / 1e5 });
+  }
+  return out;
+}
+
+function metersBetween(a: LatLng, b: LatLng): number {
+  const r = Math.PI / 180;
+  const x = (b.lng - a.lng) * r * Math.cos(((a.lat + b.lat) / 2) * r);
+  const y = (b.lat - a.lat) * r;
+  return Math.hypot(x, y) * 6_371_000;
+}
+
+export interface SpeedSegment {
+  from: number; // 0..1 along the route, by distance
+  to: number;
+  speed: Speed;
+}
+
+// The route's speed readings as stretches of its length, merged where the
+// speed repeats. Gaps between readings count as NORMAL, as Google means them.
+export function speedSegments(route: Pick<Route, 'encodedPolyline' | 'intervals'>, path = decodePolyline(route.encodedPolyline)): SpeedSegment[] {
+  if (path.length < 2) return [{ from: 0, to: 1, speed: 'NORMAL' }];
+  const cum = [0];
+  for (let k = 1; k < path.length; k++) cum.push(cum[k - 1] + metersBetween(path[k - 1], path[k]));
+  const total = cum[cum.length - 1] || 1;
+  const at = (idx: number) => cum[Math.max(0, Math.min(path.length - 1, idx))] / total;
+  const speedAt: Speed[] = new Array(path.length - 1).fill('NORMAL');
+  for (const iv of route.intervals) {
+    for (let k = iv.start; k < (iv.end ?? path.length - 1) && k < speedAt.length; k++) speedAt[k] = iv.speed;
+  }
+  const segs: SpeedSegment[] = [];
+  speedAt.forEach((speed, k) => {
+    const last = segs[segs.length - 1];
+    if (last && last.speed === speed) last.to = at(k + 1);
+    else segs.push({ from: at(k), to: at(k + 1), speed });
+  });
+  return segs.filter((s) => s.to > s.from);
+}
+
+// Share of the route's length at each speed.
+export function speedShares(segs: SpeedSegment[]): Record<Speed, number> {
+  const out: Record<Speed, number> = { NORMAL: 0, SLOW: 0, TRAFFIC_JAM: 0 };
+  for (const s of segs) out[s.speed] += s.to - s.from;
+  return out;
+}
+
+export type TrafficLevel = 'light' | 'moderate' | 'heavy';
+export const TRAFFIC_TEXT: Record<TrafficLevel, string> = { light: 'Light traffic', moderate: 'Moderate traffic', heavy: 'Heavy traffic' };
+
+// How bad the traffic is: from the delay over the no-traffic time when Google
+// gives it, else from how much of the route is slow or jammed.
+export function trafficLevel(route: Route, segs?: SpeedSegment[]): TrafficLevel {
+  if (route.staticSeconds && Number.isFinite(route.staticSeconds) && route.staticSeconds > 0) {
+    const ratio = route.seconds / route.staticSeconds;
+    const delay = route.seconds - route.staticSeconds;
+    if (ratio < 1.15 || delay < 180) return 'light';
+    return ratio < 1.4 ? 'moderate' : 'heavy';
+  }
+  const sh = speedShares(segs ?? speedSegments(route));
+  if (sh.TRAFFIC_JAM > 0.1 || sh.SLOW + sh.TRAFFIC_JAM > 0.4) return 'heavy';
+  return sh.SLOW + sh.TRAFFIC_JAM > 0.12 ? 'moderate' : 'light';
+}
+
+// Minutes lost to traffic, when Google says how long the trip takes without it.
+export const delayMin = (route: Route) =>
+  route.staticSeconds && Number.isFinite(route.staticSeconds) ? Math.max(0, Math.round((route.seconds - route.staticSeconds) / 60)) : undefined;

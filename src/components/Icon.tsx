@@ -100,6 +100,9 @@ import {
   mdiRoadVariant,
   mdiSpeedometer,
   mdiTimerOutline,
+  mdiSwapHorizontal,
+  mdiMagnify,
+  mdiMotorbike,
 } from '@mdi/js';
 
 export const ICONS = {
@@ -205,6 +208,9 @@ export const ICONS = {
   road: mdiRoadVariant,
   speed: mdiSpeedometer,
   timer: mdiTimerOutline,
+  swap: mdiSwapHorizontal,
+  search: mdiMagnify,
+  motorbike: mdiMotorbike,
 } as const;
 
 export type IconName = keyof typeof ICONS;
