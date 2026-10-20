@@ -1,3 +1,10 @@
+# [1.32.0](https://github.com/Kanna727/ha-dashboard/compare/v1.31.0...v1.32.0) (2026-10-20)
+
+
+### Features
+
+* **meals:** menu board card and week popup ([#46](https://github.com/Kanna727/ha-dashboard/issues/46)) ([c537923](https://github.com/Kanna727/ha-dashboard/commit/c537923cb29c54a5d09605c8b4c9287a050f598b))
+
 # [1.31.0](https://github.com/Kanna727/ha-dashboard/compare/v1.30.0...v1.31.0) (2026-10-20)
 
 
