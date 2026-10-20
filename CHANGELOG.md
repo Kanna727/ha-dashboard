@@ -1,3 +1,10 @@
+# [1.33.0](https://github.com/Kanna727/ha-dashboard/compare/v1.32.0...v1.33.0) (2026-10-20)
+
+
+### Features
+
+* **rooms:** slide the fan and lights chips to set speed and brightness ([#47](https://github.com/Kanna727/ha-dashboard/issues/47)) ([ed61f00](https://github.com/Kanna727/ha-dashboard/commit/ed61f00d0a936b90bae1de31ff8ed37626af6b14))
+
 # [1.32.0](https://github.com/Kanna727/ha-dashboard/compare/v1.31.0...v1.32.0) (2026-10-20)
 
 
