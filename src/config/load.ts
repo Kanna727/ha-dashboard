@@ -10,6 +10,8 @@ export interface StoredConfig {
 }
 
 export const CONFIG_DASHBOARD = 'dashboard-config';
+// The shared card layout (layout/Canvas.tsx), saved from the dashboard itself.
+export const LAYOUT_DASHBOARD = 'dashboard-layout';
 const CACHE_KEY = 'dashConfig';
 
 export function loadCachedConfig(): StoredConfig | null {
