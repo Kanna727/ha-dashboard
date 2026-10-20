@@ -94,6 +94,12 @@ import {
   mdiWeatherCloudy,
   mdiWeatherPartlyCloudy,
   mdiWaterThermometer,
+  mdiCarWrench,
+  mdiCarKey,
+  mdiAirFilter,
+  mdiRoadVariant,
+  mdiSpeedometer,
+  mdiTimerOutline,
 } from '@mdi/js';
 
 export const ICONS = {
@@ -193,6 +199,12 @@ export const ICONS = {
   gauge: mdiGauge,
   cloud: mdiWeatherCloudy,
   dewPoint: mdiWaterThermometer,
+  service: mdiCarWrench,
+  valet: mdiCarKey,
+  airFilter: mdiAirFilter,
+  road: mdiRoadVariant,
+  speed: mdiSpeedometer,
+  timer: mdiTimerOutline,
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -36,6 +36,7 @@ export interface CarVisualInput {
   engine?: string;
   headlamps?: string;
   signals?: (string | undefined)[];
+  hazards?: string; // hazard lights sensor: blinks every signal
   lampFaults?: { name: string; entity: string; state?: string }[];
   ac?: string;
   setTemp?: number;
@@ -44,7 +45,15 @@ export interface CarVisualInput {
   steeringHeat?: string;
   seats?: Partial<Record<Corner, string>>;
   warnings?: { entity: string; name: string; state?: string }[];
+  serviceDue?: string[]; // names of service items that are due, most urgent first
+  motion?: string; // "23 km/h W" while driving
+  battery12v?: number; // %
+  cabinAir?: { value: number; label: string; poor: boolean }; // PM2.5 µg/m³
+  accessory?: string; // ACC power sensor
 }
+
+// Below this the 12V battery label turns orange.
+export const LOW_12V = 40;
 
 const CORNERS: Corner[] = ['FL', 'FR', 'RL', 'RR'];
 const CORNER_NAME: Record<Corner, string> = { FL: 'Front left', FR: 'Front right', RL: 'Rear left', RR: 'Rear right' };
@@ -86,12 +95,23 @@ export function carVisual(i: CarVisualInput): CarVisual {
       }
     }
     if (i.locked === false) callouts.push({ id: 'lock', anchor: `door:${driverDoor}`, label: 'Unlocked', icon: 'unlock', tone: 'warn', focus: true });
-    if (on(i.engine)) callouts.push({ id: 'engine', anchor: 'hood', label: 'Engine running', icon: 'engine', tone: 'info', focus: false });
+    if (on(i.engine)) callouts.push({ id: 'engine', anchor: 'hood', label: i.motion ? `Driving · ${i.motion}` : 'Engine running', icon: 'engine', tone: 'info', focus: false });
+    if (on(i.accessory) && !on(i.engine)) callouts.push({ id: 'acc', anchor: 'cabin', label: 'Accessory on', icon: 'power', tone: 'info', focus: false });
     if (on(i.ac)) callouts.push({ id: 'ac', anchor: 'cabin', label: i.setTemp !== undefined ? `Climate ${i.setTemp}°` : 'Climate on', icon: 'ac', tone: 'info', focus: false });
   }
 
   const lowTyres = CORNERS.filter((c) => on(i.tyres[c]));
-  for (const c of lowTyres) callouts.push({ id: `tyre:${c}`, anchor: `tyre:${c}`, label: 'Low pressure', icon: 'tyre', tone: 'warn', focus: true });
+  // While offline the tyre states are the last known ones; say so.
+  const lastKnown = i.offline ? ' (last known)' : '';
+  for (const c of lowTyres) callouts.push({ id: `tyre:${c}`, anchor: `tyre:${c}`, label: `Low pressure${lastKnown}`, icon: 'tyre', tone: 'warn', focus: true });
+  if (i.battery12v !== undefined) {
+    const low = i.battery12v < LOW_12V;
+    callouts.push({ id: '12v', anchor: 'hood', label: `12V battery ${Math.round(i.battery12v)}%${lastKnown}`, icon: 'carBattery', tone: low ? 'warn' : 'info', focus: low });
+  }
+  if (i.cabinAir) {
+    const a = i.cabinAir;
+    callouts.push({ id: 'cabinAir', anchor: 'cabin', label: `Cabin air ${Math.round(a.value)} µg/m³ · ${a.label}`, icon: 'airFilter', tone: a.poor ? 'warn' : 'info', focus: a.poor });
+  }
 
   for (const f of i.lampFaults ?? []) {
     if (!on(f.state)) continue;
@@ -108,8 +128,16 @@ export function carVisual(i: CarVisualInput): CarVisual {
     } else if (/fuel/.test(id)) callouts.push({ id: w.entity, anchor: 'fuel', label: w.name, icon: 'fuel', tone: 'warn', focus: true });
     else if (/washer/.test(id)) callouts.push({ id: w.entity, anchor: 'hood', label: w.name, icon: 'washerFluid', tone: 'warn', focus: true });
     else if (/brake/.test(id)) callouts.push({ id: w.entity, anchor: 'hood', label: w.name, icon: 'brakeFluid', tone: 'warn', focus: true });
+    else if (/oil|coolant/.test(id)) callouts.push({ id: w.entity, anchor: 'hood', label: w.name, icon: 'engine', tone: 'warn', focus: true });
     else if (/key/.test(id)) callouts.push({ id: w.entity, anchor: `door:${driverDoor}`, label: w.name, icon: 'keyAlert', tone: 'warn', focus: true });
     else callouts.push({ id: w.entity, anchor: 'cabin', label: w.name, icon: 'alert', tone: 'warn', focus: false });
+  }
+
+  // Service reminders last for weeks, so one quiet callout rather than a tour stop.
+  const due = i.serviceDue ?? [];
+  if (due.length) {
+    const label = due.length === 1 ? `${due[0]} due` : `Service due · ${due.length} items`;
+    callouts.push({ id: 'service', anchor: 'hood', label, icon: 'service', tone: 'warn', focus: false });
   }
 
   const seatHeat: Partial<Record<Corner, string>> = {};
@@ -121,7 +149,7 @@ export function carVisual(i: CarVisualInput): CarVisual {
   return {
     doors,
     headlamps: !i.offline && on(i.headlamps),
-    signals: !i.offline && (i.signals ?? []).some(on),
+    signals: !i.offline && ((i.signals ?? []).some(on) || on(i.hazards)),
     defrostFront: !i.offline && on(i.defrostFront),
     defrostRear: !i.offline && on(i.defrostRear),
     steeringHeat: !i.offline && on(i.steeringHeat),

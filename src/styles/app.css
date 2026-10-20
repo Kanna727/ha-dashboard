@@ -497,6 +497,18 @@ button.wide { width: 100%; }
 .sky-test-val { text-align: right; font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sky-test-btn { padding: 7px 12px; border-radius: 10px; background: var(--card); }
 .sky-test-live { width: 26px; height: 26px; border-radius: 8px; background: var(--card); font-size: 14px; }
+/* Car test panel (mock/CarTestPanel.tsx): bottom right, above modals. */
+.car-test { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: calc(max(16px, env(safe-area-inset-bottom)) + 64px); z-index: 85;
+  width: min(360px, calc(100vw - 32px)); max-height: min(70vh, 640px); display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-radius: 18px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid var(--panel-border); box-shadow: var(--shadow); font-size: 13px; font-weight: 600; user-select: none; }
+.car-test-actions { display: flex; gap: 8px; }
+.car-test-body { display: grid; gap: 10px; overflow-y: auto; min-height: 0; padding-right: 2px; }
+.car-test-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--label); margin-bottom: 6px; }
+.car-test-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.car-test .chip-btn { text-transform: none; }
+.car-test .chip-btn.armed { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); }
+.car-test .chip-btn:disabled { opacity: 0.4; }
+button.car-test-chip { width: auto; max-height: none; display: block; padding: 10px 14px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label); }
 button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label); }
 
 /* hourly strip (rest of today) */
@@ -981,20 +993,18 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .pac-container { z-index: 80; border-radius: 12px; }
 
 /* ---------- car ---------- */
-.car-summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; min-height: 110px; }
 .hero-pct { font-size: 64px; font-weight: 800; line-height: 1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .hero-pct sup { font-size: 0.42em; letter-spacing: 0; vertical-align: top; position: relative; top: 0.15em; }
-.car-summary .muted { font-size: 16px; font-weight: 600; margin-top: 6px; }
 .car-thumb { width: 52%; max-width: 230px; height: auto; object-fit: contain; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.45)); }
 .car-fallback { color: var(--muted); }
-.car-panel.offline .hero-pct, .car-panel.offline .car-thumb { opacity: 0.55; }
+.car-panel.offline .fuel-ring, .car-panel.offline .car-thumb { opacity: 0.55; }
 /* Car data unavailable (integration not responding); spans the whole detail grid. */
 .notice-banner { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: 16px; font-size: 14px; line-height: 1.4; color: var(--warn); background: color-mix(in srgb, var(--warn) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
 .notice-banner svg { flex-shrink: 0; margin-top: 2px; }
 .notice-banner span { color: var(--text); }
 .notice-banner strong { color: var(--warn); }
 
-.car-detail { display: grid; grid-template-columns: 1.05fr 1fr; gap: 18px; }
+.car-detail { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 18px; }
 .car-left, .car-right { display: grid; gap: 16px; align-content: start; min-width: 0; }
 .car-hero {
   position: relative; border-radius: 24px; padding: 20px 22px 22px; overflow: hidden;
@@ -1003,6 +1013,66 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .car-hero-nums { display: flex; align-items: flex-start; gap: 18px; position: relative; z-index: 1; }
 .hero-range { display: flex; flex-direction: column; font-size: 14px; margin-top: 8px; }
 .hero-range strong { font-size: 28px; font-weight: 800; }
+.hero-odo { display: flex; flex-direction: column; font-size: 14px; margin-top: 8px; }
+.hero-odo strong { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* Controls on the 3D stage (CarActions StageActions / StageClimate): exterior
+   view only, left below the readings and right below the Interior button. */
+.stage-ctl { position: absolute; z-index: 2; display: grid; gap: 8px; transition: opacity 0.4s ease; }
+.stage-left { left: 16px; top: 112px; width: 176px; }
+.stage-right { right: 16px; top: 64px; width: 150px; }
+.car-stage:has(.car-stage-view.inside) .stage-ctl { opacity: 0; pointer-events: none; }
+.stage-actions, .stage-climate { display: grid; gap: 8px; }
+.stage-btn {
+  display: flex; align-items: center; gap: 9px; width: 100%; min-height: 44px; padding: 6px 12px; border-radius: 14px; text-align: left;
+  color: var(--text); background: color-mix(in srgb, var(--card-hi) 85%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.stage-btn:disabled { opacity: 0.45; }
+.stage-btn > svg { flex-shrink: 0; color: var(--accent-energy); }
+.stage-btn-text { display: flex; flex-direction: column; min-width: 0; flex: 1; font-size: 13.5px; font-weight: 800; line-height: 1.2; }
+.stage-btn-text small { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage-btn.armed { color: var(--warn); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, var(--card-hi)); }
+.stage-btn.armed > svg { color: var(--warn); }
+.stage-btn.on.cool { border-color: color-mix(in srgb, var(--accent-fan) 60%, transparent); background: color-mix(in srgb, var(--accent-fan) 18%, var(--card-hi)); }
+.stage-btn.on.cool > svg, .stage-climate > .stage-btn > svg { color: var(--accent-fan); }
+.stage-switch { position: relative; flex-shrink: 0; width: 30px; height: 18px; border-radius: 9px; background: var(--tile-hover); transition: background 0.2s; }
+.stage-switch::after { content: ''; position: absolute; left: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: transform 0.2s, background 0.2s; }
+.stage-toggle.on .stage-switch { background: color-mix(in srgb, var(--accent-energy) 45%, transparent); }
+.stage-toggle.on .stage-switch::after { transform: translateX(12px); background: var(--accent-energy); }
+.stage-stepper { display: flex; align-items: center; justify-content: space-between; padding: 4px; border-radius: 14px;
+  background: color-mix(in srgb, var(--card-hi) 85%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow); }
+.stage-stepper button { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--tile-hover); }
+.stage-stepper button:disabled { opacity: 0.4; }
+.stage-stepper span { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stage-note { font-size: 11px; font-weight: 600; color: var(--muted); text-align: center; }
+/* Refresh sits in the stage's top-right corner; the Interior button moves left of it. */
+.stage-refresh {
+  position: absolute; top: 16px; right: 16px; z-index: 3; display: flex; align-items: center; gap: 7px; width: 132px; height: 38px; padding: 0 12px;
+  border-radius: 19px; text-align: left; color: var(--text); background: color-mix(in srgb, var(--card-hi) 85%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.stage-refresh > svg { flex-shrink: 0; color: var(--accent-energy); }
+.stage-refresh .stage-btn-text { font-size: 12.5px; line-height: 1.15; }
+.stage-refresh .stage-btn-text small { font-size: 10px; }
+.stage-refresh.busy > svg { animation: stage-spin 1s linear infinite; }
+@keyframes stage-spin { to { transform: rotate(360deg); } }
+.stage-refresh:disabled:not(.busy) { opacity: 0.45; }
+.car-stage:has(.stage-refresh) .car-stage-btn { right: 156px; }
+
+/* The stage is taller so the controls fit beside the car; phones put them below it. */
+.car-stage:has(.stage-ctl) .car-stage-view { height: clamp(420px, 56vh, 520px); }
+@media (max-width: 700px) {
+  .car-stage:has(.stage-ctl) { display: flex; flex-direction: column; }
+  .car-stage:has(.stage-ctl) .car-stage-view { height: clamp(300px, 46vh, 440px); }
+  .car-stage .stage-ctl { position: static; width: auto; padding: 0 12px 12px; }
+  .car-stage .stage-left { order: 3; padding-top: 10px; }
+  .car-stage .stage-right { order: 4; }
+  .car-stage .stage-left .stage-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .car-stage .stage-climate { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .car-stage .stage-note { grid-column: 1 / -1; }
+  .car-stage:has(.stage-ctl) .progress.thick { position: static; order: 2; flex: none; height: 12px; margin: 12px 16px 0; }
+  /* Refresh joins the controls below the car (the readings fill the top). */
+  .car-stage .stage-refresh { position: static; order: 5; width: auto; height: 44px; margin: 0 12px 12px; border-radius: 14px; }
+  .car-stage:has(.stage-refresh) .car-stage-btn { right: 16px; }
+}
 .car-hero-img { display: block; width: 88%; max-height: 230px; object-fit: contain; margin: -10px auto 0; filter: drop-shadow(0 20px 26px rgba(0, 0, 0, 0.5)); }
 .car-hero .progress.thick { margin-top: 6px; }
 /* 3D stage (car3d/CarScene.tsx): full width above both columns. The photo
@@ -1063,6 +1133,8 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .car-remote-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .find-age { font-size: 11px; font-weight: 600; color: var(--muted); }
 .car-status { margin: 0; padding: 18px; }
+/* Many warnings: the chips wrap under the title instead of widening the card (and the popup). */
+.car-status .panel-head { flex-wrap: wrap; row-gap: 8px; }
 .tyre-grid { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto; align-items: center; gap: 16px 20px; padding: 10px 0; }
 .tyre-grid .car-top { grid-row: 1 / span 2; grid-column: 2; color: var(--muted); display: flex; justify-content: center; }
 .tyre-grid .tyre:nth-child(1), .tyre-grid .tyre:nth-child(4) { text-align: right; }
@@ -1072,6 +1144,113 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .tyre-note { text-align: center; margin: -4px 0 8px; }
 .car-actions { display: grid; grid-template-columns: 1fr auto 1.3fr; gap: 12px; align-items: center; padding-top: 8px; border-top: 1px solid var(--border); }
 .car-lock-state { font-size: 22px; font-weight: 800; margin: 2px 0; }
+/* Discovered car extras (panels/CarInfo.tsx): trips, service, cabin air, place. */
+.cabin-air.ok .stat-rule { color: var(--ok); }
+.cabin-air.fair .stat-rule { color: var(--accent-light); }
+.cabin-air.warn .stat-rule { color: var(--warn); }
+.cabin-air.danger .stat-rule { color: var(--danger); }
+.cabin-temp { display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 16px; border-radius: 22px; background: var(--card); border: 1px solid var(--border); }
+.cabin-temp strong { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.car-driving { display: grid; gap: 12px; }
+.car-driving .card { margin: 0; }
+.trip-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.trip-nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+.trip-nums > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.trip-nums svg { color: var(--muted); margin-bottom: 2px; }
+.trip-nums strong { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.trip-card .chips-row { margin-top: 12px; }
+.trip-periods { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; align-items: start; }
+.trip-periods .label { margin-bottom: 6px; }
+/* Popup information below the 3D stage (panels/CarDetailsInfo.tsx). */
+.car-detail-model { display: grid; gap: 18px; }
+.car-detail-model .car-vehicle { padding-top: 0; }
+.car-info { display: grid; gap: 16px; }
+.car-info .card { margin: 0; }
+.kpi-strip { display: grid; gap: 8px; }
+.kpi-tiles { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+.kpi-tiles .stat-tile { margin: 0; }
+.kpi-tiles .stat-val { font-size: 19px; }
+.car-info-main { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.car-info-side { display: grid; gap: 16px; }
+.car-info-side .trip-nums { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.car-info-side .trip-nums > div { flex-direction: row; align-items: baseline; gap: 8px; }
+/* Service as ring gauges: the share of each interval used, orange when due. */
+.svc-card { margin: 0; padding: 18px; }
+.svc-ring { flex-shrink: 0; }
+.svc-ring-track { fill: none; stroke: var(--tile); stroke-width: 5; }
+.svc-ring-arc { fill: none; stroke: color-mix(in srgb, var(--text) 45%, transparent); stroke-width: 5; stroke-linecap: round; }
+.svc-ring.due .svc-ring-arc { stroke: var(--warn); }
+.svc-ring text { font-size: 11px; font-weight: 800; fill: var(--muted); }
+.svc-ring.due text { fill: var(--warn); }
+.svc-item { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.svc-text { display: flex; flex-direction: column; min-width: 0; }
+.svc-name { font-weight: 700; font-size: 14px; }
+.svc-item.due .svc-name, .svc-item.due .muted { color: var(--warn); }
+.svc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 4px; }
+@media (max-width: 900px) {
+  .car-info-main { grid-template-columns: minmax(0, 1fr); }
+  .kpi-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) { .kpi-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* Driving history chart (CarInfo DriveHistory). */
+.drive-history { display: grid; gap: 10px; }
+.dh-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.dh-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--tile); }
+.dh-seg button { padding: 5px 10px; border-radius: 9px; font-size: 12px; font-weight: 700; color: var(--muted); }
+.dh-seg button.active { background: var(--tile-hover); color: var(--text); }
+.dh-metrics { display: flex; gap: 6px; flex-wrap: wrap; }
+.dh-metrics .chip-btn { text-transform: none; }
+.dh-loading { height: 140px; display: flex; align-items: center; justify-content: center; }
+.dh-chart { display: grid; gap: 4px; }
+.dh-bars { display: flex; align-items: flex-end; gap: 3px; height: 120px; }
+.dh-bar { flex: 1; height: 100%; display: flex; align-items: flex-end; padding: 0; background: none; border: 0; cursor: pointer; min-width: 0; }
+.dh-bar i { display: block; width: 100%; height: max(var(--h), 2px); border-radius: 4px 4px 2px 2px; background: color-mix(in srgb, var(--accent-energy) 45%, transparent); transition: height 0.4s ease, background 0.2s; }
+.dh-bar.picked i { background: var(--accent-energy); }
+.dh-bar.partial i { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--accent-energy) 45%, transparent) 0 4px, transparent 4px 7px); outline: 1px dashed color-mix(in srgb, var(--accent-energy) 70%, transparent); }
+.dh-bar.none i { height: 2px; background: var(--tile); }
+.dh-axis { display: flex; gap: 3px; height: 14px; }
+.dh-axis span { flex: 1; min-width: 0; overflow: visible; white-space: nowrap; font-size: 10px; font-weight: 600; color: var(--muted); }
+.dh-picked { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.dh-picked-vals { display: flex; align-items: baseline; gap: 12px; font-size: 14px; font-weight: 600; }
+.dh-picked-vals strong { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dh-summary { display: flex; flex-wrap: wrap; gap: 4px 14px; padding-top: 8px; border-top: 1px solid var(--border); }
+.kv { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; font-size: 14px; }
+.kv strong { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.car-where { grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); min-width: 0; }
+.car-where span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.car-service { margin: 0; padding: 18px; }
+.service-list { display: grid; gap: 12px; margin-top: 6px; }
+.service-row { display: grid; gap: 6px; }
+.service-text { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.service-name { font-weight: 700; font-size: 14px; }
+.service-text .muted { text-align: right; }
+.service-row .progress { height: 6px; }
+.service-row .progress i { background: color-mix(in srgb, var(--text) 40%, transparent); }
+.service-row.due .service-name, .service-row.due .muted { color: var(--warn); }
+.service-row.due .progress i { background: var(--warn); }
+.car-vehicle { grid-column: 1 / -1; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding-top: 4px; }
+
+/* ---------- car card (panels/CarCard.tsx): fuel ring + photo, status icons ---------- */
+.cb-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.fuel-ring { position: relative; width: 128px; height: 128px; flex-shrink: 0; }
+.fuel-ring svg { width: 100%; height: 100%; }
+.fuel-ring-track { fill: none; stroke: var(--tile); stroke-width: 10; }
+.fuel-ring-arc { fill: none; stroke: var(--accent-energy); stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
+.fuel-ring-arc.low { stroke: var(--danger); }
+.fuel-ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.fuel-ring-text strong { font-size: 34px; font-weight: 800; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.fuel-ring-text sup { font-size: 0.45em; vertical-align: top; }
+.fuel-ring-text span { font-size: 13px; font-weight: 600; color: var(--muted); margin-top: 4px; }
+.cb-status { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 14px; }
+.status-icon { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; min-width: 0; }
+.status-icon-dot { width: 40px; height: 40px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+.status-icon.ok .status-icon-dot { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.status-icon.warn .status-icon-dot { color: var(--warn); background: color-mix(in srgb, var(--warn) 16%, transparent); }
+.status-icon-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--label); }
+.status-icon-sub { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.status-icon.warn .status-icon-sub { color: var(--warn); }
+.cb-trip { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .big-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 76px; padding: 0 20px;
   border-radius: 22px; background: var(--card); border: 1px solid var(--border); font-weight: 800; font-size: 18px;
@@ -1351,7 +1530,7 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
   .modal-badge { width: 48px; height: 48px; border-radius: 16px; }
   .modal-titles h2 { font-size: 22px; }
   .modal-head .pill { display: none; }
-  .modal-grid, .car-detail { grid-template-columns: 1fr; }
+  .modal-grid, .car-detail { grid-template-columns: minmax(0, 1fr); }
   .car-actions { grid-template-columns: 1fr 1fr; }
   .car-actions > div:first-child { grid-column: 1 / -1; }
   .offline-list li { flex-wrap: wrap; }

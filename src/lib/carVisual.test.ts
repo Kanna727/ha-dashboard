@@ -71,7 +71,7 @@ describe('carVisual', () => {
       tyres: { RR: 'on' },
       seats: { FL: 'High' },
     });
-    expect(v.callouts.map((c) => c.id)).toEqual(['tyre:RR']);
+    expect(v.callouts.map((c) => [c.id, c.label])).toEqual([['tyre:RR', 'Low pressure (last known)']]);
     expect(v.headlamps).toBe(false);
     expect(v.seatHeat).toEqual({});
   });
@@ -81,6 +81,35 @@ describe('carVisual', () => {
     expect(v.ac && v.steeringHeat && v.signals).toBe(true);
     expect(v.seatHeat).toEqual({ FL: 'High' });
     expect(v.callouts.find((c) => c.id === 'ac')?.label).toBe('Climate 22°');
+  });
+
+  it('blinks the signals for the hazards', () => {
+    expect(carVisual({ ...base, hazards: 'on' }).signals).toBe(true);
+    expect(carVisual({ ...base, hazards: 'on', offline: true }).signals).toBe(false);
+  });
+
+  it('pins one quiet service callout and engine warnings to the bonnet', () => {
+    const one = carVisual({ ...base, serviceDue: ['Engine oil'], warnings: [{ entity: 'binary_sensor.car_oil_level_warning', name: 'Oil level', state: 'on' }] });
+    expect(one.callouts.map((c) => [c.id, c.anchor, c.label, c.focus])).toEqual([
+      ['binary_sensor.car_oil_level_warning', 'hood', 'Oil level', true],
+      ['service', 'hood', 'Engine oil due', false],
+    ]);
+    expect(carVisual({ ...base, serviceDue: ['Engine oil', 'Oil filter'] }).callouts[0].label).toBe('Service due · 2 items');
+  });
+});
+
+describe('carVisual: everything on the model', () => {
+  it('shows driving, accessory, 12V and cabin air (no all-clear labels)', () => {
+    const v = carVisual({ ...base, locked: true, engine: 'on', motion: '23 km/h W', hazards: 'on', battery12v: 31, cabinAir: { value: 18, label: 'Fair', poor: false } });
+    const by = Object.fromEntries(v.callouts.map((c) => [c.id, `${c.anchor}|${c.label}|${c.tone}`]));
+    expect(by).toEqual({
+      engine: 'hood|Driving · 23 km/h W|info',
+      '12v': 'hood|12V battery 31%|warn',
+      cabinAir: 'cabin|Cabin air 18 µg/m³ · Fair|info',
+    });
+    // Accessory only matters with the engine off.
+    expect(carVisual({ ...base, accessory: 'on' }).callouts.map((c) => c.id)).toEqual(['acc']);
+    expect(carVisual({ ...base, accessory: 'on', engine: 'on' }).callouts.map((c) => c.id)).toEqual(['engine']);
   });
 });
 

@@ -38,6 +38,21 @@ async function loadConfig(entry: string): Promise<{ hash: string; config: unknow
   return { hash, config };
 }
 
+// The local preview (scripts/local-preview.mjs sets LOCAL_CAR) is a mock build,
+// but shows the owner's own car photo and 3D model: the real config's
+// CAR_DETAIL.image and .model replace the example's. The files themselves are
+// served from the preview's assets folder. Never set in CI, so nothing private
+// reaches a deployed preview.
+async function withLocalCar(loaded: { hash: string; config: unknown }) {
+  if (!process.env.VITE_MOCK || !process.env.LOCAL_CAR || !existsSync(PRIVATE_CONFIG)) return loaded;
+  type Car = { CAR_DETAIL?: { image?: string; model?: unknown } };
+  const real = (await loadConfig(PRIVATE_CONFIG)).config as Car;
+  const cfg = loaded.config as Car;
+  if (!real.CAR_DETAIL || !cfg.CAR_DETAIL) return loaded;
+  const { image, model } = real.CAR_DETAIL;
+  return { ...loaded, config: { ...cfg, CAR_DETAIL: { ...cfg.CAR_DETAIL, image, model } } };
+}
+
 const VIRTUAL_ID = 'virtual:dashboard-config';
 const RESOLVED_ID = '\0' + VIRTUAL_ID; // Rollup convention for virtual modules
 
@@ -59,7 +74,7 @@ function dashboardConfig(): Plugin {
       if (id !== RESOLVED_ID) return;
       if (!embed) return 'export default null;';
       this.addWatchFile(entry);
-      return `export default ${JSON.stringify(await loadConfig(entry))};`;
+      return `export default ${JSON.stringify(await withLocalCar(await loadConfig(entry)))};`;
     },
     async generateBundle() {
       if (process.env.VITE_MOCK) return;
