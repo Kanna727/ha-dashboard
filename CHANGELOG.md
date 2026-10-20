@@ -1,3 +1,10 @@
+# [1.29.0](https://github.com/Kanna727/ha-dashboard/compare/v1.28.0...v1.29.0) (2026-10-20)
+
+
+### Features
+
+* **sky:** draw the metro as a realistic train ([#43](https://github.com/Kanna727/ha-dashboard/issues/43)) ([a539102](https://github.com/Kanna727/ha-dashboard/commit/a539102664bdba60097d0556b90073f55ce5264b))
+
 # [1.28.0](https://github.com/Kanna727/ha-dashboard/compare/v1.27.0...v1.28.0) (2026-10-19)
 
 
