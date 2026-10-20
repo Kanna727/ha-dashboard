@@ -10,6 +10,7 @@ import { useIssues } from './useIssues';
 import { MusicPlayer, PlayerDots, activePlayers } from './MusicPlayer';
 import { cycle, useSwipe } from '../hooks/useSwipe';
 import { StatusDialog } from './StatusDialog';
+import { ArrangeButton } from '../layout/Canvas';
 
 const greeting = (h: number) => (h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening');
 
@@ -176,6 +177,7 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         <NowPlayingPill />
         <StatusPill />
         <LeaveHomeButton />
+        <ArrangeButton />
       </div>
       <div className="big-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
     </header>
