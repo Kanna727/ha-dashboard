@@ -1,3 +1,10 @@
+# [1.35.0](https://github.com/Kanna727/ha-dashboard/compare/v1.34.0...v1.35.0) (2026-10-20)
+
+
+### Features
+
+* **layout:** share the arranged layout across every device ([#49](https://github.com/Kanna727/ha-dashboard/issues/49)) ([2a246e9](https://github.com/Kanna727/ha-dashboard/commit/2a246e9e0d1a242b81fdd8a909bf06200fd0b4f0)), closes [#48](https://github.com/Kanna727/ha-dashboard/issues/48)
+
 # [1.34.0](https://github.com/Kanna727/ha-dashboard/compare/v1.33.0...v1.34.0) (2026-10-20)
 
 
