@@ -1,3 +1,10 @@
+# [1.31.0](https://github.com/Kanna727/ha-dashboard/compare/v1.30.0...v1.31.0) (2026-10-20)
+
+
+### Features
+
+* **commute:** redesign the commute card and popup ([#45](https://github.com/Kanna727/ha-dashboard/issues/45)) ([945096e](https://github.com/Kanna727/ha-dashboard/commit/945096ebe3265dab053a4461d00c39b21dcd85cd))
+
 # [1.30.0](https://github.com/Kanna727/ha-dashboard/compare/v1.29.0...v1.30.0) (2026-10-20)
 
 
