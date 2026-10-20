@@ -183,6 +183,99 @@ export function viaduct(width: number) {
   return d;
 }
 
+// A metro train in side view, head on the right, about 3 units to the metre
+// like the rest of the city: six 21 m coaches with gangways between, raked cab
+// noses at both ends, four doors a side per coach, a window band, the line's
+// purple stripe, roof AC pods and bogies. y runs from TRAIN_TOP (the pods) to
+// TRAIN_H (the wheels on the rail), so the box sits on the deck.
+export const TRAIN_TOP = -1;
+export const TRAIN_H = 14;
+const COACH = 63;
+const GANGWAY = 1.2;
+const NOSE = 7; // how far back the cab front rakes
+
+export interface MetroTrain {
+  width: number;
+  under: string; // skirt, bogies, wheels, gangways
+  body: string;
+  roof: string; // the roof band and AC pods
+  livery: string; // the stripe and the cab fronts
+  doors: string; // door panels (a shade over the body)
+  glass: string; // side windows, door windows, windscreens
+  lit: string; // the side and door windows again, lit at night
+  head: string; // headlamps at the front edge
+  tail: string; // tail lamps at the back edge
+}
+
+export function metroTrain(coaches = 6): MetroTrain {
+  const out = { under: [] as string[], body: [] as string[], roof: [] as string[], livery: [] as string[], doors: [] as string[], panes: [] as string[], screens: [] as string[], head: '', tail: '' };
+  const width = coaches * COACH + (coaches - 1) * GANGWAY;
+  for (let c = 0; c < coaches; c++) {
+    const x = c * (COACH + GANGWAY);
+    const x1 = x + COACH;
+    const back = c === 0; // a cab on the left
+    const front = c === coaches - 1; // a cab on the right
+    // Silhouette: rounded roof corners, or a raked nose curving down to the front.
+    const left = back ? `M${f(x)} 11.6V6.5C${f(x + 0.4)} 3.5 ${f(x + 3)} 1 ${f(x + NOSE)} 1` : `M${f(x)} 11.6V2.2Q${f(x)} 1 ${f(x + 1.2)} 1`;
+    const right = front ? `H${f(x1 - NOSE)}C${f(x1 - 3)} 1 ${f(x1 - 0.4)} 3.5 ${f(x1)} 6.5V11.6Z` : `H${f(x1 - 1.2)}Q${f(x1)} 1 ${f(x1)} 2.2V11.6Z`;
+    out.body.push(left + right);
+    const r0 = back ? x + NOSE : x + 1.2;
+    const r1 = front ? x1 - NOSE : x1 - 1.2;
+    out.roof.push(rect(r0, 1, r1 - r0, 0.9));
+    for (const at of [0.22, 0.62]) out.roof.push(`M${f(x + COACH * at)} 1.2V0.2Q${f(x + COACH * at)} -0.5 ${f(x + COACH * at + 1)} -0.5H${f(x + COACH * at + 11)}Q${f(x + COACH * at + 12)} -0.5 ${f(x + COACH * at + 12)} 0.2V1.2Z`);
+    // the stripe, and the cab front below the windscreen in the livery
+    out.livery.push(rect(x, 7.8, COACH, 1.4));
+    if (back) out.livery.push(rect(x, 6.5, 2.4, 5.1));
+    if (front) out.livery.push(rect(x1 - 2.4, 6.5, 2.4, 5.1));
+    // underframe: skirt, two bogies with two wheels each, the gangway to the next coach
+    out.under.push(rect(x + 1, 11.2, COACH - 2, 1.2));
+    for (const at of [0.17, 0.83]) {
+      const bx = x + COACH * at;
+      out.under.push(rect(bx - 5, 11.8, 10, 1.4));
+      for (const dx of [-2.8, 2.8]) out.under.push(`M${f(bx + dx - 1.1)} 12.9a1.1 1.1 0 1 0 2.2 0a1.1 1.1 0 1 0 -2.2 0Z`);
+    }
+    if (c < coaches - 1) out.under.push(rect(x1 - 0.2, 2.2, GANGWAY + 0.4, 9));
+    // Doors spread along the saloon (clear of the cabs), windows between them.
+    const s0 = back ? x + 13 : x + 2;
+    const s1 = front ? x1 - 13 : x1 - 2;
+    const doors = [0.1, 0.37, 0.63, 0.9].map((at) => s0 + (s1 - s0) * at - 1.8);
+    let from = back ? x + NOSE + 1.5 : x + 2;
+    for (const d of [...doors, front ? x1 - NOSE - 1.5 : x1 - 2]) {
+      // panes of up to 8 units between the pillars
+      const n = Math.max(1, Math.ceil((d - 0.6 - from) / 8));
+      const w = (d - 0.6 - from - (n - 1) * 0.7) / n;
+      if (w > 1) for (let i = 0; i < n; i++) out.panes.push(rect(from + i * (w + 0.7), 3.2, w, 3.4));
+      if (doors.includes(d)) {
+        out.doors.push(rect(d, 2.6, 3.6, 8.6));
+        out.panes.push(rect(d + 0.4, 3.4, 1.2, 3.6), rect(d + 2, 3.4, 1.2, 3.6));
+      }
+      from = d + 3.6 + 0.6;
+    }
+    // raked windscreens, and the lamps on the front edges
+    if (front) {
+      out.screens.push(`M${f(x1 - 6.2)} 2.3L${f(x1 - 3.6)} 2.3L${f(x1 - 0.9)} 5.3L${f(x1 - 4.6)} 5.3Z`);
+      out.head = rect(x1 - 1, 9.6, 1, 1.1);
+    }
+    if (back) {
+      out.screens.push(`M${f(x + 6.2)} 2.3L${f(x + 3.6)} 2.3L${f(x + 0.9)} 5.3L${f(x + 4.6)} 5.3Z`);
+      out.tail = rect(x, 9.6, 1, 1.1);
+    }
+  }
+  const panes = out.panes.join('');
+  return {
+    width: f(width),
+    under: out.under.join(''),
+    body: out.body.join(''),
+    roof: out.roof.join(''),
+    livery: out.livery.join(''),
+    doors: out.doors.join(''),
+    glass: panes + out.screens.join(''),
+    lit: panes,
+    head: out.head,
+    tail: out.tail,
+  };
+}
+
 export function city(width: number) {
   return { far: skyline(SKYLINES.far, width), near: skyline(SKYLINES.near, width), viaduct: viaduct(width), canopy: ridgePath(CANOPY, width) };
 }

@@ -6,7 +6,7 @@ import { moonLitPath } from '../lib/sky';
 import { boltPaths, cloudSvg, planStrike, rand, type CloudTile, type Strike } from '../lib/skyArt';
 import { skyScene, windKmh, type SkyScene, type SunInput } from '../lib/skyScene';
 import { simSun } from '../lib/skySim';
-import { city, DECK_Y } from '../lib/city';
+import { city, DECK_Y, metroTrain, TRAIN_H, TRAIN_TOP } from '../lib/city';
 import { LAND_H, ridgePath, RISE } from '../lib/terrain';
 import { growTree, treeMasks } from '../lib/tree';
 import { SKY_TEST, SkyTestPanel, type SkySim } from './SkyTestPanel';
@@ -397,19 +397,69 @@ function CityBack({ scene, width }: { scene: SkyScene; width: number }) {
 // Units of the land box (LAND_H tall = 50vh) in vh.
 const vh = (units: number) => `${((units / LAND_H) * 50).toFixed(3)}vh`;
 
+// The train's own colours (silver body, purple livery, dark glass) seen
+// through the same air as the near skyline.
+const TRAIN = metroTrain();
+const through = (land: string, k: number, colour: string) => `color-mix(in srgb, ${land} ${k}%, ${colour})`;
+
 function Metro({ scene }: { scene: SkyScene }) {
+  const { mid, hills } = scene.land;
+  // after dark the body falls into shadow like the towers; the windows carry it
+  const dusk = Math.round(44 * scene.lights);
   const style = {
     bottom: vh(LAND_H - DECK_Y),
-    height: vh(10),
-    width: vh(150),
-    '--train': `color-mix(in srgb, ${scene.land.mid} 55%, #6e4bb5)`,
+    height: vh(TRAIN_H - TRAIN_TOP),
+    width: vh(TRAIN.width),
+    '--train-w': vh(TRAIN.width),
+    '--train-body': through(mid, 42 + dusk, '#c4c8cf'),
+    '--train-roof': through(mid, 45 + dusk, '#8d929a'),
+    '--train-livery': through(mid, 42 + dusk * 0.8, '#7a3fc0'),
+    '--train-glass': through(mid, 45, '#1a212c'),
+    '--train-under': through(hills, 60, '#121417'),
     '--lit': scene.lights,
   } as CSSProperties;
   return (
     <>
-      <i className="sky-train" style={style} />
-      <i className="sky-train back" style={style} />
+      <i className="sky-train" style={style}>
+        <TrainSvg id="a" />
+      </i>
+      <i className="sky-train back" style={style}>
+        <TrainSvg id="b" />
+      </i>
     </>
+  );
+}
+
+function TrainSvg({ id }: { id: string }) {
+  const t = TRAIN;
+  return (
+    <svg viewBox={`0 ${TRAIN_TOP} ${t.width} ${TRAIN_H - TRAIN_TOP}`} preserveAspectRatio="none">
+      <defs>
+        {/* a rounded body: light along the roof line, shadow towards the skirt */}
+        <linearGradient id={`sky-train-${id}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0.28" />
+          <stop offset="0.35" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.7" stopColor="#000" stopOpacity="0" />
+          <stop offset="1" stopColor="#000" stopOpacity="0.3" />
+        </linearGradient>
+        <radialGradient id={`sky-train-lamp-${id}`}>
+          <stop offset="0" stopColor="#fff6dc" stopOpacity="0.9" />
+          <stop offset="1" stopColor="#fff6dc" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <path className="under" d={t.under} />
+      <path className="body" d={t.body} />
+      <path className="roof" d={t.roof} />
+      <path className="livery" d={t.livery} />
+      <path className="doors" d={t.doors} />
+      <path className="glass" d={t.glass} />
+      <path className="lit" d={t.lit} />
+      <path d={t.body} fill={`url(#sky-train-${id})`} />
+      <path className="head" d={t.head} />
+      <path className="tail" d={t.tail} />
+      {/* the headlamps' glow ahead of the train at night */}
+      <ellipse className="beam" cx={t.width} cy="10.1" rx="7" ry="3.2" fill={`url(#sky-train-lamp-${id})`} />
+    </svg>
   );
 }
 

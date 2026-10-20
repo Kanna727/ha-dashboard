@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { city, DECK_Y, GROUND_Y, skyline, SKYLINES } from './city';
+import { city, DECK_Y, GROUND_Y, metroTrain, skyline, SKYLINES, TRAIN_TOP } from './city';
 import { LAND_H } from './terrain';
 
 const numbers = (d: string) => [...d.matchAll(/-?\d+(\.\d+)?/g)].map((m) => Number(m[0]));
@@ -45,6 +45,21 @@ describe('city skyline', () => {
     const { viaduct } = city(1200);
     expect(viaduct.startsWith(`M-5 ${DECK_Y}`)).toBe(true);
     expect(viaduct.split('M').length - 1).toBeGreaterThan(10);
+  });
+
+  it('draws the metro as six coaches with doors, windows and a cab at each end', () => {
+    const t = metroTrain();
+    expect(t.width).toBeCloseTo(6 * 63 + 5 * 1.2);
+    expect(t.body.split('M').length - 1).toBe(6);
+    expect(t.doors.split('M').length - 1).toBe(24);
+    expect(t.lit.split('M').length - 1).toBeGreaterThan(24 * 2 + 6 * 4);
+    // everything stands within the box: wheels on the rail, pods on the roof
+    const all = numbers((t.body + t.roof + t.glass).replace(/h-?[\d.]+/g, '')); // absolute coordinates only
+    expect(Math.min(...all)).toBeGreaterThanOrEqual(TRAIN_TOP);
+    expect(Math.max(...all)).toBeLessThanOrEqual(t.width);
+    // the lamps at the ends: head on the right, tail on the left
+    expect(numbers(t.head)[0]).toBeGreaterThan(t.width - 2);
+    expect(numbers(t.tail)[0]).toBe(0);
   });
 
   it('keeps the middle of the skyline the same on any screen width', () => {
