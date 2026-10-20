@@ -1,3 +1,10 @@
+# [1.34.0](https://github.com/Kanna727/ha-dashboard/compare/v1.33.0...v1.34.0) (2026-10-20)
+
+
+### Features
+
+* **layout:** free canvas to drag and resize every card ([#48](https://github.com/Kanna727/ha-dashboard/issues/48)) ([3e46d2f](https://github.com/Kanna727/ha-dashboard/commit/3e46d2f9720743cdc1e639d91759b35256eac0f8))
+
 # [1.33.0](https://github.com/Kanna727/ha-dashboard/compare/v1.32.0...v1.33.0) (2026-10-20)
 
 
