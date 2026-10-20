@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
+import { ArrangeProvider, FreeCanvas, type CardDef } from './Canvas';
 import { Icon, type IconName } from '../components/Icon';
 import { CarPanel } from '../panels/CarPanel';
 import { CommutePanel } from '../panels/CommutePanel';
@@ -8,52 +9,57 @@ import { RoomsPanel } from '../panels/RoomsPanel';
 import { TopBar } from '../panels/TopBar';
 import { WeatherPanel } from '../panels/WeatherPanel';
 
-// iPad kiosk: three columns that each scroll on their own, page never scrolls.
+// Tablet and desktop: the cards start in columns and can be arranged freely
+// (Canvas.tsx). iPad kiosk: the page never scrolls; the columns, or the
+// canvas, scroll inside it.
 export function TabletLayout() {
   return (
-    <div className="layout tablet">
-      <TopBar />
-      <main className="cols cols-3">
-        <div className="col">
-          <EnergyPanel />
-          <WeatherPanel />
-        </div>
-        <div className="col">
-          <RoomsPanel />
-        </div>
-        <div className="col">
-          <CarPanel />
-          <CommutePanel />
-          <MealsPanel />
-        </div>
-      </main>
-    </div>
+    <ArrangeProvider>
+      <div className="layout tablet">
+        <TopBar />
+        <FreeCanvas
+          name="tablet"
+          className="cols cols-3"
+          columns={[
+            [card('energy', <EnergyPanel />), card('weather', <WeatherPanel />)],
+            [card('rooms', <RoomsPanel />)],
+            [card('car', <CarPanel />), card('commute', <CommutePanel />), card('meals', <MealsPanel />)],
+          ]}
+        />
+      </div>
+    </ArrangeProvider>
   );
 }
 
 export function DesktopLayout() {
   return (
-    <div className="layout desktop">
-      <TopBar />
-      <main className="cols cols-4">
-        <div className="col">
-          <EnergyPanel />
-          <WeatherPanel days={7} />
-        </div>
-        <div className="col">
-          <RoomsPanel />
-        </div>
-        <div className="col">
-          <CommutePanel />
-          <MealsPanel />
-        </div>
-        <div className="col">
-          <CarPanel />
-        </div>
-      </main>
-    </div>
+    <ArrangeProvider>
+      <div className="layout desktop">
+        <TopBar />
+        <FreeCanvas
+          name="desktop"
+          className="cols cols-4"
+          columns={[
+            [card('energy', <EnergyPanel />), card('weather', <WeatherPanel days={7} />)],
+            [card('rooms', <RoomsPanel />)],
+            [card('commute', <CommutePanel />), card('meals', <MealsPanel />)],
+            [card('car', <CarPanel />)],
+          ]}
+        />
+      </div>
+    </ArrangeProvider>
   );
 }
+
+const LABELS: Record<string, string> = {
+  energy: 'Energy',
+  weather: 'Weather',
+  rooms: 'Rooms',
+  car: 'Car',
+  commute: 'Commute',
+  meals: 'Meals',
+};
+const card = (id: keyof typeof LABELS, node: ReactNode): CardDef => ({ id, label: LABELS[id], node });
 
 type Tab = 'home' | 'energy' | 'travel' | 'more';
 const TABS: { id: Tab; label: string; icon: IconName }[] = [

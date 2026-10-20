@@ -1534,6 +1534,63 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .layout.desktop { max-width: 2000px; margin: 0 auto; }
 @media (max-width: 1500px) { .cols-4 { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: auto 1fr; } .cols-4 .col:nth-child(-n+2) { grid-row: 1 / span 2; } .cols-4 .col:nth-child(3) { grid-column: 3; grid-row: 2; } .cols-4 .col:nth-child(4) { grid-column: 3; grid-row: 1; } }
 
+/* ---------- free canvas (layout/Canvas.tsx) ----------
+   Arranged cards are absolutely placed in <main>; the columns stay in the DOM
+   as display: contents so no panel remounts when switching. */
+.cols.canvas { display: block; position: relative; }
+.cols.canvas > .col { display: contents; }
+.canvas .card-slot { position: absolute; }
+.canvas .card-slot.fixed-h > .panel { height: 100%; overflow: auto; scrollbar-width: none; }
+.canvas .card-slot.fixed-h > .panel::-webkit-scrollbar { display: none; }
+.canvas-extent { pointer-events: none; }
+.layout.tablet .cols.canvas { overflow: auto; scrollbar-width: none; }
+.layout.tablet .cols.canvas::-webkit-scrollbar { display: none; }
+@media (orientation: portrait) { .layout.tablet .cols.canvas { overflow: visible; } }
+.arrange-btn { color: var(--muted); }
+.arrange-btn.active { color: var(--accent); border-color: var(--accent); }
+
+.canvas.editing .card-slot > .panel { pointer-events: none; }
+.card-grip {
+  position: absolute; inset: 0; z-index: 5; border-radius: 28px; cursor: grab; touch-action: none;
+  outline: 2px dashed color-mix(in srgb, var(--accent) 70%, transparent); outline-offset: -1px;
+  background: color-mix(in srgb, var(--accent) 6%, transparent); transition: background 0.15s;
+}
+.layout.tablet .card-grip { border-radius: 24px; }
+.card-grip:hover, .card-grip:focus-visible { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.card-slot.dragging .card-grip { cursor: grabbing; outline-style: solid; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.card-slot.dragging > .panel { box-shadow: 0 28px 60px rgba(0, 0, 0, 0.6); }
+.card-badge {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 7; pointer-events: none;
+  display: flex; align-items: center; gap: 7px; padding: 6px 8px 6px 12px; border-radius: 999px; white-space: nowrap;
+  background: var(--accent); color: #fff; font-size: 13px; font-weight: 700; box-shadow: var(--shadow);
+}
+.card-badge small { font-weight: 600; opacity: 0.8; font-variant-numeric: tabular-nums; }
+.card-badge button { pointer-events: auto; padding: 4px 10px; border-radius: 999px; background: rgba(255, 255, 255, 0.22); font-size: 12px; font-weight: 700; }
+/* Resize handles: wide invisible hit areas (touch) with a small visible mark. */
+.card-handle { position: absolute; z-index: 6; touch-action: none; }
+.card-handle::after { content: ''; position: absolute; background: var(--accent); border-radius: 999px; box-shadow: 0 0 0 2px var(--bg); }
+.h-n, .h-s { left: 32px; right: 32px; height: 28px; cursor: ns-resize; }
+.h-n { top: -14px; } .h-s { bottom: -14px; }
+.h-e, .h-w { top: 32px; bottom: 32px; width: 28px; cursor: ew-resize; }
+.h-e { right: -14px; } .h-w { left: -14px; }
+.h-n::after, .h-s::after { left: 50%; top: 50%; width: 44px; height: 6px; transform: translate(-50%, -50%); }
+.h-e::after, .h-w::after { left: 50%; top: 50%; width: 6px; height: 44px; transform: translate(-50%, -50%); }
+.h-ne, .h-nw, .h-se, .h-sw { width: 36px; height: 36px; }
+.h-ne { top: -16px; right: -16px; cursor: nesw-resize; } .h-sw { bottom: -16px; left: -16px; cursor: nesw-resize; }
+.h-nw { top: -16px; left: -16px; cursor: nwse-resize; } .h-se { bottom: -16px; right: -16px; cursor: nwse-resize; }
+.h-ne::after, .h-nw::after, .h-se::after, .h-sw::after { left: 50%; top: 50%; width: 14px; height: 14px; transform: translate(-50%, -50%); }
+.arrange-bar {
+  position: fixed; z-index: 40; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 18px; border-radius: 20px; max-width: calc(100vw - 32px);
+  background: color-mix(in srgb, var(--panel) 94%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
+  box-shadow: var(--shadow); animation: pop 0.2s ease-out;
+}
+.arrange-hint { font-size: 14px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.arrange-bar button { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 16px; border-radius: 14px; font-size: 15px; font-weight: 700; white-space: nowrap; }
+.arrange-reset { background: var(--tile-base); }
+.arrange-reset.confirm { color: var(--warn); box-shadow: inset 0 0 0 1px var(--warn); }
+.arrange-done { background: var(--accent); color: #fff; }
+
 .layout.phone { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
 .phone-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .phone-body > * { min-width: 0; }

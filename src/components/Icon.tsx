@@ -106,6 +106,9 @@ import {
   mdiWhiteBalanceSunny,
   mdiWeatherNight,
   mdiChefHat,
+  mdiViewDashboardEditOutline,
+  mdiCursorMove,
+  mdiRestore,
 } from '@mdi/js';
 
 export const ICONS = {
@@ -151,6 +154,9 @@ export const ICONS = {
   tv: mdiTelevision,
   avUnit: mdiAudioVideo, // TV unit: router, streamer, set-top box, soundbar
   dashboard: mdiViewDashboard,
+  arrange: mdiViewDashboardEditOutline,
+  move: mdiCursorMove,
+  restore: mdiRestore,
   washer: mdiWashingMachine,
   geyser: mdiWaterBoiler,
   pump: mdiWaterPump,
