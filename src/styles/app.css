@@ -653,18 +653,11 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 }
 /* --room-light: the colour of the brightest light that's on (RoomsPanel), so a lit card's tint and border match it. */
 .room-row.lit { background: color-mix(in srgb, var(--room-light, var(--accent-light)) 10%, var(--card)); border-color: color-mix(in srgb, var(--room-light, var(--accent-light)) 55%, transparent); }
-.room-row.fan-held { box-shadow: inset 4px 0 0 var(--danger); background: color-mix(in srgb, var(--danger) 7%, var(--card)); }
-.room-row.fan-held.lit { background: color-mix(in srgb, var(--danger) 5%, color-mix(in srgb, var(--room-light, var(--accent-light)) 10%, var(--card))); }
 .hold-note { margin-top: 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; color: var(--danger); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-left: 2px; }
 .row-btn { position: relative; }
 .room-row { position: relative; isolation: isolate; }
 .room-row-progress { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; z-index: -1; pointer-events: none; }
 .room-row-progress > span { position: absolute; top: 0; bottom: 0; left: 0; background: color-mix(in srgb, #2dd4bf 24%, transparent); border-right: 2px solid color-mix(in srgb, #2dd4bf 70%, transparent); transition: width 1s ease; }
-/* Quick-fan speed: slide across the card to set it (see hooks/useSlide.ts). */
-.room-row.slidable { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
-.room-row-progress.fan > span { background: color-mix(in srgb, var(--accent-fan) 18%, transparent); border-right-color: color-mix(in srgb, var(--accent-fan) 70%, transparent); transition: width 0.35s ease; }
-.room-row.sliding .room-row-progress.fan > span { transition: none; background: color-mix(in srgb, var(--accent-fan) 28%, transparent); }
-.room-row.sliding { border-color: color-mix(in srgb, var(--accent-fan) 60%, transparent); }
 
 /* Living room cards: ambient layers under the content. Only transform and
    opacity animate (compositor-only), so the kiosk can run them all day. */
@@ -688,47 +681,6 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .room-glow.on { opacity: calc(0.25 + 0.75 * var(--b)); transform: scale(calc(0.7 + 0.45 * var(--b))); }
 @keyframes glow-shimmer { from { opacity: 0.9; } to { opacity: 1; } }
 @keyframes glow-breathe { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
-/* Fan breeze: a sheer curtain stirring in the fan's draught. The curtain is as
-   wide as the card (the fill clips it, so raising the speed draws more of it
-   into view) and hangs from the top edge; everything pivots from there, so the
-   hem moves most. Three layers, each on its own period:
-   - .curtain leans with the breeze and eases back (billow);
-   - each <i> is a pleat swinging about its own lean. Pleats further right lag
-     behind (later phase), so a ripple runs across the fabric; every third pleat
-     swings a little more or less (--m);
-   - i::before is the pleat's fold shading, with a fast small flutter.
-   Pleats overlap, so the overlaps read as darker folds. --sway (set from the
-   speed in RoomsPanel.tsx) scales all three, and --fan-dur sets the pace.
-   Hidden under reduced motion (a frozen curtain would just look odd). */
-.room-row-progress.fan > span { overflow: hidden; }
-.room-row-progress.fan .curtain {
-  position: absolute; top: 0; bottom: 0; left: 0; transform-origin: 50% 0;
-  animation: curtain-billow calc(var(--fan-dur, 2s) * 2.3) ease-in-out infinite alternate;
-}
-.room-row-progress.fan .curtain i {
-  position: absolute; top: -2px; bottom: -8px; left: calc(var(--i) * 6.25% - 3%); width: 12.5%; transform-origin: 50% 0;
-  animation: curtain-sway calc(var(--fan-dur, 2s) * 0.9) ease-in-out infinite alternate;
-  animation-delay: calc((17 - var(--i)) * var(--fan-dur, 2s) * -0.06);
-}
-.room-row-progress.fan .curtain i::before {
-  content: ''; position: absolute; inset: 0; transform-origin: 50% 0;
-  background: linear-gradient(90deg,
-    transparent,
-    color-mix(in srgb, var(--accent-fan) 17%, transparent) 25%,
-    color-mix(in srgb, #fff 8%, color-mix(in srgb, var(--accent-fan) 8%, transparent)) 50%,
-    color-mix(in srgb, var(--accent-fan) 5%, transparent) 72%,
-    transparent);
-  animation: curtain-flutter calc(var(--fan-dur, 2s) * 0.31) ease-in-out infinite alternate;
-}
-.room-row-progress.fan .curtain i:nth-child(3n + 1) { --m: 0.8; }
-.room-row-progress.fan .curtain i:nth-child(3n + 2) { --m: 1.25; }
-.room-row-progress.fan .curtain i:nth-child(4n)::before { animation-direction: alternate-reverse; }
-@keyframes curtain-billow { from { transform: skewX(0deg); } to { transform: skewX(calc(var(--sway, 4deg) * 0.5)); } }
-@keyframes curtain-sway {
-  from { transform: skewX(calc(var(--sway, 4deg) * var(--m, 1) * -0.45)); }
-  to { transform: skewX(calc(var(--sway, 4deg) * var(--m, 1))) scaleY(0.985); }
-}
-@keyframes curtain-flutter { from { transform: skewX(calc(var(--sway, 4deg) * -0.12)); } to { transform: skewX(calc(var(--sway, 4deg) * 0.12)); } }
 /* Dishwasher: dishes standing in a rack at the card's top right
    (components/DishRack.tsx, an inline SVG). While a cycle runs they start
    dirty and come clean as the progress rises: each food smudge fades out over
@@ -883,7 +835,7 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .row-btn.on { flex-grow: 2.2; background: var(--tint); color: var(--on-text); box-shadow: 0 0 22px color-mix(in srgb, var(--tint) 50%, transparent); border-color: transparent; }
 .row-btn.lvl-fill.on { background: linear-gradient(90deg, var(--tint) var(--level), color-mix(in srgb, var(--tint) 62%, var(--card)) var(--level)); }
 /* While sliding, the fill follows the finger with no lag. (.lvl-fill before .fan: CI reads ".fan.lvl…" in the bundle as an entity ID.) */
-.room-row.sliding .row-btn.lvl-fill.fan, .row-btn.lvl-fill.bulb.sliding { transition-duration: 0.2s, 0.2s, 0.2s, 0.15s, 0.3s, 0s; }
+.row-btn.lvl-fill.sliding { transform: scale(1.06); z-index: 1; transition-duration: 0.2s, 0.2s, 0.2s, 0.15s, 0.3s, 0s; }
 .row-btn.held { flex-grow: 1.8; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
 .row-btn-label { position: relative; font-size: 12.5px; letter-spacing: -0.01em; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
 /* An odd last room card (Utility) spans both columns instead of leaving a hole,
@@ -895,10 +847,10 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .leave-home.confirm { width: auto; padding: 0 16px; gap: 8px; color: var(--warn); border-color: var(--warn); }
 .leave-home.note { width: auto; padding: 0 16px; gap: 8px; color: var(--ok); border-color: var(--ok); }
 .pill-hint { font-size: 14px; font-weight: 700; }
-/* Lights chip: drag up/down to dim (useSlide axis 'y'), so it takes every
-   touch; while dragging it grows a little and its fill follows the level. */
-.row-btn.bulb { touch-action: none; overflow: hidden; }
-.row-btn.bulb.sliding { transform: scale(1.06); z-index: 1; }
+/* Lights and fan chips: slide across to dim or set the speed (useSlide), vertical
+   drags still scroll. While one slides, it grows a little and its fill follows the level. */
+.row-btn.lvl-fill, .row-btn.bulb { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
+.row-btn.bulb { overflow: hidden; }
 .row-btn.bulb > svg { position: relative; }
 /* Ceiling-fan icon (components/FanIcon.tsx): static mount and motor over a
    blade layer centred on the hub (12, 13.5 of the 24-unit icon), tilted nearly
@@ -1628,7 +1580,6 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 @keyframes flow { to { stroke-dashoffset: -16; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
-  .room-row-progress.fan .curtain { display: none; }
 }
 
 /* ---------- meals (panels/MealsPanel.tsx, meals/parts.tsx) ---------- */

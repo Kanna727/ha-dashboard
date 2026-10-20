@@ -26,12 +26,11 @@ import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
 
 const lightsOf = (r: RoomDef) => r.controls.filter((c) => c.entity.startsWith('light.')).map((c) => c.entity);
 const roomLit = (r: RoomDef, all: HassEntities) => lightsOf(r).some((id) => all[id]?.state === 'on');
-// Curtain pleats behind the quick fan's fill: 16 across the card plus one spare at each edge,
-// so the swinging hem never opens a gap at the sides.
 // Where each light's glow shines from along the card's top edge: one light from
 // the top-right corner, several spread towards the left.
 const glowX = (i: number, n: number) => (n < 2 ? 88 : 88 - (i * 62) / (n - 1));
-const PLEATS = Array.from({ length: 18 }, (_, i) => i - 1);
+// A chip's slide spans the card's width, whatever the chip's own size.
+const cardWidth = (el: HTMLElement) => el.closest('.room-row')?.getBoundingClientRect().width ?? 0;
 
 // Fans in the room whose "manual off" flag is on, i.e. automations won't turn them on.
 function useHeldFans(room: RoomDef) {
@@ -216,8 +215,8 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
   // For a few minutes after a cycle, the dishes on the card shine.
   const dishShine = useDishShine(!!room.appliances?.includes('dishwasher'), appStatus.dishwasher.running);
 
-  // The quick fan's speed, drawn as a fill behind the card; sliding across the
-  // card sets it (snapped to the fan's speed steps; all the way left = off).
+  // The quick fan's speed: sliding across its chip sets it (snapped to the
+  // fan's speed steps; all the way left = off).
   const isFan = room.quick?.kind === 'fan';
   const fanStep = (quick?.attributes.percentage_step as number | undefined) || 100 / 6;
   const fanPct = isOn(quick) ? ((quick?.attributes.percentage as number | undefined) ?? 100) : 0;
@@ -225,6 +224,7 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
     value: fanPct,
     step: fanStep,
     enabled: isFan && !!quick && quick.state !== 'unavailable',
+    range: cardWidth,
     onCommit: (v) => {
       const target = { entity_id: room.quick!.entity };
       if (v <= 0) hass.callService('fan', 'turn_off', {}, target);
@@ -243,7 +243,7 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
   const otherOn = others.find((c) => c.entity !== room.quick?.entity);
   if (!notes.length && !lit && !runningApps.length && otherOn && !room.appliances?.includes('washer')) notes.push(`${otherOn.name} on`);
 
-  // The lights button: a tap toggles every light in the room, a drag up or down
+  // The lights button: a tap toggles every light in the room, a slide across it
   // sets them all to one brightness (live, throttled), and a long press opens
   // the lights sheet (brightness, warmth, colour, each light). It shows the
   // brightest light that's on, in that light's colour.
@@ -262,8 +262,7 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
     value: brightest ? brightnessPct(brightest) : 0,
     step: 1,
     enabled: lights.some(canDim),
-    axis: 'y',
-    range: 150,
+    range: cardWidth, // the same feel as the fan chip
     keyStep: 10,
     onInput: (v) => v > 0 && bulbLive.push(v), // never switch off mid-drag
     onCommit: bulbLive.end,
@@ -295,7 +294,6 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
     hass.callService(room.quick.entity.split('.')[0], 'toggle', {}, { entity_id: room.quick.entity });
   };
   const quickName = room.quick?.kind === 'geyser' ? 'geyser' : (quick?.attributes.friendly_name as string | undefined) ?? 'fan';
-  const fanLabel = room.controls.find((c) => c.entity === room.quick?.entity)?.name ?? 'Fan';
   const openDetail = () =>
     modal.open({ title: room.name, icon: room.icon as IconName, accent: lit ? 'var(--accent-light)' : undefined, body: <RoomDetail room={room} gates={gates} /> });
 
@@ -339,22 +337,6 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
         </span>
       )}
       {(progress !== undefined || dishShine) && <DishRack pct={progress ?? 100} shining={dishShine} />}
-      {isFan && fanSlide.value > 0 && (
-        <span className="room-row-progress fan" aria-hidden="true">
-          {/* A sheer curtain stirring in the draught: card-wide (the fill clips it), swaying harder and
-              faster with the speed (~3 s a swing at speed 1, ~1.6 s at 6). Keyed by speed so the
-              animations restart with the new --sway (not every engine re-reads var() in running keyframes). */}
-          <span style={{ width: `${fanSlide.value}%`, ['--fan-dur' as string]: `${(3.6 - 0.3 * Math.max(1, fanSpeed)).toFixed(2)}s` }}>
-            <span
-              className="curtain"
-              key={fanSpeed}
-              style={{ width: `${10000 / fanSlide.value}%`, ['--sway' as string]: `${(1.5 + 1.2 * Math.max(1, fanSpeed)).toFixed(1)}deg` }}
-            >
-              {PLEATS.map((i) => <i key={i} style={{ ['--i' as string]: i }} />)}
-            </span>
-          </span>
-        </span>
-      )}
     </>
   );
 
@@ -392,12 +374,14 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
       ))}
       {room.quick && (
         <button
-          className={`row-btn ${room.quick.kind} ${quickOn ? 'on' : ''} ${isFan ? 'lvl-fill' : ''} ${quickHeld && !quickOn ? 'held' : ''}`}
+          className={`row-btn ${room.quick.kind} ${quickOn ? 'on' : ''} ${isFan ? 'lvl-fill' : ''} ${quickHeld && !quickOn ? 'held' : ''} ${fanSlide.sliding ? 'sliding' : ''}`}
           style={isFan ? { ['--level' as string]: `${fanSlide.value}%` } : undefined}
           disabled={quickOffline}
           onClick={toggleQuick}
+          {...(isFan ? fanSlide.handlers : {})}
           aria-label={`${quickOn ? 'Turn off' : 'Turn on'} ${room.name} ${quickName}${quickHeld ? ' (manual override on)' : ''}`}
-          title={quickHeld ? 'Manual override: automations will not turn this fan on' : undefined}
+          aria-keyshortcuts={isFan ? 'ArrowLeft ArrowRight' : undefined}
+          title={quickHeld ? 'Manual override: automations will not turn this fan on' : isFan ? 'Tap to switch, slide to set the speed' : undefined}
         >
           {isFan ? <FanIcon on={quickOn} pct={fanSlide.value} size={22} /> : <Icon name="geyser" size={22} />}
           {isFan
@@ -413,8 +397,8 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
           onClick={toggleLights}
           {...bulbSlide.handlers}
           aria-label={`${lit ? 'Turn off' : 'Turn on'} ${room.name} lights`}
-          aria-keyshortcuts="ArrowUp ArrowDown"
-          title="Tap to switch, drag up or down to dim, hold for colour"
+          aria-keyshortcuts="ArrowLeft ArrowRight"
+          title="Tap to switch, slide to dim, hold for colour"
         >
           <LightIcon on={bulbOn} brightness={bulbPct / 100} color={litRgb} size={22} />
           {bulbOn && label(dimmable ? `${bulbPct}%` : 'On')}
@@ -425,14 +409,11 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
 
   return (
     <div
-      className={`room-row ${lit ? 'lit' : ''} ${held.length ? 'fan-held' : ''} ${isFan ? 'slidable' : ''} ${fanSlide.sliding ? 'sliding' : ''}`}
+      className={`room-row ${lit ? 'lit' : ''}`}
       style={litRgb ? { ['--room-light' as string]: cssRgb(litRgb) } : undefined}
       role="button"
       tabIndex={0}
       onClick={openDetail}
-      aria-keyshortcuts={isFan ? 'ArrowLeft ArrowRight' : undefined}
-      title={isFan ? `Slide across to set the ${fanLabel.toLowerCase()} speed` : undefined}
-      {...(isFan ? fanSlide.handlers : {})}
     >
       {layers}
       <div className="room-row-head">

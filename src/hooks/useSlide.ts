@@ -12,7 +12,7 @@ interface SlideOptions {
   enabled: boolean;
   onCommit: (v: number) => void;
   axis?: 'x' | 'y'; // 'y': drag up to raise (default 'x')
-  range?: number; // px for a full 0–100 sweep (default: the element's size along the axis)
+  range?: number | ((el: HTMLElement) => number); // px for a full 0–100 sweep (default: the element's size along the axis)
   keyStep?: number; // arrow-key step (default `step`)
   onInput?: (v: number) => void; // live value while dragging
   onLongPress?: () => void; // a still press of 450 ms; its click is swallowed
@@ -73,7 +73,7 @@ export function useSlide({ value, step, enabled, onCommit, axis = 'x', range, ke
       }
       if (!enabled) return;
       const r = e.currentTarget.getBoundingClientRect();
-      const width = range ?? (axis === 'x' ? r.width : r.height);
+      const width = (typeof range === 'function' ? range(e.currentTarget) : range) || (axis === 'x' ? r.width : r.height);
       drag.current = { x: e.clientX, y: e.clientY, start: preview ?? snap(value), width, active: false, id: e.pointerId };
     },
     onPointerMove(e: PointerEvent<HTMLElement>) {
