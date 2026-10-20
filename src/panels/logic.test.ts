@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HassEntity } from 'home-assistant-js-websocket';
-import { upcoming, minutes, plannedDays } from './MealsPanel';
+import { upcoming, minutes, plannedDays } from '../meals/plan';
 import { nightAt } from '../lib/weather';
 import { distanceKm } from './CarPanel';
 import type { MealsConfig } from '../config/types';
