@@ -1,11 +1,17 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../components/Icon';
-import { GAP, extent, moveBox, parseLayout, resizeBox, toFront, type Box, type CanvasLayout, type Edge } from '../lib/canvas';
+import { useToasts } from '../components/Toasts';
+import { GAP, canvasZoom, extent, moveBox, parseLayout, resizeBox, toFront, type Box, type CanvasLayout, type Edge } from '../lib/canvas';
+import { clearLegacy, legacyLayout, useSharedLayout } from './useSharedLayout';
 
 // Free canvas: the tablet and desktop cards can be dragged anywhere and resized
 // to any size (no grid). Until the owner arranges them, the cards sit in the
 // usual columns. Arranging is a mode (the top bar's arrange button), so taps
 // and slides on the cards never move them by accident.
+//
+// One layout is shared by every device and both layouts (useSharedLayout): it
+// is kept at the canvas width it was arranged at, and each screen zooms it to
+// its own width (each card is scaled from its top-left corner).
 //
 // The columns stay in the DOM in both modes (`display: contents` on a canvas),
 // so switching never remounts a panel (no refetches, no lost state).
@@ -41,35 +47,6 @@ export interface CardDef {
   node: ReactNode;
 }
 
-function usePortrait() {
-  const query = '(orientation: portrait)';
-  const [portrait, setPortrait] = useState(() => window.matchMedia(query).matches);
-  useEffect(() => {
-    const m = window.matchMedia(query);
-    const on = () => setPortrait(m.matches);
-    m.addEventListener('change', on);
-    return () => m.removeEventListener('change', on);
-  }, []);
-  return portrait;
-}
-
-function readStored(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStored(key: string, value: string | null) {
-  try {
-    if (value === null) localStorage.removeItem(key);
-    else localStorage.setItem(key, value);
-  } catch {
-    // storage blocked: the layout just lasts until reload
-  }
-}
-
 // Where every card is in the column layout, as canvas boxes (content-sized).
 function measure(main: HTMLElement, ids: string[]): CanvasLayout {
   const m = main.getBoundingClientRect();
@@ -83,7 +60,7 @@ function measure(main: HTMLElement, ids: string[]): CanvasLayout {
       w: Math.round(r.width),
     };
   });
-  return { boxes, order: ids.filter((id) => id in boxes) };
+  return { width: main.clientWidth, boxes, order: ids.filter((id) => id in boxes) };
 }
 
 const EDGES: { cls: string; edge: Edge }[] = [
@@ -101,45 +78,69 @@ const EDGE_ZONE = 56; // px from the visible edge where a drag scrolls the page
 const EDGE_STEP = 16;
 const ROOM = 400; // extra space below the cards while arranging, to drag into
 
-interface Store {
-  key: string;
-  layout: CanvasLayout | null; // null = the usual columns
-  saved: boolean; // the owner changed something, so it's kept
-}
-
-const load = (key: string, ids: string[]): Store => {
-  const layout = parseLayout(readStored(key), ids);
-  return { key, layout, saved: layout !== null };
-};
-
 export function FreeCanvas({ name, className, columns }: { name: string; className: string; columns: CardDef[][] }) {
-  const editing = useContext(ArrangeContext)?.editing ?? false;
-  const setEditing = useContext(ArrangeContext)?.setEditing;
-  const portrait = usePortrait();
-  const key = `dashCanvas.${name}.${portrait ? 'portrait' : 'landscape'}`;
-  const ids = columns.flat().map((c) => c.id);
-  const idsKey = ids.join(',');
-
-  const [store, setStore] = useState<Store>(() => load(key, ids));
-  const current = store.key === key ? store : load(key, ids);
-  if (current !== store) setStore(current); // rotated: that orientation's layout
-  const layout = current.layout;
+  const arrange = useContext(ArrangeContext);
+  const editing = arrange?.editing ?? false;
+  const shared = useSharedLayout();
+  const toasts = useToasts();
+  const idsKey = columns
+    .flat()
+    .map((c) => c.id)
+    .join(',');
 
   const mainRef = useRef<HTMLElement>(null);
+  const [mainWidth, setMainWidth] = useState(0);
+  // While arranging: the layout being edited (null until there is one to edit).
+  const [draft, setDraft] = useState<CanvasLayout | null>(null);
+  const [changed, setChanged] = useState(false);
   const [dragging, setDragging] = useState<string | null>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
 
-  // Entering arrange mode from the columns: freeze them where they are.
-  useLayoutEffect(() => {
-    if (editing && !layout && mainRef.current) {
-      setStore({ key, layout: measure(mainRef.current, idsKey.split(',')), saved: false });
-    }
-  }, [editing, layout, key, idsKey]);
+  const stored = useMemo(() => parseLayout(shared.data, idsKey.split(',')), [shared.data, idsKey]);
+  const layout = editing ? (draft ?? stored) : stored;
+  const z = layout ? canvasZoom(mainWidth, layout) : 1;
 
-  // Keep what the owner changed; not mid-drag (every pointer move is a change).
+  useLayoutEffect(() => {
+    const main = mainRef.current;
+    if (!main) return;
+    const update = () => setMainWidth(main.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(main);
+    return () => ro.disconnect();
+  }, []);
+
+  // Entering arrange mode: edit the shared layout, or freeze the columns where they are.
+  useLayoutEffect(() => {
+    if (editing && !draft && mainRef.current) setDraft(stored ?? measure(mainRef.current, idsKey.split(',')));
+  }, [editing, draft, stored, idsKey]);
+
+  // This device's layout from before layouts were shared: hand it to HA once,
+  // if HA has never had one.
+  const { known, data, save } = shared;
   useEffect(() => {
-    if (current.saved && layout && !dragging) writeStored(key, JSON.stringify(layout));
-  }, [current.saved, layout, dragging, key]);
+    if (!known || data !== null || editing) return;
+    const old = parseLayout(legacyLayout(name), idsKey.split(','), mainRef.current?.clientWidth ?? 0);
+    if (old) save(old).then(clearLegacy, () => undefined);
+  }, [known, data, save, editing, name, idsKey]);
+
+  const failed = (e: unknown) =>
+    toasts.push({
+      id: 'layout-save',
+      icon: 'alert',
+      tone: 'warn',
+      title: 'Layout not saved to Home Assistant',
+      text:
+        (e as { code?: string }).code === 'unauthorized'
+          ? 'Saving the layout needs an admin login. Other devices keep the old layout.'
+          : 'Other devices keep the old layout; move a card again to retry.',
+    });
+
+  // Every change is saved when the drag ends (not on each move), so a reload
+  // mid-arrange loses nothing and other screens follow along.
+  useEffect(() => {
+    if (editing && changed && draft && !dragging) save(draft).catch(failed);
+  }, [editing, changed, draft, dragging]); // not on `failed`: it's new every render
 
   // Canvas size for scrolling: cards that fit their content change height on their own.
   useLayoutEffect(() => {
@@ -159,8 +160,9 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
   }, [layout]);
 
   const finish = () => {
-    if (!current.saved) setStore({ key, layout: null, saved: false }); // nothing moved: back to the columns
-    setEditing?.(false);
+    setDraft(null);
+    setChanged(false);
+    arrange?.setEditing(false);
   };
 
   useEffect(() => {
@@ -170,8 +172,10 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const update = (fn: (l: CanvasLayout) => CanvasLayout) =>
-    setStore((s) => (s.layout ? { ...s, layout: fn(s.layout), saved: true } : s));
+  const update = (fn: (l: CanvasLayout) => CanvasLayout) => {
+    setDraft((d) => (d ? fn(d) : d));
+    setChanged(true);
+  };
   const setBox = (id: string, box: Box) => update((l) => ({ ...l, boxes: { ...l.boxes, [id]: box } }));
 
   const startDrag = (e: React.PointerEvent<HTMLElement>, id: string, edge?: Edge) => {
@@ -182,7 +186,7 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
     e.stopPropagation();
     const el = e.currentTarget;
     el.setPointerCapture(e.pointerId);
-    const height = (el.closest('.card-slot') as HTMLElement).offsetHeight;
+    const height = (el.closest('.card-slot') as HTMLElement).offsetHeight; // unscaled, like the layout
     const scrolled = () => ({ x: main.scrollLeft + window.scrollX, y: main.scrollTop + window.scrollY });
     const start = { px: e.clientX, py: e.clientY, s: scrolled() };
     setDragging(id);
@@ -204,11 +208,12 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
       if (after.x === before.x && after.y === before.y) window.scrollBy(dx, dy);
     };
 
+    // Screen px back to layout px: the canvas is zoomed by z.
     const move = (ev: PointerEvent) => {
       autoScroll(ev);
       const s = scrolled();
-      const dx = ev.clientX - start.px + s.x - start.s.x;
-      const dy = ev.clientY - start.py + s.y - start.s.y;
+      const dx = (ev.clientX - start.px + s.x - start.s.x) / z;
+      const dy = (ev.clientY - start.py + s.y - start.s.y) / z;
       setBox(id, edge ? resizeBox(box, height, edge, dx, dy) : moveBox(box, dx, dy));
     };
     const end = () => {
@@ -233,11 +238,15 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
   };
 
   const canvas = !!layout;
-  const z = (id: string) => (layout ? layout.order.indexOf(id) + 1 : undefined);
+  const zIndex = (id: string) => (layout ? layout.order.indexOf(id) + 1 : undefined);
 
   return (
     <>
-      <main ref={mainRef} className={`${className} ${canvas ? 'canvas' : ''} ${canvas && editing ? 'editing' : ''}`}>
+      <main
+        ref={mainRef}
+        className={`${className} ${canvas ? 'canvas' : ''} ${canvas && editing ? 'editing' : ''}`}
+        style={canvas ? ({ '--z': z } as React.CSSProperties) : undefined}
+      >
         {columns.map((col, i) => (
           <div className="col" key={i}>
             {col.map((card) => {
@@ -247,7 +256,18 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
                   key={card.id}
                   className={`card-slot ${box?.h !== undefined ? 'fixed-h' : ''} ${dragging === card.id ? 'dragging' : ''}`}
                   data-card={card.id}
-                  style={box ? { left: box.x, top: box.y, width: box.w, height: box.h, zIndex: z(card.id) } : undefined}
+                  style={
+                    box
+                      ? {
+                          left: box.x * z,
+                          top: box.y * z,
+                          width: box.w,
+                          height: box.h,
+                          zIndex: zIndex(card.id),
+                          transform: z !== 1 ? `scale(${z})` : undefined,
+                        }
+                      : undefined
+                  }
                 >
                   {card.node}
                   {canvas && editing && box && (
@@ -282,16 +302,16 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
             })}
           </div>
         ))}
-        {canvas && (
-          <div className="canvas-extent" style={{ width: size.w, height: size.h + (editing ? ROOM : GAP) }} />
-        )}
+        {canvas && <div className="canvas-extent" style={{ width: size.w * z, height: (size.h + (editing ? ROOM : GAP)) * z }} />}
       </main>
       {editing && (
         <ArrangeBar
           onDone={finish}
           onReset={() => {
-            writeStored(key, null);
-            setStore({ key, layout: null, saved: false }); // back to the columns, measured again while arranging
+            // Back to the columns everywhere; measured again here while arranging.
+            save({}).catch(failed);
+            setDraft(null);
+            setChanged(false);
           }}
         />
       )}

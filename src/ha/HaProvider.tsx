@@ -21,6 +21,7 @@ import {
   type StatPoint,
   type TodoItem,
 } from './api';
+import { LAYOUT_DASHBOARD } from '../config/load';
 import { loadSnapshot, persistSnapshots } from './snapshot';
 import { store } from './store';
 
@@ -222,6 +223,46 @@ export const haApi: HassApi = {
     );
     // One that can't be read (e.g. removed meanwhile) is skipped rather than failing them all.
     return res.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+  },
+  async fetchLayout() {
+    const conn = await getConnection();
+    try {
+      return await conn.sendMessagePromise({ type: 'lovelace/config', url_path: LAYOUT_DASHBOARD, force: false });
+    } catch (e) {
+      // No such dashboard yet, or it was never saved.
+      if ((e as { code?: string }).code === 'config_not_found') return null;
+      throw e;
+    }
+  },
+  async saveLayout(layout) {
+    const conn = await getConnection();
+    const save = () => conn.sendMessagePromise({ type: 'lovelace/config/save', url_path: LAYOUT_DASHBOARD, config: layout });
+    try {
+      await save();
+    } catch (e) {
+      if ((e as { code?: string }).code !== 'config_not_found') throw e;
+      await conn.sendMessagePromise({
+        type: 'lovelace/dashboards/create',
+        url_path: LAYOUT_DASHBOARD,
+        title: 'Dashboard layout',
+        icon: 'mdi:view-dashboard-edit-outline',
+        show_in_sidebar: false,
+        require_admin: false,
+        mode: 'storage',
+      });
+      await save();
+    }
+  },
+  subscribeLayout(cb) {
+    let cancelled = false;
+    // HA fires lovelace_updated (with the dashboard's url_path) on every save; non-admins may subscribe to it.
+    const unsub = getConnection().then((conn) =>
+      cancelled ? undefined : conn.subscribeEvents<{ data?: { url_path?: string } }>((ev) => ev.data?.url_path === LAYOUT_DASHBOARD && cb(), 'lovelace_updated'),
+    );
+    return () => {
+      cancelled = true;
+      unsub.then((u) => u?.()).catch(() => undefined);
+    };
   },
   logout() {
     saveTokens(null);

@@ -14,6 +14,7 @@ import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS,
 // Offline stand-in for HA: serves fixtures, applies service calls locally
 // and logs them, so layouts can be exercised without touching the house.
 let states = { ...FIXTURES };
+const MOCK_LAYOUT = 'mockSharedLayout';
 installMockCommute();
 
 function patch(id: string, update: Partial<HassEntity> & { attributes?: Record<string, unknown> }) {
@@ -287,6 +288,27 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       },
       async fetchAutomationConfigs() {
         return AUTOMATIONS;
+      },
+      // The shared layout lives in localStorage; other tabs follow through the storage event.
+      async fetchLayout() {
+        try {
+          return JSON.parse(localStorage.getItem(MOCK_LAYOUT) ?? 'null');
+        } catch {
+          return null;
+        }
+      },
+      async saveLayout(layout) {
+        localStorage.setItem(MOCK_LAYOUT, JSON.stringify(layout));
+        window.dispatchEvent(new Event(MOCK_LAYOUT));
+      },
+      subscribeLayout(cb) {
+        const on = (e: Event) => (e.type === MOCK_LAYOUT || (e as StorageEvent).key === MOCK_LAYOUT) && cb();
+        window.addEventListener('storage', on);
+        window.addEventListener(MOCK_LAYOUT, on);
+        return () => {
+          window.removeEventListener('storage', on);
+          window.removeEventListener(MOCK_LAYOUT, on);
+        };
       },
       logout() {
         console.info('[mock] logout');

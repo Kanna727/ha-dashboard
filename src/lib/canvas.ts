@@ -1,5 +1,6 @@
 // Free-canvas layout maths (layout/Canvas.tsx): where each card sits, moving,
-// resizing and stacking. Positions are px from the canvas's top-left corner.
+// resizing and stacking. Positions are px from the canvas's top-left corner,
+// at the canvas width the layout was arranged at; other screens zoom it.
 
 export interface Box {
   x: number;
@@ -9,6 +10,7 @@ export interface Box {
 }
 
 export interface CanvasLayout {
+  width: number; // the canvas width it was arranged at, px
   boxes: Record<string, Box>;
   order: string[]; // stacking, back to front
 }
@@ -62,7 +64,7 @@ export function toFront(order: string[], id: string): string[] {
 }
 
 // Far right and bottom edges of all cards; `height` gives a card's rendered height.
-export function extent(layout: CanvasLayout, height: (id: string) => number): { w: number; h: number } {
+export function extent(layout: Pick<CanvasLayout, 'boxes'>, height: (id: string) => number): { w: number; h: number } {
   let w = 0;
   let h = 0;
   for (const [id, b] of Object.entries(layout.boxes)) {
@@ -83,16 +85,24 @@ function readBox(v: unknown): Box | null {
   return box;
 }
 
-// A saved layout for these cards, or null if there is none or it can't be read.
-// Cards it doesn't know (added to the dashboard since it was saved) go below
-// everything else; cards that no longer exist are dropped.
-export function parseLayout(raw: string | null, ids: string[]): CanvasLayout | null {
-  if (!raw) return null;
-  let data: unknown;
-  try {
-    data = JSON.parse(raw);
-  } catch {
-    return null;
+// How much a screen whose canvas is `width` px wide scales the layout.
+export function canvasZoom(width: number, layout: Pick<CanvasLayout, 'width'>): number {
+  return width > 0 && layout.width > 0 ? Math.round((width / layout.width) * 1000) / 1000 : 1;
+}
+
+// A saved layout for these cards (the object stored in HA, or a JSON string),
+// or null if there is none or it can't be read. Layouts saved before they had
+// a width get `fallbackWidth` (the canvas they were made on). Cards it doesn't
+// know (added to the dashboard since it was saved) go below everything else;
+// cards that no longer exist are dropped.
+export function parseLayout(raw: unknown, ids: string[], fallbackWidth = 0): CanvasLayout | null {
+  let data = raw;
+  if (typeof raw === 'string') {
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
   if (!data || typeof data !== 'object') return null;
   const src = (data as { boxes?: unknown }).boxes;
@@ -106,12 +116,14 @@ export function parseLayout(raw: string | null, ids: string[]): CanvasLayout | n
   const saved = (data as { order?: unknown }).order;
   const order = (Array.isArray(saved) ? saved : []).filter((id): id is string => typeof id === 'string' && id in boxes);
   for (const id of ids) if (id in boxes && !order.includes(id)) order.unshift(id);
-  let bottom = extent({ boxes, order }, () => NEW_H).h;
+  let bottom = extent({ boxes }, () => NEW_H).h;
   for (const id of ids) {
     if (id in boxes) continue;
     boxes[id] = { x: 0, y: bottom + GAP, w: NEW_W };
     bottom += GAP + NEW_H;
     order.push(id);
   }
-  return { boxes, order };
+  const w = (data as { width?: unknown }).width;
+  const width = isNum(w) && w > 0 ? w : fallbackWidth > 0 ? fallbackWidth : extent({ boxes }, () => 0).w;
+  return { width: Math.round(width), boxes, order };
 }

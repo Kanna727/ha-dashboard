@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_H, MIN_W, extent, moveBox, parseLayout, resizeBox, toFront } from './canvas';
+import { MIN_H, MIN_W, canvasZoom, extent, moveBox, parseLayout, resizeBox, toFront } from './canvas';
 
 describe('moveBox', () => {
   it('moves by whole pixels and stops at the canvas edge', () => {
@@ -40,7 +40,7 @@ describe('toFront', () => {
 
 describe('extent', () => {
   it('uses the rendered height for content-sized cards', () => {
-    const layout = { boxes: { a: { x: 0, y: 0, w: 300, h: 200 }, b: { x: 400, y: 100, w: 500 } }, order: ['a', 'b'] };
+    const layout = { width: 900, boxes: { a: { x: 0, y: 0, w: 300, h: 200 }, b: { x: 400, y: 100, w: 500 } }, order: ['a', 'b'] };
     expect(extent(layout, () => 350)).toEqual({ w: 900, h: 450 });
   });
 });
@@ -61,6 +61,7 @@ describe('parseLayout', () => {
       order: ['car', 'gone', 'energy', 'rooms'],
     });
     expect(parseLayout(raw, ids)).toEqual({
+      width: 900,
       boxes: { energy: { x: 0, y: 10, w: MIN_W, h: MIN_H }, rooms: { x: 400, y: 0, w: 500 }, car: { x: 0, y: 600, w: 300, h: 200 } },
       order: ['car', 'energy', 'rooms'],
     });
@@ -71,5 +72,24 @@ describe('parseLayout', () => {
     const out = parseLayout(raw, ids)!;
     expect(out.boxes.car).toEqual({ x: 0, y: 718, w: 360 });
     expect(out.order).toEqual(['rooms', 'energy', 'car']);
+  });
+
+  it('reads the object stored in HA and keeps its width', () => {
+    const data = { width: 1880, boxes: { rooms: { x: 400, y: 0, w: 500 } }, order: ['rooms'] };
+    expect(parseLayout(data, ids)?.width).toBe(1880);
+    expect(parseLayout({}, ids)).toBeNull();
+  });
+
+  it('gives a layout saved without a width the canvas it was made on', () => {
+    const raw = JSON.stringify({ boxes: { rooms: { x: 400, y: 0, w: 500 } } });
+    expect(parseLayout(raw, ids, 1140)?.width).toBe(1140);
+  });
+});
+
+describe('canvasZoom', () => {
+  it('scales a layout to the screen it is shown on', () => {
+    expect(canvasZoom(1140, { width: 1880 })).toBe(0.606);
+    expect(canvasZoom(1880, { width: 1880 })).toBe(1);
+    expect(canvasZoom(0, { width: 1880 })).toBe(1);
   });
 });

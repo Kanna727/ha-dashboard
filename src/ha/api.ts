@@ -119,6 +119,13 @@ export interface HassApi {
   fetchRegistry(): Promise<RegistrySnapshot>;
   // Every automation's raw config (automation/config), for the thresholds they gate on.
   fetchAutomationConfigs(): Promise<AutomationConfig[]>;
+  // The arranged card layout every device shares (layout/Canvas.tsx), kept as the
+  // config of a hidden dashboard: null if it was never saved. Saving needs an admin
+  // user and creates the dashboard the first time.
+  fetchLayout(): Promise<unknown | null>;
+  saveLayout(layout: object): Promise<void>;
+  // Calls back whenever any device saves the layout.
+  subscribeLayout(cb: () => void): () => void;
   logout(): void;
 }
 
