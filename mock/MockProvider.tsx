@@ -6,11 +6,14 @@ import { store } from '../src/ha/store';
 import { hsToRgb, kelvinToRgb } from '../src/lib/lightColor';
 import { bucketStart } from '../src/lib/driveHistory';
 import { CAR_TEST, CarTestPanel } from './CarTestPanel';
+import { installMockCommute, MOCK_COMMUTE_CARD } from './commute';
+import { CommuteTestPanel } from './CommuteTestPanel';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
 // and logs them, so layouts can be exercised without touching the house.
 let states = { ...FIXTURES };
+installMockCommute();
 
 function patch(id: string, update: Partial<HassEntity> & { attributes?: Record<string, unknown> }) {
   const prev = states[id];
@@ -274,12 +277,12 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       async fetchTodo(entityId) {
         return entityId.includes('to_do') ? TODO_ITEMS_2 : TODO_ITEMS;
       },
-      // No Maps key offline, so the commute card shows its "not configured" state.
       async fetchRegistry() {
         return REGISTRY;
       },
+      // The commute card's settings (fake routes and map, see commute.tsx).
       async fetchLovelaceConfig() {
-        return { views: [] };
+        return { views: [{ cards: [MOCK_COMMUTE_CARD] }] };
       },
       async fetchAutomationConfigs() {
         return AUTOMATIONS;
@@ -296,6 +299,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       <HassStatusContext.Provider value={mockStatus}>
         {children}
         {CAR_TEST && <CarTestPanel patch={patch} />}
+        {CAR_TEST && <CommuteTestPanel />}
       </HassStatusContext.Provider>
     </HassContext.Provider>
   );

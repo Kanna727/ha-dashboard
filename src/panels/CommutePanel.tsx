@@ -1,72 +1,53 @@
-import { useCallback, useEffect, useState } from 'react';
-import { CommuteMap, commuteMissingText, useCommuteConfig } from '../commute/CommuteCard';
-import { computeRoutes, inCommuteWindow, type CommuteConfig } from '../commute/routes';
-import { Icon } from '../components/Icon';
+// The commute card (picked by the owner on 2026-10-20 from four trial designs,
+// a mix of "traffic strip" and "leave later"): ETA, arrival and traffic level,
+// the route as one bar coloured by live speed, and in commute hours the trip
+// time if you leave in 15, 30 or 45 minutes. Tapping it opens the map popup.
+import { CommuteAside, CommuteDetail, CommuteSubtitle } from '../commute/CommuteDetail';
+import { arrival, LeaveLaterBars, leaveAdvice, LevelChip, TrafficStrip, Updated } from '../commute/parts';
+import { kmText, mins, TRAFFIC_TEXT, type CommuteConfig } from '../commute/routes';
+import { commuteMissingText, useCommute, useCommuteConfig, type Commute } from '../commute/useCommute';
 import { PanelHead, useModal } from '../components/Modal';
-import { useNow } from '../hooks/useNow';
 
-const REFRESH_MS = 2 * 60_000;
+const via = (c: Commute) => (c.route ? `${kmText(c.route.meters)}${c.route.description ? ` · via ${c.route.description}` : ''}` : c.error ? 'Route unavailable' : 'Checking traffic…');
 
-// ETA summary without loading the Maps JS; the full map opens in a modal.
-// Auto-refresh only runs in the commute window to keep Routes API usage low.
 function Summary({ config }: { config: CommuteConfig }) {
   const modal = useModal();
-  const now = useNow(30_000);
-  const [eta, setEta] = useState<{ seconds: number; meters: number; at: number } | null>(null);
-  const [error, setError] = useState<string>();
-  const [busy, setBusy] = useState(false);
-
-  const refresh = useCallback(() => {
-    setBusy(true);
-    computeRoutes({ apiKey: config.apiKey, origin: config.origin, dest: config.dest, mode: config.defaultVehicle, alternatives: false })
-      .then((r) => {
-        setEta({ seconds: r[0].seconds, meters: r[0].meters, at: Date.now() });
-        setError(undefined);
-      })
-      .catch((e) => setError(e.message))
-      .finally(() => setBusy(false));
-  }, [config]);
-
-  useEffect(() => {
-    refresh();
-    const id = window.setInterval(() => inCommuteWindow() && refresh(), REFRESH_MS);
-    return () => window.clearInterval(id);
-  }, [refresh]);
-
-  const mins = eta ? Math.round(eta.seconds / 60) : undefined;
-  const heavy = mins !== undefined && mins >= config.alertThresholdMin;
-  const inWindow = inCommuteWindow(now);
-  const vehicle = config.defaultVehicle === 'TWO_WHEELER' ? '🏍️' : '🚗';
+  const c = useCommute(config, { leaveLater: true });
+  const r = c.route;
   const open = () =>
-    modal.open({ title: 'Commute', icon: 'navigate', accent: 'var(--accent)', wide: true, body: <CommuteMap config={config} mapHeight={460} /> });
+    modal.open({
+      title: 'Commute',
+      icon: 'navigate',
+      accent: 'var(--accent-fan)',
+      wide: true,
+      subtitle: <CommuteSubtitle title={config.title} />,
+      aside: <CommuteAside />,
+      body: <CommuteDetail config={config} />,
+    });
+  const heavy = r?.level === 'heavy' && c.inWindow;
+  const note = c.leaveLater ? leaveAdvice(c.leaveLater, c.now) : r?.delay ? `+${r.delay} min for traffic` : r ? 'No traffic delay' : '';
 
   return (
     <section className="panel commute-panel">
-      <PanelHead
-        label="Commute"
-        summary={heavy && inWindow ? 'Heavy traffic' : config.title}
-        summaryClass={heavy && inWindow ? 'warn' : ''}
-        onMore={open}
-      />
-      <div className="commute-summary" role="button" tabIndex={0} onClick={open}>
-        <div className="commute-eta-big">
-          {mins !== undefined ? mins : '–'}
-          <small>min</small>
+      <PanelHead label="Commute" summary={heavy ? TRAFFIC_TEXT.heavy : config.title} summaryClass={heavy ? 'warn' : ''} onMore={open} />
+      <div className="cm-card" role="button" tabIndex={0} onClick={open}>
+        <div className="cm-top">
+          <div className="cm-big">
+            {r ? mins(r.seconds) : '–'}
+            <small>min</small>
+          </div>
+          <div className="cm-meta">
+            <strong>Arrive {arrival(r, c.now)}</strong>
+            <span className="muted small ellipsis">{via(c)}</span>
+          </div>
+          {r && <LevelChip level={r.level} short />}
         </div>
-        <div className="commute-meta">
-          <div>{vehicle} {eta ? `${(eta.meters / 1000).toFixed(1)} km in current traffic` : error ? 'Route unavailable' : 'Checking traffic…'}</div>
-          <div className="muted small">{error ? error : eta ? `As of ${new Date(eta.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}` : ''}</div>
+        {r && <TrafficStrip segs={r.segs} />}
+        {c.leaveLater && <LeaveLaterBars options={c.leaveLater} now={c.now} compact />}
+        <div className="cm-foot">
+          <span className={`small ${c.leaveLater ? 'cm-advice' : 'muted'}`}>{note}</span>
+          <Updated c={c} />
         </div>
-        <button
-          className={`round small ${busy ? 'pending' : ''}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            refresh();
-          }}
-          aria-label="Refresh commute"
-        >
-          <Icon name="refresh" size={18} />
-        </button>
       </div>
     </section>
   );
