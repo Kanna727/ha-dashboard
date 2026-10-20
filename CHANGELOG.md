@@ -1,3 +1,10 @@
+# [1.30.0](https://github.com/Kanna727/ha-dashboard/compare/v1.29.0...v1.30.0) (2026-10-20)
+
+
+### Features
+
+* **car:** richer car card and popup from the car's discovered entities ([#44](https://github.com/Kanna727/ha-dashboard/issues/44)) ([ed4d773](https://github.com/Kanna727/ha-dashboard/commit/ed4d7732a508374b13c44c7034e178a8dea86e4a))
+
 # [1.29.0](https://github.com/Kanna727/ha-dashboard/compare/v1.28.0...v1.29.0) (2026-10-20)
 
 
