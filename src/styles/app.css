@@ -1716,12 +1716,7 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .vpage-none { display: grid; justify-items: center; gap: 10px; padding: 40px; color: var(--muted); position: relative; }
 .vpage-none .vpage-back { position: absolute; left: 16px; top: 16px; }
 
-.vpage-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; }
 .vpage-back { background: var(--tile); }
-.vpage-icon { width: 52px; height: 52px; border-radius: 17px; display: grid; place-items: center; background: var(--tile); color: var(--muted); flex-shrink: 0; transition: background 0.3s, color 0.3s; }
-.vpage-icon.ok { color: var(--ok); }
-.vpage-icon.active { background: var(--accent); color: #fff; box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 50%, transparent); }
-.vpage-icon.warn { background: var(--warn); color: var(--on-text); }
 .vpage-title { flex: 1; min-width: 150px; display: grid; gap: 3px; }
 .vpage-title h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
 .vpage-status { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--muted); min-width: 0; }
@@ -1730,38 +1725,13 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .vpage-status.active .dot { background: var(--accent); box-shadow: 0 0 10px var(--accent); animation: pulse 1.6s ease-in-out infinite; }
 .vpage-status.warn { color: var(--warn); }
 .vpage-status.warn .dot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
-.vpage-stats { display: flex; gap: 8px; flex-wrap: wrap; }
-.vstat { display: inline-flex; align-items: center; gap: 5px; padding: 8px 11px; border-radius: 12px; background: var(--tile); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.vstat svg { color: var(--muted); }
-.vstat.low, .vstat.low svg { color: var(--danger); }
-.vpage-controls { display: flex; gap: 8px; }
 .vctl { display: grid; justify-items: center; gap: 2px; min-width: 64px; padding: 8px 10px; border-radius: 16px; background: var(--tile); font-size: 12px; font-weight: 700; transition: transform 0.1s, background 0.2s; }
 .vctl:active:not(:disabled) { transform: scale(0.95); }
 .vctl.primary { background: var(--accent); color: #fff; }
 
-.vpage-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(330px, 1fr); gap: 18px; align-items: start; }
-.layout.tablet .vpage-grid { flex: 1; min-height: 0; align-items: stretch; gap: 14px; }
-.vmap-panel { display: flex; flex-direction: column; padding: 14px; }
-.layout.tablet .vmap-panel { min-height: 0; }
-.layout.tablet .vmap { flex: 1; min-height: 240px; }
-.layout.desktop .vmap-panel { position: sticky; top: 20px; height: calc(100vh - 190px); min-height: 520px; }
-.layout.desktop .vmap { flex: 1; min-height: 0; }
-.vpage-side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; min-width: 0; }
-.layout.tablet .vpage-side { overflow-y: auto; min-height: 0; scrollbar-width: none; padding-bottom: 4px; }
-.layout.tablet .vpage-side::-webkit-scrollbar { display: none; }
-@media (orientation: portrait) {
-  .layout.tablet .vpage-grid { grid-template-columns: minmax(0, 1fr); }
-  .layout.tablet .vmap { flex: none; height: 56vh; }
-  .layout.tablet .vpage-side { overflow: visible; }
-}
-.phone .vpage-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
 .phone .vpage { gap: 14px; padding-bottom: 76px; }
 /* Robot maps are usually wider than tall; pinch to zoom in. */
 .phone .vmap { aspect-ratio: 1; max-height: 60vh; min-height: 260px; }
-.phone .vmap-panel { padding: 10px; }
-.phone .vpage-head { gap: 10px; }
-.phone .vpage-controls { width: 100%; }
-.phone .vctl { flex: 1; min-width: 0; }
 .phone .vmodes button:not(.active) span { display: none; }
 
 .vmodes { margin-bottom: 10px; background: var(--tile); }
@@ -1896,3 +1866,95 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .vmap-stage.glide { transition: transform 1.2s ease-out; }
 .vmap-tools .vfollow.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 @media (prefers-reduced-motion: reduce) { .vmap-stage.glide { transition: none; } }
+/* The vacuum chip on a room card (vacuum/VacuumChip.tsx): battery while it rests, where it is while it runs. */
+.row-btn.vacuum { --tint: var(--accent); }
+.row-btn.vacuum.labelled:not(.on) { flex-grow: 1.4; }
+.row-btn.vacuum.tone-warn { --tint: var(--warn); }
+.row-btn.vacuum .roam { animation: vac-roam 2.4s ease-in-out infinite; }
+@keyframes vac-roam { 0%, 100% { transform: translateX(-2px) rotate(-6deg); } 50% { transform: translateX(2px) rotate(6deg); } }
+
+/* ---------- vacuum page: Cockpit layout (vacuum/Cockpit.tsx) ---------- */
+
+
+/* C. Cockpit: a hero robot with its numbers on the left, tabs on the right. */
+.vcock { display: grid; grid-template-columns: minmax(300px, 360px) minmax(0, 1fr); gap: 14px; align-items: stretch; }
+.layout.tablet .vcock { flex: 1; min-height: 0; }
+.layout.desktop .vcock { min-height: calc(100vh - 150px); }
+.vcock-hero { display: flex; flex-direction: column; align-items: stretch; gap: 14px; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+.vcock-hero-top { display: flex; align-items: center; gap: 10px; }
+.vcock-hero-top .vpage-title h1 { font-size: 22px; }
+.vcock-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.vcock-stat { display: grid; justify-items: center; gap: 2px; padding: 10px 6px; border-radius: 16px; background: var(--tile); min-width: 0; }
+.vcock-stat svg { color: var(--accent); }
+.vcock-stat strong { font-size: 16px; max-width: 100%; font-variant-numeric: tabular-nums; }
+.vcock-stat span { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label); }
+.vcock-controls { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 8px; }
+.vcock-controls .vctl { min-width: 0; padding: 12px 6px; }
+.vcock-parts { display: flex; justify-content: space-around; gap: 6px; padding-top: 4px; }
+.vcock-part { position: relative; display: grid; justify-items: center; gap: 4px; width: 64px; }
+.vcock-part svg { width: 48px; height: 48px; transform: rotate(-90deg); }
+.vcock-part .track { fill: none; stroke: var(--tile-hover); stroke-width: 4; }
+.vcock-part .fill { fill: none; stroke: var(--ok); stroke-width: 4; stroke-linecap: round; transition: stroke-dasharray 0.6s; }
+.vcock-part.low .fill { stroke: var(--danger); }
+.vcock-part-pct { position: absolute; top: 15px; font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.vcock-part-name { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: capitalize; text-align: center; line-height: 1.2; }
+.vcock-main { display: flex; flex-direction: column; min-height: 0; padding: 14px; }
+.vcock-tabs { margin-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
+.vcock-tabs button { white-space: nowrap; }
+.vcock-map { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.layout.tablet .vcock-map .vmap, .layout.desktop .vcock-map .vmap { flex: 1; min-height: 240px; }
+.vcock-body { flex: 1; min-height: 0; overflow-y: auto; display: grid; gap: 12px; align-content: start; scrollbar-width: none; }
+.vcock-body .panel { box-shadow: none; background: var(--card); }
+.vtiles-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 12px; }
+.vroom-tile { position: relative; display: grid; gap: 4px; padding: 14px 12px 12px; border-radius: 18px; background: var(--tile); text-align: left; border: 1.5px solid transparent; transition: background 0.2s, border-color 0.2s; min-width: 0; }
+.vroom-tile.on { background: color-mix(in srgb, var(--accent) 18%, var(--tile)); border-color: var(--accent); }
+.vroom-tile-badge { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--tile-hover); color: var(--muted); font-weight: 800; font-size: 13px; margin-bottom: 6px; }
+.vroom-tile.on .vroom-tile-badge { background: var(--accent); color: #fff; }
+@media (orientation: portrait) {
+  .layout.tablet .vcock { grid-template-columns: minmax(0, 1fr); }
+  .layout.tablet .vcock-map .vmap { flex: none; height: 52vh; }
+}
+.phone .vcock { grid-template-columns: minmax(0, 1fr); padding-bottom: 130px; }
+.phone .vcock-map .vmap { aspect-ratio: 1; max-height: 60vh; }
+.phone .vcock-tabs button:not(.active) span { display: none; }
+
+/* The hero robot: a top-down robot vacuum inside its battery ring. */
+.vrobot { position: relative; width: min(220px, 70%); margin: 0 auto; padding-bottom: 20px; }
+.vrobot svg { display: block; width: 100%; height: auto; overflow: visible; }
+.vrobot-track { fill: none; stroke: var(--tile-hover); stroke-width: 7; }
+.vrobot-battery { fill: none; stroke: var(--ok); stroke-width: 7; stroke-linecap: round; transition: stroke-dasharray 0.8s ease; filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ok) 60%, transparent)); }
+.vrobot-battery.mid { stroke: var(--accent-light); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-light) 60%, transparent)); }
+.vrobot-battery.low { stroke: var(--danger); filter: drop-shadow(0 0 6px color-mix(in srgb, var(--danger) 60%, transparent)); }
+.vrobot .shell { fill: #0d111a; stroke: #3a4458; stroke-width: 2; }
+.vrobot .top { fill: #232a3a; }
+.vrobot .bumper { fill: none; stroke: #4b5568; stroke-width: 5; stroke-linecap: round; }
+.vrobot .lidar { fill: #141925; stroke: #59647c; stroke-width: 2; }
+.vrobot .lidar-dot { fill: #2b3346; }
+.vrobot .lidar-beam path { stroke: color-mix(in srgb, var(--accent) 70%, transparent); stroke-width: 3; stroke-linecap: round; opacity: 0; }
+.vrobot .button { fill: #39425a; }
+.vrobot .led { fill: var(--ok); }
+.vrobot .brush line { stroke: #8a93a6; stroke-width: 2.4; stroke-linecap: round; }
+.vrobot-pct { position: absolute; left: 0; right: 0; bottom: -2px; text-align: center; font-size: 13px; font-weight: 800; color: var(--muted); font-variant-numeric: tabular-nums; }
+.vrobot .lidar-beam, .vrobot .vrobot-body { transform-box: view-box; }
+.vrobot .brush-spin { transform-box: view-box; transform-origin: 0 0; } /* its group is already moved to the brush hub */
+.vrobot .lidar-beam { transform-origin: 100px 82px; }
+.vrobot .vrobot-body { transform-origin: 100px 100px; }
+.vrobot.state-cleaning .brush-spin { animation: vrobot-spin 0.6s linear infinite; }
+.vrobot.state-cleaning .lidar-beam path, .vrobot.state-returning .lidar-beam path { opacity: 1; }
+.vrobot.state-cleaning .lidar-beam, .vrobot.state-returning .lidar-beam { animation: vrobot-spin 1.4s linear infinite; }
+.vrobot.state-cleaning .vrobot-body { animation: vrobot-drive 3.2s ease-in-out infinite; }
+.vrobot.state-cleaning .led, .vrobot.state-returning .led { fill: var(--accent); }
+.vrobot.state-docked .vrobot-battery { animation: vrobot-breathe 2.6s ease-in-out infinite; }
+.vrobot.tone-warn .led { fill: var(--warn); animation: pulse 0.8s ease-in-out infinite; }
+.vrobot.tone-warn .shell { stroke: var(--warn); }
+@keyframes vrobot-spin { to { transform: rotate(360deg); } }
+@keyframes vrobot-drive { 0%, 100% { transform: rotate(-4deg) translateY(1px); } 50% { transform: rotate(4deg) translateY(-1px); } }
+@keyframes vrobot-breathe { 50% { opacity: 0.55; } }
+/* The 3D robot (vacuum/robot3d.ts): drag to look around; the battery is the ring on the floor. */
+.vrobot3d { position: relative; width: 100%; aspect-ratio: 1 / 0.8; max-height: 290px; margin: -6px auto 0; }
+.vrobot3d canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.vrobot3d canvas:active { cursor: grabbing; }
+.vrobot3d .vrobot-pct { bottom: 4px; }
+.layout.tablet .vrobot3d { max-height: 250px; }
+.vrobot3d { margin-bottom: 10px; }
+.vrobot3d .vrobot-pct { bottom: -12px; }

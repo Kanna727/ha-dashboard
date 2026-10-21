@@ -27,8 +27,9 @@ export interface RoomDef {
   quick?: { entity: string; kind: 'fan' | 'geyser' };
   // Appliances shown in the room's detail modal. Washer and dishwasher also get
   // status buttons on the room card (tap opens the details, never toggles power);
-  // the purifier has no button, only a fault note in the card's subtitle.
-  appliances?: ('washer' | 'dishwasher' | 'purifier')[];
+  // the purifier has no button, only a fault note in the card's subtitle. The
+  // vacuum gets a chip with its live status that opens the vacuum page.
+  appliances?: ('washer' | 'dishwasher' | 'purifier' | 'vacuum')[];
   // Extra cards shown in the room's detail modal.
   detailCards?: ('climate' | 'media')[];
 }
@@ -154,7 +155,8 @@ export interface DashboardConfig {
   ALERTS?: { chime?: boolean; doorOpenMinutes?: number };
   // Robot vacuum page. Optional: without it the first vacuum.* entity is used,
   // and its map camera and settings are found from the vacuum's entity names.
-  VACUUM?: { entity?: string; map?: string };
+  // `look` colours the 3D robot on the page: shell, laser band, and whether to draw its dock.
+  VACUUM?: { entity?: string; map?: string; look?: { body?: string; laser?: string; dock?: boolean } };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
 }

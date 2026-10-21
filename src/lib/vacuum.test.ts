@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   calibration,
+  chipStatus,
   commonPrefix,
   consumables,
   fmtMinutes,
@@ -120,6 +121,15 @@ describe('status', () => {
     expect(vacuumStatus('cleaning', { segment_cleaning: true })).toEqual({ label: 'Cleaning rooms', tone: 'active' });
     expect(vacuumStatus('error', { error: 'Wheels stuck' })).toEqual({ label: 'Wheels stuck', tone: 'warn' });
     expect(vacuumStatus('unavailable')).toEqual({ label: 'Offline', tone: 'idle' });
+  });
+
+  it('words the room card chip', () => {
+    expect(chipStatus('docked', { charging: true }, { battery: 87 })).toEqual({ short: '87%', long: 'Vacuum: Charging · 87%', on: false, tone: 'ok' });
+    expect(chipStatus('cleaning', { segment_cleaning: true }, { room: 'Kitchen', area: 12.4 })).toMatchObject({ short: 'Kitchen', long: 'Vacuum: Cleaning rooms · Kitchen · 12 m²', on: true });
+    expect(chipStatus('cleaning', {}, {})).toMatchObject({ short: 'Cleaning', on: true });
+    expect(chipStatus('returning')).toMatchObject({ short: 'Docking', on: true });
+    expect(chipStatus('error', { error: 'Main brush is tangled up' })).toMatchObject({ short: 'Needs help', on: true, tone: 'warn' });
+    expect(chipStatus('unavailable')).toMatchObject({ short: '', on: false, tone: 'idle' });
   });
 
   it('formats durations', () => {
