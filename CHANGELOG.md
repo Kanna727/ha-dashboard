@@ -1,3 +1,10 @@
+# [1.36.0](https://github.com/Kanna727/ha-dashboard/compare/v1.35.0...v1.36.0) (2026-10-21)
+
+
+### Features
+
+* **vacuum:** robot vacuum page with an editable map ([#50](https://github.com/Kanna727/ha-dashboard/issues/50)) ([6a9d78b](https://github.com/Kanna727/ha-dashboard/commit/6a9d78b6ab15c68d2e3226e439fd78aacf01fd0f))
+
 # [1.35.0](https://github.com/Kanna727/ha-dashboard/compare/v1.34.0...v1.35.0) (2026-10-20)
 
 
