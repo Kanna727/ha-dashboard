@@ -9,6 +9,7 @@ import { CAR_TEST, CarTestPanel } from './CarTestPanel';
 import { installMockCommute, MOCK_COMMUTE_CARD } from './commute';
 import { CommuteTestPanel } from './CommuteTestPanel';
 import { MEALS_TEST, MealsTestPanel } from './MealsTestPanel';
+import { vacuumService } from './vacuum';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
@@ -94,7 +95,7 @@ function applyService(domain: string, service: string, data: Record<string, unkn
         patch(id, { state: 'unlocked' });
         break;
       case 'set_value':
-        patch(id, { state: String(data.value) });
+        patch(id, { state: String(data.value ?? data.time) }); // time.set_value sends `time`
         break;
       case 'select_option':
         patch(id, { state: String(data.option) });
@@ -197,6 +198,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
     () => ({
       async callService(domain, service, data = {}, target) {
         console.info('[mock] %s.%s', domain, service, data, target);
+        if (vacuumService(domain, service, data, ids(target), patch)) return {};
         applyService(domain, service, data, ids(target));
         // A forced car refresh lands a few seconds later.
         if (domain === 'button' && ids(target).includes('button.car_force_refresh')) {

@@ -152,6 +152,9 @@ export interface DashboardConfig {
   // the app.
   // "Done" and "door left open" banners.
   ALERTS?: { chime?: boolean; doorOpenMinutes?: number };
+  // Robot vacuum page. Optional: without it the first vacuum.* entity is used,
+  // and its map camera and settings are found from the vacuum's entity names.
+  VACUUM?: { entity?: string; map?: string };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
 }

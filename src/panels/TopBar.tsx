@@ -11,6 +11,8 @@ import { MusicPlayer, PlayerDots, activePlayers } from './MusicPlayer';
 import { cycle, useSwipe } from '../hooks/useSwipe';
 import { StatusDialog } from './StatusDialog';
 import { ArrangeButton } from '../layout/Canvas';
+import { usePage } from '../layout/pages';
+import { VacuumPill } from '../vacuum/VacuumPill';
 
 const greeting = (h: number) => (h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening');
 
@@ -159,6 +161,7 @@ function StatusPill() {
 
 export function TopBar({ compact = false }: { compact?: boolean }) {
   const { userName } = useHassStatus();
+  const [page] = usePage();
   const now = useNow(1000);
   const first = userName?.split(' ')[0];
 
@@ -177,7 +180,8 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         <NowPlayingPill />
         <StatusPill />
         <LeaveHomeButton />
-        <ArrangeButton />
+        {!compact && <VacuumPill />}
+        {page === 'home' && <ArrangeButton />}
       </div>
       <div className="big-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
     </header>
