@@ -271,7 +271,7 @@ function Vacuum({ info, onBack }: { info: VacuumInfo; onBack?: () => void }) {
             cal={cal}
             rooms={rooms}
             robot={camAttrs.vacuum_position as Pt | undefined}
-            running={running}
+            running={running || paused}
             selected={mode === 'rooms' ? picked : mode === 'edit' ? editPick : []}
             dimOthers={mode === 'edit' && editPick.length > 0}
             onRoomTap={onRoomTap}

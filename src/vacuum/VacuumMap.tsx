@@ -70,6 +70,7 @@ type Gesture =
 
 const MIN_S = 1;
 const MAX_S = 8;
+const FOLLOW_S = 2.5; // zoom while following the robot: a room or two across
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
 const COLORS: Record<ShapeKind, string> = {
@@ -135,15 +136,58 @@ export function VacuumMap(props: MapProps) {
     return clampView({ s: ns, x: cx - left - ns * px, y: cy - top - ns * py });
   };
 
+  /* ---------- following the robot ----------
+     While it runs, the map zooms in and keeps the robot centred, gliding as its
+     position updates (the map stays filling the box near its edges). Panning or
+     pinching hands control back; the follow button resumes; when the run ends
+     the map glides back to the whole view. */
+  const [following, setFollowing] = useState(true);
+  const [followS, setFollowS] = useState(FOLLOW_S);
+  const [glide, setGlide] = useState(false); // animate programmatic view changes only
+  const canFollow = !!props.running && !!props.robot && !!cal && !!map;
+  const followOn = canFollow && following;
+  const userView = (v: View) => {
+    setGlide(false);
+    setView(v);
+  };
+  const stopFollowing = () => followOn && setFollowing(false);
+  // Pan so a stage point (fitted px) is centred, without showing past the map's edges when zoomed in.
+  const centreOn = (s: number, px: number, py: number): View => {
+    const axis = (box: number, off: number, len: number, p: number) =>
+      s * len >= box ? clamp(box / 2 - off - s * p, box - off - s * len, -off) : (box - s * len) / 2 - off;
+    return { s, x: axis(size.w, left, fw, px), y: axis(size.h, top, fh, py) };
+  };
+  const robotKey = props.robot ? `${Math.round(props.robot.x)},${Math.round(props.robot.y)}` : '';
+  useEffect(() => {
+    if (!followOn || !size.w) return;
+    const ip = cal!.toImg(props.robot!);
+    setGlide(true);
+    setView(centreOn(followS, ip.x * fit, ip.y * fit));
+  }, [followOn, robotKey, followS, size.w, size.h, map?.w, map?.h]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Run over: back to the whole map, and follow again next time.
+  const wasRunning = useRef(!!props.running);
+  useEffect(() => {
+    if (wasRunning.current && !props.running) {
+      setGlide(true);
+      setView({ s: 1, x: 0, y: 0 });
+      setFollowing(true);
+      setFollowS(FOLLOW_S);
+    }
+    wasRunning.current = !!props.running;
+  }, [props.running]);
+  const zoomFollow = (f: number) => setFollowS((s) => clamp(s * f, MIN_S, MAX_S));
+
   // Wheel zoom needs a non-passive listener to stop the page scrolling.
   useEffect(() => {
     const el = box.current;
     if (!el) return;
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
+      const f = Math.pow(1.0015, -e.deltaY);
+      if (followOn) return zoomFollow(f); // zoom stays centred on the robot
       const r = el.getBoundingClientRect();
       const v = viewRef.current;
-      setView(zoomAt(v, v.s * Math.pow(1.0015, -e.deltaY), e.clientX - r.left, e.clientY - r.top));
+      userView(zoomAt(v, v.s * f, e.clientX - r.left, e.clientY - r.top));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
@@ -201,6 +245,7 @@ export function VacuumMap(props: MapProps) {
     if (pointers.current.size === 2) {
       const [a, b] = [...pointers.current.values()];
       setPreview(null);
+      stopFollowing();
       gesture.current = { kind: 'pinch', dist: Math.hypot(a.x - b.x, a.y - b.y) || 1, mid: { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top }, view: viewRef.current };
       return;
     }
@@ -239,17 +284,21 @@ export function VacuumMap(props: MapProps) {
       const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
       const mid = { x: (a.x + b.x) / 2 - r.left, y: (a.y + b.y) / 2 - r.top };
       const z = zoomAt(g.view, g.view.s * (dist / g.dist), g.mid.x, g.mid.y);
-      setView(clampView({ s: z.s, x: z.x + mid.x - g.mid.x, y: z.y + mid.y - g.mid.y }));
+      userView(clampView({ s: z.s, x: z.x + mid.x - g.mid.x, y: z.y + mid.y - g.mid.y }));
       return;
     }
     if (g.kind === 'pending') {
       if (Math.hypot(e.clientX - g.sx, e.clientY - g.sy) < 7) return;
       const d = propsRef.current.draw;
-      gesture.current = d && !g.del ? { kind: 'draw', start: g.start } : { kind: 'pan', sx: g.sx, sy: g.sy, view: g.view };
+      gesture.current = d && !g.del ? { kind: 'draw', start: g.start } : { kind: 'pan', sx: g.sx, sy: g.sy, view: viewRef.current };
+      if (gesture.current.kind === 'pan') {
+        stopFollowing(); // looking around: stop chasing the robot
+        gesture.current = { kind: 'pan', sx: e.clientX, sy: e.clientY, view: viewRef.current };
+      }
       return onMove(e);
     }
     if (g.kind === 'pan') {
-      setView(clampView({ s: g.view.s, x: g.view.x + e.clientX - g.sx, y: g.view.y + e.clientY - g.sy }));
+      userView(clampView({ s: g.view.s, x: g.view.x + e.clientX - g.sx, y: g.view.y + e.clientY - g.sy }));
       return;
     }
     const p = vacAt(e.clientX, e.clientY);
@@ -315,7 +364,7 @@ export function VacuumMap(props: MapProps) {
     setPreview(null);
   };
 
-  const zoomBy = (f: number) => setView(zoomAt(view, view.s * f, size.w / 2, size.h / 2));
+  const zoomBy = (f: number) => (followOn ? zoomFollow(f) : userView(zoomAt(view, view.s * f, size.w / 2, size.h / 2)));
 
   const drawn = preview ? [...shapes.filter((s) => s.id !== preview.id), preview] : shapes;
   const poly = (r: Rect) => rectCorners(r).map((c) => toImg(c)).map((c) => `${c.x},${c.y}`).join(' ');
@@ -386,7 +435,7 @@ export function VacuumMap(props: MapProps) {
       {map && (
         <div
           ref={stage}
-          className="vmap-stage"
+          className={`vmap-stage ${glide ? 'glide' : ''}`}
           style={{ left, top, width: fw, height: fh, transform: `translate(${view.x}px, ${view.y}px) scale(${view.s})` }}
         >
           <img src={map.url} alt="Vacuum map" draggable={false} />
@@ -426,12 +475,32 @@ export function VacuumMap(props: MapProps) {
         <button className="round small" aria-label="Zoom in" onClick={() => zoomBy(1.5)}>
           <Icon name="zoomIn" size={20} />
         </button>
-        <button className="round small" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.5)} disabled={view.s <= MIN_S}>
+        <button className="round small" aria-label="Zoom out" onClick={() => zoomBy(1 / 1.5)} disabled={(followOn ? followS : view.s) <= MIN_S}>
           <Icon name="zoomOut" size={20} />
         </button>
-        <button className="round small" aria-label="Fit map" onClick={() => setView({ s: 1, x: 0, y: 0 })} disabled={view.s === 1 && !view.x && !view.y}>
+        <button
+          className="round small"
+          aria-label="Fit map"
+          onClick={() => {
+            stopFollowing();
+            setGlide(true);
+            setView({ s: 1, x: 0, y: 0 });
+          }}
+          disabled={!followOn && view.s === 1 && !view.x && !view.y}
+        >
           <Icon name="fit" size={20} />
         </button>
+        {canFollow && (
+          <button
+            className={`round small vfollow ${following ? 'active' : ''}`}
+            aria-label={following ? 'Following the robot' : 'Follow the robot'}
+            aria-pressed={following}
+            title={following ? 'Following the robot' : 'Follow the robot'}
+            onClick={() => setFollowing(!following)}
+          >
+            <Icon name="navigate" size={20} />
+          </button>
+        )}
       </div>
     </div>
   );
