@@ -1,3 +1,10 @@
+# [1.37.0](https://github.com/Kanna727/ha-dashboard/compare/v1.36.0...v1.37.0) (2026-10-21)
+
+
+### Features
+
+* **vacuum:** follow the robot on the map while it cleans ([#51](https://github.com/Kanna727/ha-dashboard/issues/51)) ([5cb7c80](https://github.com/Kanna727/ha-dashboard/commit/5cb7c80e5e528cdedcf43247966aff03ffb7370c))
+
 # [1.36.0](https://github.com/Kanna727/ha-dashboard/compare/v1.35.0...v1.36.0) (2026-10-21)
 
 
