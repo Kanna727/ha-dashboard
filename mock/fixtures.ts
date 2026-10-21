@@ -1,4 +1,5 @@
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
+import { VACUUM_DEVICE, vacuumEntities } from './vacuum';
 
 // States for the fictional home in config/dashboard.config.example.ts, tuned so
 // every card has something to show (car online, dishwasher mid-cycle).
@@ -299,6 +300,8 @@ const list: HassEntity[] = [
   e('sensor.car_vehicle_identification_number', 'TESTVIN0000000000', { model_year: 2024, trim: 'Sport', exterior_color: 'Graphite' }),
   e('button.car_start_valet_mode', 'unknown'),
   e('button.car_stop_valet_mode', 'unknown'),
+  // The robot vacuum and its ~90 settings and sensors (mock/vacuum.ts).
+  ...vacuumEntities(),
 ];
 
 export const FIXTURES: HassEntities = Object.fromEntries(list.map((x) => [x.entity_id, x]));
@@ -330,6 +333,7 @@ export const REGISTRY = {
     { id: 'dev_dot_bed', name: 'Bedroom Dot', areaId: 'bedroom', model: 'Echo Dot', disabled: false },
     { id: 'dev_weather', name: 'Forecast Home', areaId: null, model: null, disabled: false },
     { id: 'dev_car', name: 'MY CAR', areaId: null, model: 'Sport (2024)', disabled: false },
+    VACUUM_DEVICE,
   ],
   entities: [
     ...PLUGS.flatMap(([deviceId, sw, power]) => [
@@ -356,6 +360,11 @@ export const REGISTRY = {
       .map((x) => x.entity_id)
       .filter((id) => /^[a-z_]+\.(garage_)?car_/.test(id))
       .map((entityId) => ({ entityId, deviceId: 'dev_car', platform: 'kia_uvo' })),
+    // The robot vacuum's device: every robot_* entity.
+    ...list
+      .map((x) => x.entity_id)
+      .filter((id) => /^[a-z_]+\.robot(_|$)/.test(id))
+      .map((entityId) => ({ entityId, deviceId: VACUUM_DEVICE.id, platform: 'dreame_vacuum' })),
   ],
 };
 
