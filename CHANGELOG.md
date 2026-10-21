@@ -1,3 +1,10 @@
+# [1.38.0](https://github.com/Kanna727/ha-dashboard/compare/v1.37.0...v1.38.0) (2026-10-21)
+
+
+### Features
+
+* **vacuum:** cockpit page with a 3D robot, and a vacuum chip on room cards ([#52](https://github.com/Kanna727/ha-dashboard/issues/52)) ([7d28036](https://github.com/Kanna727/ha-dashboard/commit/7d28036d8d76cf086a6e8aa7ab0936720816e2c9)), closes [#51](https://github.com/Kanna727/ha-dashboard/issues/51) [#51](https://github.com/Kanna727/ha-dashboard/issues/51)
+
 # [1.37.0](https://github.com/Kanna727/ha-dashboard/compare/v1.36.0...v1.37.0) (2026-10-21)
 
 
