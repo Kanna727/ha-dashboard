@@ -52,6 +52,8 @@ export interface MapProps {
   // Spot / go-to point.
   point?: Pt | null;
   onPoint?: (p: Pt) => void;
+  // Space overlays cover (px from each edge): the map fits and centres inside the rest.
+  pad?: { t: number; r: number; b: number; l: number };
 }
 
 interface View {
@@ -112,14 +114,17 @@ export function VacuumMap(props: MapProps) {
     return () => ro.disconnect();
   }, []);
 
-  // The image fitted inside the box at zoom 1.
+  // The image fitted inside the box at zoom 1 (inside `pad`, the room overlays take).
+  const pad = props.pad ?? { t: 0, r: 0, b: 0, l: 0 };
+  const aw = Math.max(1, size.w - pad.l - pad.r);
+  const ah = Math.max(1, size.h - pad.t - pad.b);
   const iw = map?.w ?? 1;
   const ih = map?.h ?? 1;
-  const fit = Math.min(size.w / iw, size.h / ih) || 1;
+  const fit = Math.min(aw / iw, ah / ih) || 1;
   const fw = iw * fit;
   const fh = ih * fit;
-  const left = (size.w - fw) / 2;
-  const top = (size.h - fh) / 2;
+  const left = pad.l + (aw - fw) / 2;
+  const top = pad.t + (ah - fh) / 2;
   const k = 1 / (fit * view.s); // image px per screen px: keeps handles and strokes finger-sized
 
   const clampView = (v: View): View => {
@@ -153,9 +158,10 @@ export function VacuumMap(props: MapProps) {
   const stopFollowing = () => followOn && setFollowing(false);
   // Pan so a stage point (fitted px) is centred, without showing past the map's edges when zoomed in.
   const centreOn = (s: number, px: number, py: number): View => {
-    const axis = (box: number, off: number, len: number, p: number) =>
-      s * len >= box ? clamp(box / 2 - off - s * p, box - off - s * len, -off) : (box - s * len) / 2 - off;
-    return { s, x: axis(size.w, left, fw, px), y: axis(size.h, top, fh, py) };
+    // `mid`: the centre of the clear area (inside `pad`).
+    const axis = (box: number, mid: number, off: number, len: number, p: number) =>
+      s * len >= box ? clamp(mid - off - s * p, box - off - s * len, -off) : mid - off - (s * len) / 2;
+    return { s, x: axis(size.w, pad.l + aw / 2, left, fw, px), y: axis(size.h, pad.t + ah / 2, top, fh, py) };
   };
   const robotKey = props.robot ? `${Math.round(props.robot.x)},${Math.round(props.robot.y)}` : '';
   useEffect(() => {

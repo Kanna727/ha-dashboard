@@ -16,7 +16,7 @@ import {
   shortName,
   type VacRoom,
 } from '../lib/vacuum';
-import { ConfirmButton, EntityControl, Row, Section, sensorText } from './controls';
+import { ConfirmButton, EntityControl, Row, Section, SectionFlat, sensorText } from './controls';
 import { absUrl } from './useMapImage';
 import type { VacuumInfo } from './useVacuum';
 
@@ -42,9 +42,24 @@ interface Props {
   rooms: VacRoom[];
   call: Call;
   onPickRoom: (id: number) => void;
+  // Only these sections (designs that split them over tabs); all when unset.
+  only?: SectionId[];
+  // Always open, without the collapse header (a tab already says what it is).
+  flat?: boolean;
 }
 
-export function VacuumSections({ info, device, vac, cam, rooms, call, onPickRoom }: Props) {
+export type SectionId = 'cleaning' | 'rooms' | 'care' | 'quiet' | 'maps' | 'remote' | 'history' | 'settings' | 'diagnostics';
+
+export function VacuumSections(props: Props) {
+  return (
+    <SectionFlat.Provider value={!!props.flat}>
+      <AllSections {...props} />
+    </SectionFlat.Provider>
+  );
+}
+
+function AllSections({ info, device, vac, cam, rooms, call, onPickRoom, only }: Props) {
+  const show = (id: SectionId) => !only || only.includes(id);
   const k = info.keys;
   const ids = useMemo(() => Object.values(k), [k]);
   const states = useEntities(ids);
@@ -71,15 +86,15 @@ export function VacuumSections({ info, device, vac, cam, rooms, call, onPickRoom
 
   return (
     <>
-      {CLEANING.some(has) && (
+      {show('cleaning') && CLEANING.some(has) && (
         <Section title="Cleaning" icon="broom" open>
           {controls(CLEANING)}
         </Section>
       )}
 
-      {rooms.length > 0 && <RoomsSection info={info} device={device} rooms={rooms} call={call} onPickRoom={onPickRoom} byId={byId} />}
+      {show('rooms') && rooms.length > 0 && <RoomsSection info={info} device={device} rooms={rooms} call={call} onPickRoom={onPickRoom} byId={byId} />}
 
-      {(DOCK.some(has) || parts.length > 0 || CARE.some(has)) && (
+      {show('care') && (DOCK.some(has) || parts.length > 0 || CARE.some(has)) && (
         <Section title="Dock & care" icon="dock" summary={<CareSummary parts={parts} keys={k} />}>
           {controls(DOCK)}
           {parts.map((p) => (
@@ -89,27 +104,29 @@ export function VacuumSections({ info, device, vac, cam, rooms, call, onPickRoom
         </Section>
       )}
 
-      {(QUIET.some(has) || Array.isArray(attrs.schedule)) && (
+      {show('quiet') && (QUIET.some(has) || Array.isArray(attrs.schedule)) && (
         <Section title="Quiet hours & schedule" icon="calendar">
           {controls(QUIET)}
           <Schedule value={attrs.schedule} rooms={rooms} />
         </Section>
       )}
 
-      <MapsSection info={info} cam={cam} camAttrs={camAttrs} controls={controls(MAPS)} call={call} />
+      {show('maps') && <MapsSection info={info} cam={cam} camAttrs={camAttrs} controls={controls(MAPS)} call={call} />}
 
-      <Section title="Remote control" icon="tune">
-        <Remote call={call} svc={info.platform} />
-      </Section>
+      {show('remote') && (
+        <Section title="Remote control" icon="tune">
+          <Remote call={call} svc={info.platform} />
+        </Section>
+      )}
 
-      {(STATS.some(has) || has('cleaning_history')) && (
+      {show('history') && (STATS.some(has) || has('cleaning_history')) && (
         <Section title="History" icon="history">
           <Stats keys={k} />
           <History id={k.cleaning_history} pictures={camAttrs.cleaning_history_picture} />
         </Section>
       )}
 
-      {(settings.length > 0 || info.extra.length > 0) && (
+      {show('settings') && (settings.length > 0 || info.extra.length > 0) && (
         <Section title="Settings" icon="cog">
           {settings.map(([key, id]) => (
             <EntityControl key={key} id={id} name={name(key)} confirm={needsConfirm(key)} />
@@ -122,7 +139,7 @@ export function VacuumSections({ info, device, vac, cam, rooms, call, onPickRoom
         </Section>
       )}
 
-      {diagnostics.length > 0 && (
+      {show('diagnostics') && diagnostics.length > 0 && (
         <Section title="Diagnostics" icon="alert">
           {diagnostics.map(([key, id]) => (
             <EntityControl key={key} id={id} name={name(key)} />

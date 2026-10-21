@@ -393,6 +393,12 @@ export function vacuumService(domain: string, service: string, data: Record<stri
     }
     return true;
   }
+  // Auto-empty: the dock runs for 12 s (the page shows the dock's cutaway meanwhile).
+  if (domain === 'button' && target.includes(`button.${BASE}_start_auto_empty`)) {
+    patch(`sensor.${BASE}_auto_empty_status`, { state: 'active' });
+    window.setTimeout(() => patch(`sensor.${BASE}_auto_empty_status`, { state: 'idle' }), 12_000);
+    return true;
+  }
   if (domain === 'button' && target.some((t) => t.startsWith(`button.${BASE}_reset_`))) {
     for (const t of target) {
       const part = t.slice(`button.${BASE}_reset_`.length);

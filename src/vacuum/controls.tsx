@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { HassEntity } from 'home-assistant-js-websocket';
 import { useHass } from '../ha/api';
 import { useEntity } from '../ha/store';
@@ -243,9 +243,26 @@ export function EntityControl({ id, name, confirm }: { id: string; name: string;
   }
 }
 
+// Sections shown inside a tab: always open, with a plain header.
+export const SectionFlat = createContext(false);
+
 // A collapsible section on the vacuum page.
 export function Section({ title, icon, summary, open: initial = false, children }: { title: string; icon: IconName; summary?: ReactNode; open?: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(initial);
+  const flat = useContext(SectionFlat);
+  if (flat)
+    return (
+      <section className="panel v-section open flat">
+        <div className="v-section-head">
+          <span className="v-section-icon">
+            <Icon name={icon} size={20} />
+          </span>
+          <h2 className="label">{title}</h2>
+          {summary !== undefined && <span className="panel-summary">{summary}</span>}
+        </div>
+        <div className="v-section-body">{children}</div>
+      </section>
+    );
   return (
     <section className={`panel v-section ${open ? 'open' : ''}`}>
       <button className="v-section-head" aria-expanded={open} onClick={() => setOpen(!open)}>

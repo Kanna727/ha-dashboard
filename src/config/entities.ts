@@ -70,7 +70,7 @@ export const {
 
 // Optional settings, with defaults for configs stored before they existed.
 export const ALERTS = { chime: true, doorOpenMinutes: 3, ...cfg.ALERTS };
-export const VACUUM: { entity?: string; map?: string } = { ...cfg.VACUUM };
+export const VACUUM: NonNullable<DashboardConfig['VACUUM']> = { ...cfg.VACUUM };
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };
 
 // Deploys write "<app version>/<config hash>" here; open pages reload when it

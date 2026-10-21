@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { HassEntity } from 'home-assistant-js-websocket';
 import { useHass } from '../ha/api';
 import { useEntities, useEntity } from '../ha/store';
 import { isUnavailable, num } from '../ha/format';
@@ -8,7 +7,6 @@ import { useToasts } from '../components/Toasts';
 import {
   calibration,
   commonPrefix,
-  fmtMinutes,
   isRunning,
   optionIndex,
   parseRestrictions,
@@ -22,9 +20,10 @@ import {
   type Restrictions,
 } from '../lib/vacuum';
 import { ConfirmButton } from './controls';
+import { BackButton, Cockpit, type VacParts } from './Cockpit';
 import { useMapImage } from './useMapImage';
 import { useVacuum, type VacuumInfo } from './useVacuum';
-import { VacuumMap, type Shape, type ShapeKind } from './VacuumMap';
+import { VacuumMap, type MapProps, type Shape, type ShapeKind } from './VacuumMap';
 import { VacuumSections } from './VacuumSections';
 
 type Mode = 'rooms' | 'zones' | 'spot' | 'restrict' | 'edit';
@@ -71,13 +70,6 @@ export function VacuumPage({ onBack }: { onBack?: () => void }) {
   return <Vacuum info={info} onBack={onBack} />;
 }
 
-function BackButton({ onBack }: { onBack: () => void }) {
-  return (
-    <button className="round vpage-back" onClick={onBack} aria-label="Back to the dashboard">
-      <Icon name="back" size={24} />
-    </button>
-  );
-}
 
 function Vacuum({ info, onBack }: { info: VacuumInfo; onBack?: () => void }) {
   const hass = useHass();
@@ -225,238 +217,208 @@ function Vacuum({ info, onBack }: { info: VacuumInfo; onBack?: () => void }) {
   const name = device || (vac?.attributes.friendly_name as string | undefined) || 'Vacuum';
   const currentRoom = roomSensor && !isUnavailable(roomSensor) ? roomSensor.state : undefined;
 
-  return (
-    <div className="vpage">
-      <header className="panel vpage-head">
-        {onBack && <BackButton onBack={onBack} />}
-        <span className={`vpage-icon ${status.tone}`}>
-          <Icon name="vacuum" size={30} />
-        </span>
-        <div className="vpage-title">
-          <h1 className="ellipsis">{name}</h1>
-          <div className={`vpage-status ${status.tone}`}>
-            <span className="dot" />
-            <span className="ellipsis">
-              {status.label}
-              {currentRoom && (running || paused) ? ` · ${currentRoom}` : ''}
-            </span>
-          </div>
-        </div>
-        <VacStats vac={vac} keys={k} battery={battery} running={running || paused} />
-        <div className="vpage-controls">
-          {running ? (
-            <CtlButton icon="pause" label="Pause" onClick={() => call('vacuum', 'pause', {}, 'pause')} primary />
-          ) : (
-            <CtlButton icon="play" label={paused ? 'Resume' : 'Start'} onClick={() => call('vacuum', 'start', {}, 'start cleaning')} primary disabled={offline} />
-          )}
-          <CtlButton icon="stop" label="Stop" onClick={() => call('vacuum', 'stop', {}, 'stop')} disabled={!running && !paused} />
-          <CtlButton icon="dock" label="Dock" onClick={() => call('vacuum', 'return_to_base', {}, 'send it to the dock')} disabled={offline || vac?.state === 'docked'} />
-          <CtlButton icon="locate" label="Find" onClick={() => call('vacuum', 'locate', {}, 'locate it')} disabled={offline} />
-        </div>
-      </header>
+  const primary = running
+    ? { icon: 'pause' as IconName, label: 'Pause', onClick: () => void call('vacuum', 'pause', {}, 'pause'), disabled: false }
+    : { icon: 'play' as IconName, label: paused ? 'Resume' : 'Start', onClick: () => void call('vacuum', 'start', {}, 'start cleaning'), disabled: offline };
+  const secondary = [
+    { icon: 'stop' as IconName, label: 'Stop', onClick: () => void call('vacuum', 'stop', {}, 'stop'), disabled: !running && !paused },
+    { icon: 'dock' as IconName, label: 'Dock', onClick: () => void call('vacuum', 'return_to_base', {}, 'send it to the dock'), disabled: offline || vac?.state === 'docked' },
+    { icon: 'locate' as IconName, label: 'Find', onClick: () => void call('vacuum', 'locate', {}, 'locate it'), disabled: offline },
+  ];
 
-      <div className="vpage-grid">
-        <section className="panel vmap-panel">
-          <div className="segmented small vmodes" role="tablist">
-            {MODES.map((m) => (
-              <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'active' : ''} onClick={() => setMode(m.id)}>
-                <Icon name={m.icon} size={18} />
-                <span>{m.label}</span>
-                {m.id === 'restrict' && dirty && <i className="vmode-dot" aria-label="unsaved" />}
-              </button>
-            ))}
-          </div>
-          <VacuumMap
-            map={map}
-            cal={cal}
-            rooms={rooms}
-            robot={camAttrs.vacuum_position as Pt | undefined}
-            running={running || paused}
-            selected={mode === 'rooms' ? picked : mode === 'edit' ? editPick : []}
-            dimOthers={mode === 'edit' && editPick.length > 0}
-            onRoomTap={onRoomTap}
-            shapes={shapes}
-            active={active}
-            onSelect={setActive}
-            onChange={onChange}
-            onDelete={onDelete}
-            draw={
-              mode === 'zones'
-                ? zones.length < MAX_ZONES ? { kind: 'zone', shape: 'rect' } : null
-                : mode === 'restrict'
-                  ? { kind: tool, shape: TOOLS.find((t) => t.id === tool)!.shape }
-                  : mode === 'edit' && splitting
-                    ? { kind: 'split', shape: 'line' }
-                    : null
-            }
-            onDraw={onDraw}
-            point={mode === 'spot' ? point : null}
-            onPoint={mode === 'spot' ? setPoint : undefined}
-          />
-          <div className="vmap-bar">
-            {!cal && <p className="muted small">This vacuum's map has no calibration, so rooms and zones can't be picked on it.</p>}
-
-            {mode === 'rooms' && (
-              <>
-                <div className="vpicks">
-                  {picked.length ? (
-                    picked.map((id, i) => (
-                      <button key={id} className="chip-btn small active" onClick={() => setPicked(picked.filter((x) => x !== id))}>
-                        {i + 1}. {sel(id)?.name ?? id} <Icon name="close" size={14} />
-                      </button>
-                    ))
-                  ) : (
-                    <span className="muted small">Tap rooms on the map, in the order to clean them. Nothing picked cleans everywhere.</span>
-                  )}
-                </div>
-                <div className="vbar-row">
-                  <button className="chip-btn small" onClick={() => setPicked(picked.length === rooms.length ? [] : rooms.map((r) => r.id))} disabled={!rooms.length}>
-                    {picked.length === rooms.length && rooms.length ? 'None' : 'All rooms'}
-                  </button>
-                  <CleanOptions opts={opts} setOpts={setOpts} suctionOpts={suctionOpts} waterOpts={mops ? waterOpts : []} suction={suction} water={water} />
-                  <button className="v-btn primary" onClick={startRooms} disabled={offline}>
-                    <Icon name="play" size={18} />
-                    {picked.length ? `Clean ${picked.length} room${picked.length > 1 ? 's' : ''}` : 'Clean everywhere'}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {mode === 'zones' && (
-              <>
-                <p className="muted small">
-                  Drag on the map to draw a zone (up to {MAX_ZONES}). Tap a zone to move, resize or delete it; two fingers pan and zoom.
-                </p>
-                <div className="vbar-row">
-                  <button className="chip-btn small" onClick={() => setZones([])} disabled={!zones.length}>
-                    Clear
-                  </button>
-                  <CleanOptions opts={opts} setOpts={setOpts} suctionOpts={suctionOpts} waterOpts={mops ? waterOpts : []} suction={suction} water={water} />
-                  <button className="v-btn primary" onClick={startZones} disabled={offline || !zones.length}>
-                    <Icon name="play" size={18} />
-                    {zones.length ? `Clean ${zones.length} zone${zones.length > 1 ? 's' : ''}` : 'Clean zones'}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {mode === 'spot' && (
-              <>
-                <p className="muted small">{point ? 'Spot picked. Clean around it, or send the robot there.' : 'Tap the map to pick a spot.'}</p>
-                <div className="vbar-row">
-                  <CleanOptions opts={opts} setOpts={setOpts} suctionOpts={suctionOpts} waterOpts={mops ? waterOpts : []} suction={suction} water={water} />
-                  <button className="v-btn" disabled={!point || offline} onClick={() => point && call(svc, 'vacuum_goto', { x: Math.round(point.x), y: Math.round(point.y) }, 'send it there')}>
-                    <Icon name="path" size={18} />
-                    Go here
-                  </button>
-                  <button
-                    className="v-btn primary"
-                    disabled={!point || offline}
-                    onClick={() => point && call(svc, 'vacuum_clean_spot', { points: [[Math.round(point.x), Math.round(point.y)]], ...extra() }, 'start the spot clean')}
-                  >
-                    <Icon name="spot" size={18} />
-                    Spot clean
-                  </button>
-                </div>
-              </>
-            )}
-
-            {mode === 'restrict' && (
-              <>
-                <div className="vbar-row">
-                  <div className="v-choice" role="radiogroup" aria-label="Draw">
-                    {TOOLS.map((t) => (
-                      <button key={t.id} role="radio" aria-checked={tool === t.id} className={`tool-${t.id} ${tool === t.id ? 'active' : ''}`} onClick={() => setTool(t.id)}>
-                        <Icon name={t.icon} size={16} /> {t.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <p className="muted small">
-                  {tool === 'wall' ? 'Drag to draw a wall the robot won’t cross.' : `Drag to draw a ${tool === 'noGo' ? 'zone the robot stays out of' : 'zone it vacuums but never mops'}.`}{' '}
-                  Tap one to move, resize or delete it. {restr.noGo.length} no-go · {restr.noMop.length} no-mop · {restr.walls.length} wall{restr.walls.length === 1 ? '' : 's'}
-                  {dirty ? ' · not saved yet' : ''}
-                </p>
-                <div className="vbar-row end">
-                  <button className="v-btn" disabled={!draft} onClick={() => (setDraft(null), setActive(null))}>
-                    <Icon name="undo" size={18} />
-                    Discard
-                  </button>
-                  <button className="v-btn primary" disabled={!dirty || offline} onClick={saveRestrictions}>
-                    <Icon name="save" size={18} />
-                    Save to vacuum
-                  </button>
-                </div>
-              </>
-            )}
-
-            {mode === 'edit' && (
-              <RoomEditBar
-                svc={svc}
-                call={call}
-                picked={editPick.map(sel).filter((r): r is NonNullable<typeof r> => !!r)}
-                split={split}
-                splitting={splitting}
-                setSplitting={(v) => {
-                  setSplitting(v);
-                  setSplit(null);
-                  setActive(null);
-                }}
-                done={() => {
-                  setEditPick([]);
-                  setSplit(null);
-                  setSplitting(false);
-                }}
-                nameSelect={editPick.length === 1 ? k[`room_${editPick[0]}_name`] : undefined}
-              />
-            )}
-          </div>
-        </section>
-
-        <div className="vpage-side">
-          <VacuumSections info={info} device={device} vac={vac} cam={cam} rooms={rooms} call={call} onPickRoom={(id) => (setMode('rooms'), setPicked([id]))} />
-        </div>
-      </div>
+  const modeTabs = (
+    <div className="segmented small vmodes" role="tablist">
+      {MODES.map((m) => (
+        <button key={m.id} role="tab" aria-selected={mode === m.id} className={mode === m.id ? 'active' : ''} onClick={() => setMode(m.id)}>
+          <Icon name={m.icon} size={18} />
+          <span>{m.label}</span>
+          {m.id === 'restrict' && dirty && <i className="vmode-dot" aria-label="unsaved" />}
+        </button>
+      ))}
     </div>
   );
-}
 
-function CtlButton({ icon, label, onClick, primary, disabled }: { icon: IconName; label: string; onClick: () => void; primary?: boolean; disabled?: boolean }) {
-  return (
-    <button className={`vctl ${primary ? 'primary' : ''}`} onClick={onClick} disabled={disabled}>
-      <Icon name={icon} size={24} />
-      <span>{label}</span>
-    </button>
+  const mapEl = (x: Partial<MapProps> = {}) => (
+    <VacuumMap
+      map={map}
+      cal={cal}
+      rooms={rooms}
+      robot={camAttrs.vacuum_position as Pt | undefined}
+      running={running || paused}
+      selected={mode === 'rooms' ? picked : mode === 'edit' ? editPick : []}
+      dimOthers={mode === 'edit' && editPick.length > 0}
+      onRoomTap={onRoomTap}
+      shapes={shapes}
+      active={active}
+      onSelect={setActive}
+      onChange={onChange}
+      onDelete={onDelete}
+      draw={
+        mode === 'zones'
+          ? zones.length < MAX_ZONES ? { kind: 'zone', shape: 'rect' } : null
+          : mode === 'restrict'
+            ? { kind: tool, shape: TOOLS.find((t) => t.id === tool)!.shape }
+            : mode === 'edit' && splitting
+              ? { kind: 'split', shape: 'line' }
+              : null
+      }
+      onDraw={onDraw}
+      point={mode === 'spot' ? point : null}
+      onPoint={mode === 'spot' ? setPoint : undefined}
+      {...x}
+    />
   );
-}
 
-function VacStats({ vac, keys, battery, running }: { vac: HassEntity | undefined; keys: Record<string, string>; battery?: number; running: boolean }) {
-  const [time, area] = useEntities([keys.cleaning_time ?? '', keys.cleaned_area ?? '']);
-  const a = vac?.attributes ?? {};
-  const minutes = num(time) ?? (a.cleaning_time as number | undefined);
-  const m2 = num(area) ?? (a.cleaned_area as number | undefined);
-  return (
-    <div className="vpage-stats">
-      {battery !== undefined && (
-        <span className={`vstat ${battery < 20 ? 'low' : ''}`}>
-          <Icon name="battery" size={18} />
-          {Math.round(battery)}%
-        </span>
+  const cleanOptions = <CleanOptions opts={opts} setOpts={setOpts} suctionOpts={suctionOpts} waterOpts={mops ? waterOpts : []} suction={suction} water={water} />;
+
+  const bar = (
+    <>
+      {!cal && <p className="muted small">This vacuum's map has no calibration, so rooms and zones can't be picked on it.</p>}
+
+      {mode === 'rooms' && (
+        <>
+          <div className="vpicks">
+            {picked.length ? (
+              picked.map((id, i) => (
+                <button key={id} className="chip-btn small active" onClick={() => setPicked(picked.filter((x) => x !== id))}>
+                  {i + 1}. {sel(id)?.name ?? id} <Icon name="close" size={14} />
+                </button>
+              ))
+            ) : (
+              <span className="muted small">Tap rooms on the map, in the order to clean them. Nothing picked cleans everywhere.</span>
+            )}
+          </div>
+          <div className="vbar-row">
+            <button className="chip-btn small" onClick={() => setPicked(picked.length === rooms.length ? [] : rooms.map((r) => r.id))} disabled={!rooms.length}>
+              {picked.length === rooms.length && rooms.length ? 'None' : 'All rooms'}
+            </button>
+            {cleanOptions}
+            <button className="v-btn primary" onClick={startRooms} disabled={offline}>
+              <Icon name="play" size={18} />
+              {picked.length ? `Clean ${picked.length} room${picked.length > 1 ? 's' : ''}` : 'Clean everywhere'}
+            </button>
+          </div>
+        </>
       )}
-      {running && minutes !== undefined && (
-        <span className="vstat">
-          <Icon name="timer" size={18} />
-          {fmtMinutes(minutes)}
-        </span>
+
+      {mode === 'zones' && (
+        <>
+          <p className="muted small">Drag on the map to draw a zone (up to {MAX_ZONES}). Tap a zone to move, resize or delete it; two fingers pan and zoom.</p>
+          <div className="vbar-row">
+            <button className="chip-btn small" onClick={() => setZones([])} disabled={!zones.length}>
+              Clear
+            </button>
+            {cleanOptions}
+            <button className="v-btn primary" onClick={startZones} disabled={offline || !zones.length}>
+              <Icon name="play" size={18} />
+              {zones.length ? `Clean ${zones.length} zone${zones.length > 1 ? 's' : ''}` : 'Clean zones'}
+            </button>
+          </div>
+        </>
       )}
-      {running && m2 !== undefined && (
-        <span className="vstat">
-          <Icon name="zone" size={18} />
-          {m2} m²
-        </span>
+
+      {mode === 'spot' && (
+        <>
+          <p className="muted small">{point ? 'Spot picked. Clean around it, or send the robot there.' : 'Tap the map to pick a spot.'}</p>
+          <div className="vbar-row">
+            {cleanOptions}
+            <button className="v-btn" disabled={!point || offline} onClick={() => point && call(svc, 'vacuum_goto', { x: Math.round(point.x), y: Math.round(point.y) }, 'send it there')}>
+              <Icon name="path" size={18} />
+              Go here
+            </button>
+            <button
+              className="v-btn primary"
+              disabled={!point || offline}
+              onClick={() => point && call(svc, 'vacuum_clean_spot', { points: [[Math.round(point.x), Math.round(point.y)]], ...extra() }, 'start the spot clean')}
+            >
+              <Icon name="spot" size={18} />
+              Spot clean
+            </button>
+          </div>
+        </>
       )}
-    </div>
+
+      {mode === 'restrict' && (
+        <>
+          <div className="vbar-row">
+            <div className="v-choice" role="radiogroup" aria-label="Draw">
+              {TOOLS.map((t) => (
+                <button key={t.id} role="radio" aria-checked={tool === t.id} className={`tool-${t.id} ${tool === t.id ? 'active' : ''}`} onClick={() => setTool(t.id)}>
+                  <Icon name={t.icon} size={16} /> {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="muted small">
+            {tool === 'wall' ? 'Drag to draw a wall the robot won’t cross.' : `Drag to draw a ${tool === 'noGo' ? 'zone the robot stays out of' : 'zone it vacuums but never mops'}.`}{' '}
+            Tap one to move, resize or delete it. {restr.noGo.length} no-go · {restr.noMop.length} no-mop · {restr.walls.length} wall{restr.walls.length === 1 ? '' : 's'}
+            {dirty ? ' · not saved yet' : ''}
+          </p>
+          <div className="vbar-row end">
+            <button className="v-btn" disabled={!draft} onClick={() => (setDraft(null), setActive(null))}>
+              <Icon name="undo" size={18} />
+              Discard
+            </button>
+            <button className="v-btn primary" disabled={!dirty || offline} onClick={saveRestrictions}>
+              <Icon name="save" size={18} />
+              Save to vacuum
+            </button>
+          </div>
+        </>
+      )}
+
+      {mode === 'edit' && (
+        <RoomEditBar
+          svc={svc}
+          call={call}
+          picked={editPick.map(sel).filter((r): r is NonNullable<typeof r> => !!r)}
+          split={split}
+          splitting={splitting}
+          setSplitting={(v) => {
+            setSplitting(v);
+            setSplit(null);
+            setActive(null);
+          }}
+          done={() => {
+            setEditPick([]);
+            setSplit(null);
+            setSplitting(false);
+          }}
+          nameSelect={editPick.length === 1 ? k[`room_${editPick[0]}_name`] : undefined}
+        />
+      )}
+    </>
   );
+
+  const parts: VacParts = {
+    onBack,
+    name,
+    status,
+    statusLine: `${status.label}${currentRoom && (running || paused) ? ` · ${currentRoom}` : ''}`,
+    battery,
+    running,
+    paused,
+    offline,
+    currentRoom,
+    keys: k,
+    vac,
+    primary,
+    secondary,
+    modeTabs,
+    map: mapEl,
+    bar,
+    sections: (only, flat) => (
+      <VacuumSections info={info} device={device} vac={vac} cam={cam} rooms={rooms} call={call} only={only} flat={flat} onPickRoom={(id) => (setMode('rooms'), setPicked([id]))} />
+    ),
+    rooms,
+    picked,
+    togglePick: (id) => setPicked((p) => toggle(p, id)),
+    setPicked,
+    startRooms,
+    showMap: () => setMode('rooms'),
+  };
+
+  return <Cockpit p={parts} />;
 }
 
 const REPEATS = [1, 2, 3];

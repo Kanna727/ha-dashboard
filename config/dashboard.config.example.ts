@@ -103,7 +103,7 @@ const config: DashboardConfig = {
     },
     {
       id: 'utility',
-      appliances: ['washer', 'dishwasher'],
+      appliances: ['washer', 'dishwasher', 'vacuum'],
       name: 'Utility',
       icon: 'washer',
       presence: [],

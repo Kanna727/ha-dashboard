@@ -237,6 +237,27 @@ export function vacuumStatus(state: string | undefined, attrs: Record<string, un
 
 export const isRunning = (state: string | undefined) => state === 'cleaning' || state === 'returning';
 
+// The room card's vacuum chip: a few words that fit a chip (`short`), the full
+// line for its label/tooltip (`long`), and whether it lights up.
+export function chipStatus(
+  state: string | undefined,
+  attrs: Record<string, unknown> = {},
+  extra: { battery?: number; room?: string; area?: number } = {},
+): { short: string; long: string; on: boolean; tone: Tone } {
+  const s = vacuumStatus(state, attrs);
+  const pct = extra.battery !== undefined ? `${Math.round(extra.battery)}%` : '';
+  if (s.tone === 'idle') return { short: '', long: `Vacuum: ${s.label}`, on: false, tone: s.tone };
+  if (s.tone === 'warn') return { short: s.label.length > 14 ? 'Needs help' : s.label, long: `Vacuum: ${s.label}`, on: true, tone: s.tone };
+  if (state === 'cleaning') {
+    const where = extra.room || s.label;
+    const area = extra.area ? `${Math.round(extra.area)} m²` : '';
+    return { short: where, long: `Vacuum: ${s.label}${extra.room ? ` · ${extra.room}` : ''}${area ? ` · ${area}` : ''}`, on: true, tone: s.tone };
+  }
+  if (state === 'returning') return { short: 'Docking', long: `Vacuum: ${s.label}`, on: true, tone: s.tone };
+  if (state === 'paused') return { short: 'Paused', long: `Vacuum: paused${pct ? ` · ${pct}` : ''}`, on: true, tone: s.tone };
+  return { short: pct || s.label, long: `Vacuum: ${s.label}${pct ? ` · ${pct}` : ''}`, on: false, tone: s.tone };
+}
+
 /* ---------- formatting ---------- */
 
 export function fmtMinutes(min: number | undefined): string {
