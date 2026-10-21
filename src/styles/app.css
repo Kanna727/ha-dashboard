@@ -1892,3 +1892,7 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
   .layout.tablet .vac-pill { width: 50px; padding: 0; justify-content: center; }
   .layout.tablet .vac-pill .pill-hint { display: none; }
 }
+/* Following the robot: the view glides to each new position (updates arrive every second or two). */
+.vmap-stage.glide { transition: transform 1.2s ease-out; }
+.vmap-tools .vfollow.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+@media (prefers-reduced-motion: reduce) { .vmap-stage.glide { transition: none; } }
