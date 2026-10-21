@@ -78,6 +78,7 @@ const TABS: { id: Tab; label: string; icon: IconName; sections?: SectionId[] }[]
 export function Cockpit({ p }: { p: VacParts }) {
   const [tab, setTab] = useState<Tab>('map');
   const t = TABS.find((x) => x.id === tab)!;
+  const emptying = useEmptying(p);
   return (
     <div className="vpage vcock">
       <section className="panel vcock-hero">
@@ -91,7 +92,7 @@ export function Cockpit({ p }: { p: VacParts }) {
             </div>
           </div>
         </div>
-        <RobotHero battery={p.battery} state={p.vac?.state} tone={p.status.tone} />
+        <RobotHero battery={p.battery} state={p.vac?.state} tone={p.status.tone} emptying={emptying} />
         <HeroStats p={p} />
         <div className="vcock-controls">
           <CtlButton {...p.primary} primary />
@@ -222,10 +223,19 @@ function RoomTiles({ p }: { p: VacParts }) {
   );
 }
 
-// The robot in 3D (robot3d.ts): on its dock while docked, turning with its
-// brush and laser spinning while it works, the battery as a ring on the floor.
-// Without WebGL it falls back to the drawn robot.
-function RobotHero({ battery, state, tone }: { battery?: number; state?: string; tone: Tone }) {
+// Whether the dock is emptying the robot's bin: the auto-empty status sensor,
+// else the vacuum's own attribute ("Idle" / "Active").
+function useEmptying(p: VacParts): boolean {
+  const [s] = useEntities([p.keys.auto_empty_status ?? '']);
+  const v = s?.state ?? String(p.vac?.attributes.auto_empty_status ?? '');
+  return /^(active|emptying|collecting|dust_collecting)/i.test(v);
+}
+
+// The robot in 3D (robot3d.ts): on its dock while docked (see-through with the
+// airflow while the dock empties it), turning with its brush and laser spinning
+// while it works, the battery as a ring on the floor. Without WebGL it falls
+// back to the drawn robot.
+function RobotHero({ battery, state, tone, emptying }: { battery?: number; state?: string; tone: Tone; emptying?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const viewer = useRef<RobotViewer | null>(null);
@@ -254,8 +264,8 @@ function RobotHero({ battery, state, tone }: { battery?: number; state?: string;
   }, []);
 
   useEffect(() => {
-    viewer.current?.setState({ state, battery, tone });
-  }, [state, battery, tone, failed]);
+    viewer.current?.setState({ state, battery, tone, emptying });
+  }, [state, battery, tone, emptying, failed]);
 
   const pct = Math.round(Math.max(0, Math.min(100, battery ?? 0)));
   if (failed) return <RobotArt battery={battery} state={state} tone={tone} />;
