@@ -85,9 +85,73 @@ function readBox(v: unknown): Box | null {
   return box;
 }
 
-// How much a screen whose canvas is `width` px wide scales the layout.
+export const overlapsX = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w;
+
+// Stacks the cards with a constant gap: in order of their tops (then left
+// edges), each card sits GAP below the lowest card above it that it overlaps
+// sideways, or at the top. Only y changes, so when a card grows or shrinks
+// the cards under it move with it. `height` gives a content-sized card's height.
+export function stack(boxes: Record<string, Box>, height: (id: string) => number): Record<string, Box> {
+  const ids = Object.keys(boxes).sort((a, b) => boxes[a].y - boxes[b].y || boxes[a].x - boxes[b].x);
+  const out: Record<string, Box> = {};
+  const placed: { box: Box; bottom: number }[] = [];
+  for (const id of ids) {
+    const b = boxes[id];
+    let y = 0;
+    for (const p of placed) if (overlapsX(b, p.box)) y = Math.max(y, p.bottom + GAP);
+    const box = b.y === y ? b : { ...b, y };
+    out[id] = box;
+    placed.push({ box, bottom: y + (b.h ?? height(id)) });
+  }
+  return out;
+}
+
+export const SNAP = 16; // screen px within which an edge snaps
+
+// Where a card's left and right edges may snap: the canvas edges, a
+// neighbour's edges (aligned) and a gap away from them (side by side).
+function snapTargets(others: Box[], width: number) {
+  return {
+    lefts: [0, ...others.flatMap((o) => [o.x, o.x + o.w + GAP])],
+    rights: [width, ...others.flatMap((o) => [o.x + o.w, o.x - GAP])],
+  };
+}
+
+function nearest(v: number, targets: number[], range: number): number | null {
+  let best: number | null = null;
+  for (const t of targets) if (Math.abs(t - v) <= range && (best === null || Math.abs(t - v) < Math.abs(best))) best = t - v;
+  return best;
+}
+
+// A moved card's nearer edge pulled onto a snap target within `range` (layout px).
+export function snapMove(b: Box, others: Box[], width: number, range: number): Box {
+  const { lefts, rights } = snapTargets(others, width);
+  const dl = nearest(b.x, lefts, range);
+  const dr = nearest(b.x + b.w, rights, range);
+  const d = dl === null ? dr : dr === null || Math.abs(dl) <= Math.abs(dr) ? dl : dr;
+  return d === null || d === 0 ? b : { ...b, x: Math.max(0, b.x + d) };
+}
+
+// The dragged side edge of a resized card pulled onto a snap target.
+export function snapResize(b: Box, edge: Edge, others: Box[], width: number, range: number): Box {
+  const { lefts, rights } = snapTargets(others, width);
+  if (edge.r) {
+    const d = nearest(b.x + b.w, rights, range);
+    if (d && b.w + d >= MIN_W) b = { ...b, w: b.w + d };
+  }
+  if (edge.l) {
+    const d = nearest(b.x, lefts, range);
+    if (d && b.w - d >= MIN_W && b.x + d >= 0) b = { ...b, x: b.x + d, w: b.w - d };
+  }
+  return b;
+}
+
+// How much a screen whose canvas is `width` px wide scales the layout. Within
+// 2 % it stays at 1, so a page scrollbar coming and going doesn't rescale every card.
 export function canvasZoom(width: number, layout: Pick<CanvasLayout, 'width'>): number {
-  return width > 0 && layout.width > 0 ? Math.round((width / layout.width) * 1000) / 1000 : 1;
+  if (width <= 0 || layout.width <= 0) return 1;
+  const z = Math.round((width / layout.width) * 1000) / 1000;
+  return Math.abs(z - 1) < 0.02 ? 1 : z;
 }
 
 // A saved layout for these cards (the object stored in HA, or a JSON string),

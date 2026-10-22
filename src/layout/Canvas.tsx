@@ -1,13 +1,34 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../components/Icon';
 import { useToasts } from '../components/Toasts';
-import { GAP, canvasZoom, extent, moveBox, parseLayout, resizeBox, toFront, type Box, type CanvasLayout, type Edge } from '../lib/canvas';
+import {
+  GAP,
+  SNAP,
+  canvasZoom,
+  extent,
+  moveBox,
+  overlapsX,
+  parseLayout,
+  resizeBox,
+  snapMove,
+  snapResize,
+  stack,
+  toFront,
+  type Box,
+  type CanvasLayout,
+  type Edge,
+} from '../lib/canvas';
 import { clearLegacy, legacyLayout, useSharedLayout } from './useSharedLayout';
 
 // Free canvas: the tablet and desktop cards can be dragged anywhere and resized
 // to any size (no grid). Until the owner arranges them, the cards sit in the
 // usual columns. Arranging is a mode (the top bar's arrange button), so taps
 // and slides on the cards never move them by accident.
+//
+// Cards keep a constant gap (lib/canvas.ts `stack`): each sits one gap below
+// the card above it, so when a card grows or shrinks (more energy rows, the
+// commute's best time) the cards under it move with it. Sideways, edges snap a
+// gap away from their neighbours.
 //
 // One layout is shared by every device and both layouts (useSharedLayout): it
 // is kept at the canvas width it was arranged at, and each screen zooms it to
@@ -63,13 +84,11 @@ function measure(main: HTMLElement, ids: string[]): CanvasLayout {
   return { width: main.clientWidth, boxes, order: ids.filter((id) => id in boxes) };
 }
 
+// No top handles: a card's top is where the stack puts it.
 const EDGES: { cls: string; edge: Edge }[] = [
-  { cls: 'n', edge: { t: true } },
   { cls: 's', edge: { b: true } },
   { cls: 'e', edge: { r: true } },
   { cls: 'w', edge: { l: true } },
-  { cls: 'ne', edge: { t: true, r: true } },
-  { cls: 'nw', edge: { t: true, l: true } },
   { cls: 'se', edge: { b: true, r: true } },
   { cls: 'sw', edge: { b: true, l: true } },
 ];
@@ -93,12 +112,21 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
   // While arranging: the layout being edited (null until there is one to edit).
   const [draft, setDraft] = useState<CanvasLayout | null>(null);
   const [changed, setChanged] = useState(false);
-  const [dragging, setDragging] = useState<string | null>(null);
-  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [dragging, setDragging] = useState<{ id: string; move: boolean } | null>(null);
+  // Each card's rendered height (unscaled), for stacking.
+  const [heights, setHeights] = useState<Record<string, number>>({});
+  const heightsRef = useRef(heights);
+  heightsRef.current = heights;
+  // Cards glide to new places only once the first heights are in (no slide on load).
+  const [settled, setSettled] = useState(false);
 
   const stored = useMemo(() => parseLayout(shared.data, idsKey.split(',')), [shared.data, idsKey]);
   const layout = editing ? (draft ?? stored) : stored;
   const z = layout ? canvasZoom(mainWidth, layout) : 1;
+  // Where the cards are shown: stacked with a constant gap. A card being moved
+  // follows the pointer, and the others make room where it would land.
+  const shown = useMemo(() => (layout ? stack(layout.boxes, (id) => heights[id] ?? 0) : null), [layout, heights]);
+  const restack = (boxes: Record<string, Box>) => stack(boxes, (id) => heightsRef.current[id] ?? 0);
 
   useLayoutEffect(() => {
     const main = mainRef.current;
@@ -112,7 +140,10 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
 
   // Entering arrange mode: edit the shared layout, or freeze the columns where they are.
   useLayoutEffect(() => {
-    if (editing && !draft && mainRef.current) setDraft(stored ?? measure(mainRef.current, idsKey.split(',')));
+    const main = mainRef.current;
+    if (!editing || draft || !main) return;
+    if (stored) setDraft(stored);
+    else if (main.clientWidth > 0) setDraft(measure(main, idsKey.split(','))); // not while hidden: nothing to measure
   }, [editing, draft, stored, idsKey]);
 
   // This device's layout from before layouts were shared: hand it to HA once,
@@ -142,22 +173,28 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
     if (editing && changed && draft && !dragging) save(draft).catch(failed);
   }, [editing, changed, draft, dragging]); // not on `failed`: it's new every render
 
-  // Canvas size for scrolling: cards that fit their content change height on their own.
+  // Cards that fit their content change height on their own; the stack follows.
   useLayoutEffect(() => {
     const main = mainRef.current;
-    if (!main || !layout) return;
+    if (!main) return;
     const slots = [...main.querySelectorAll<HTMLElement>('.card-slot')];
-    const height = (id: string) => slots.find((s) => s.dataset.card === id)?.offsetHeight ?? 0;
     const update = () =>
-      setSize((s) => {
-        const e = extent(layout, height);
-        return s.w === e.w && s.h === e.h ? s : e;
+      setHeights((prev) => {
+        const next: Record<string, number> = {};
+        slots.forEach((s) => (next[s.dataset.card!] = s.offsetHeight)); // unscaled, like the layout
+        return slots.every((s) => prev[s.dataset.card!] === next[s.dataset.card!]) ? prev : next;
       });
     update();
     const ro = new ResizeObserver(update);
     slots.forEach((s) => ro.observe(s));
     return () => ro.disconnect();
-  }, [layout]);
+  }, [idsKey]);
+
+  useEffect(() => {
+    if (!layout || settled) return;
+    const id = requestAnimationFrame(() => setSettled(true));
+    return () => cancelAnimationFrame(id);
+  }, [layout, settled]);
 
   const finish = () => {
     setDraft(null);
@@ -187,10 +224,13 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
     const el = e.currentTarget;
     el.setPointerCapture(e.pointerId);
     const height = (el.closest('.card-slot') as HTMLElement).offsetHeight; // unscaled, like the layout
+    const from = shown?.[id] ?? box;
+    const others = Object.entries(shown ?? {}).flatMap(([o, b]) => (o === id ? [] : [b]));
+    const width = layout!.width;
     const scrolled = () => ({ x: main.scrollLeft + window.scrollX, y: main.scrollTop + window.scrollY });
     const start = { px: e.clientX, py: e.clientY, s: scrolled() };
-    setDragging(id);
-    update((l) => ({ ...l, order: toFront(l.order, id) }));
+    setDragging({ id, move: !edge });
+    update((l) => ({ ...l, order: toFront(l.order, id), boxes: { ...l.boxes, [id]: from } }));
 
     // Near the visible edge of the canvas, scroll it (or the page) along.
     const autoScroll = (ev: PointerEvent) => {
@@ -214,12 +254,17 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
       const s = scrolled();
       const dx = (ev.clientX - start.px + s.x - start.s.x) / z;
       const dy = (ev.clientY - start.py + s.y - start.s.y) / z;
-      setBox(id, edge ? resizeBox(box, height, edge, dx, dy) : moveBox(box, dx, dy));
+      const next = edge
+        ? snapResize(resizeBox(from, height, edge, dx, dy), edge, others, width, SNAP / z)
+        : snapMove(moveBox(from, dx, dy), others, width, SNAP / z);
+      setBox(id, next);
     };
+    // Drop: the card takes its place in the stack.
     const end = () => {
       el.removeEventListener('pointermove', move);
       el.removeEventListener('pointerup', end);
       el.removeEventListener('pointercancel', end);
+      update((l) => ({ ...l, boxes: restack(l.boxes) }));
       setDragging(null);
     };
     el.addEventListener('pointermove', move);
@@ -227,15 +272,26 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
     el.addEventListener('pointercancel', end);
   };
 
-  // Arrow keys nudge the focused card (Shift: 1 px instead of 10).
+  // Arrow keys: left/right nudge the focused card (Shift: 1 px instead of 10);
+  // up/down move it past the card above or below it in its stack.
   const onKey = (e: React.KeyboardEvent, id: string) => {
-    const step = e.shiftKey ? 1 : 10;
-    const d = ({ ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] } as Record<string, number[]>)[e.key];
-    const box = layout?.boxes[id];
-    if (!d || !box) return;
-    e.preventDefault();
-    setBox(id, moveBox(box, d[0], d[1]));
+    const cur = shown?.[id];
+    if (!shown || !cur) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const step = (e.shiftKey ? 1 : 10) * (e.key === 'ArrowLeft' ? -1 : 1);
+      update((l) => ({ ...l, boxes: restack({ ...shown, [id]: moveBox(cur, step, 0) }) }));
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const up = e.key === 'ArrowUp';
+      const near = Object.entries(shown)
+        .filter(([o, b]) => o !== id && overlapsX(b, cur) && (up ? b.y < cur.y : b.y > cur.y))
+        .sort(([, a], [, b]) => (up ? b.y - a.y : a.y - b.y))[0]?.[1];
+      if (near) update((l) => ({ ...l, boxes: restack({ ...shown, [id]: { ...cur, y: up ? near.y - 1 : near.y + 1 } }) }));
+    }
   };
+
+  const ext = shown ? extent({ boxes: shown }, (id) => heights[id] ?? 0) : { w: 0, h: 0 };
 
   const canvas = !!layout;
   const zIndex = (id: string) => (layout ? layout.order.indexOf(id) + 1 : undefined);
@@ -244,27 +300,27 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
     <>
       <main
         ref={mainRef}
-        className={`${className} ${canvas ? 'canvas' : ''} ${canvas && editing ? 'editing' : ''}`}
+        className={`${className} ${canvas ? 'canvas' : ''} ${canvas && editing ? 'editing' : ''} ${settled ? 'settled' : ''}`}
         style={canvas ? ({ '--z': z } as React.CSSProperties) : undefined}
       >
         {columns.map((col, i) => (
           <div className="col" key={i}>
             {col.map((card) => {
-              const box = layout?.boxes[card.id];
+              const held = dragging?.id === card.id;
+              // The moved card follows the pointer; every other card sits in the stack.
+              const box = held && dragging.move ? layout?.boxes[card.id] : shown?.[card.id];
               return (
                 <div
                   key={card.id}
-                  className={`card-slot ${box?.h !== undefined ? 'fixed-h' : ''} ${dragging === card.id ? 'dragging' : ''}`}
+                  className={`card-slot ${box?.h !== undefined ? 'fixed-h' : ''} ${held ? 'dragging' : ''}`}
                   data-card={card.id}
                   style={
                     box
                       ? {
-                          left: box.x * z,
-                          top: box.y * z,
                           width: box.w,
                           height: box.h,
                           zIndex: zIndex(card.id),
-                          transform: z !== 1 ? `scale(${z})` : undefined,
+                          transform: `translate(${box.x * z}px, ${box.y * z}px)${z !== 1 ? ` scale(${z})` : ''}`,
                         }
                       : undefined
                   }
@@ -287,7 +343,10 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
                           {box.w} × {box.h ?? 'auto'}
                         </small>
                         {box.h !== undefined && (
-                          <button onPointerDown={(e) => e.stopPropagation()} onClick={() => setBox(card.id, { x: box.x, y: box.y, w: box.w })}>
+                          <button
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={() => update((l) => ({ ...l, boxes: restack({ ...l.boxes, [card.id]: { x: box.x, y: box.y, w: box.w } }) }))}
+                          >
                             Fit height
                           </button>
                         )}
@@ -302,7 +361,17 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
             })}
           </div>
         ))}
-        {canvas && <div className="canvas-extent" style={{ width: size.w * z, height: (size.h + (editing ? ROOM : GAP)) * z }} />}
+        {dragging?.move && shown?.[dragging.id] && (
+          <div
+            className="card-drop"
+            style={{
+              width: shown[dragging.id].w * z,
+              height: (shown[dragging.id].h ?? heights[dragging.id] ?? 0) * z,
+              transform: `translate(${shown[dragging.id].x * z}px, ${shown[dragging.id].y * z}px)`,
+            }}
+          />
+        )}
+        {canvas && <div className="canvas-extent" style={{ width: ext.w * z, height: (ext.h + (editing ? ROOM : GAP)) * z }} />}
       </main>
       {editing && (
         <ArrangeBar
