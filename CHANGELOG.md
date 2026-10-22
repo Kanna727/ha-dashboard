@@ -1,3 +1,10 @@
+# [1.39.0](https://github.com/Kanna727/ha-dashboard/compare/v1.38.0...v1.39.0) (2026-10-22)
+
+
+### Features
+
+* **layout:** swipe between pages, following the finger ([#53](https://github.com/Kanna727/ha-dashboard/issues/53)) ([a5cf62e](https://github.com/Kanna727/ha-dashboard/commit/a5cf62e1f4dc81c07e50f1f117b68bd8a25e1267))
+
 # [1.38.0](https://github.com/Kanna727/ha-dashboard/compare/v1.37.0...v1.38.0) (2026-10-21)
 
 
