@@ -15,9 +15,10 @@ const subscribe = (cb: () => void) => {
   return () => window.removeEventListener('hashchange', cb);
 };
 
-export function usePage(): [Page, (p: Page) => void] {
+// `keepScroll`: a swipe lines the page up itself (layout/Pager.tsx).
+export function usePage(): [Page, (p: Page, keepScroll?: boolean) => void] {
   const page = useSyncExternalStore(subscribe, read);
-  const go = useCallback((p: Page) => {
+  const go = useCallback((p: Page, keepScroll = false) => {
     if (p === read()) return;
     if (p === 'home') {
       // Back to a clean URL; the home page is the entry in history before the page.
@@ -28,7 +29,7 @@ export function usePage(): [Page, (p: Page) => void] {
       window.history.pushState({ page: p }, '', `#${p}`);
       window.dispatchEvent(new HashChangeEvent('hashchange'));
     }
-    window.scrollTo({ top: 0 });
+    if (!keepScroll) window.scrollTo({ top: 0 });
   }, []);
   return [page, go];
 }
