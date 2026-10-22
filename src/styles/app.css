@@ -1553,7 +1553,14 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
    badge divide by it so they stay finger-sized. */
 .cols.canvas { display: block; position: relative; }
 .cols.canvas > .col { display: contents; }
-.canvas .card-slot { position: absolute; transform-origin: 0 0; }
+.canvas .card-slot { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+/* Cards glide when the stack moves them (a card above grew or shrank, or one
+   was dropped); transform only, so it stays cheap on the kiosk. */
+.canvas.settled .card-slot:not(.dragging) { transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.card-drop {
+  position: absolute; left: 0; top: 0; pointer-events: none; border-radius: 24px;
+  border: 2px dashed color-mix(in srgb, var(--accent) 60%, transparent); background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
 .canvas .card-slot.fixed-h > .panel { height: 100%; overflow: auto; scrollbar-width: none; }
 .canvas .card-slot.fixed-h > .panel::-webkit-scrollbar { display: none; }
 .canvas-extent { pointer-events: none; }
@@ -1583,16 +1590,15 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 /* Resize handles: wide invisible hit areas (touch) with a small visible mark. */
 .card-handle { position: absolute; z-index: 6; touch-action: none; --u: calc(1px / var(--z, 1)); }
 .card-handle::after { content: ''; position: absolute; background: var(--accent); border-radius: 999px; box-shadow: 0 0 0 2px var(--bg); }
-.h-n, .h-s { left: calc(32 * var(--u)); right: calc(32 * var(--u)); height: calc(28 * var(--u)); cursor: ns-resize; }
-.h-n { top: calc(-14 * var(--u)); } .h-s { bottom: calc(-14 * var(--u)); }
+.h-s { left: calc(32 * var(--u)); right: calc(32 * var(--u)); height: calc(28 * var(--u)); bottom: calc(-14 * var(--u)); cursor: ns-resize; }
 .h-e, .h-w { top: calc(32 * var(--u)); bottom: calc(32 * var(--u)); width: calc(28 * var(--u)); cursor: ew-resize; }
 .h-e { right: calc(-14 * var(--u)); } .h-w { left: calc(-14 * var(--u)); }
-.h-n::after, .h-s::after { left: 50%; top: 50%; width: calc(44 * var(--u)); height: calc(6 * var(--u)); transform: translate(-50%, -50%); }
+.h-s::after { left: 50%; top: 50%; width: calc(44 * var(--u)); height: calc(6 * var(--u)); transform: translate(-50%, -50%); }
 .h-e::after, .h-w::after { left: 50%; top: 50%; width: calc(6 * var(--u)); height: calc(44 * var(--u)); transform: translate(-50%, -50%); }
-.h-ne, .h-nw, .h-se, .h-sw { width: calc(36 * var(--u)); height: calc(36 * var(--u)); }
-.h-ne { top: calc(-16 * var(--u)); right: calc(-16 * var(--u)); cursor: nesw-resize; } .h-sw { bottom: calc(-16 * var(--u)); left: calc(-16 * var(--u)); cursor: nesw-resize; }
-.h-nw { top: calc(-16 * var(--u)); left: calc(-16 * var(--u)); cursor: nwse-resize; } .h-se { bottom: calc(-16 * var(--u)); right: calc(-16 * var(--u)); cursor: nwse-resize; }
-.h-ne::after, .h-nw::after, .h-se::after, .h-sw::after { left: 50%; top: 50%; width: calc(14 * var(--u)); height: calc(14 * var(--u)); transform: translate(-50%, -50%); }
+.h-se, .h-sw { width: calc(36 * var(--u)); height: calc(36 * var(--u)); }
+.h-sw { bottom: calc(-16 * var(--u)); left: calc(-16 * var(--u)); cursor: nesw-resize; }
+.h-se { bottom: calc(-16 * var(--u)); right: calc(-16 * var(--u)); cursor: nwse-resize; }
+.h-se::after, .h-sw::after { left: 50%; top: 50%; width: calc(14 * var(--u)); height: calc(14 * var(--u)); transform: translate(-50%, -50%); }
 .arrange-bar {
   position: fixed; z-index: 40; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%);
   display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 18px; border-radius: 20px; max-width: calc(100vw - 32px);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_H, MIN_W, canvasZoom, extent, moveBox, parseLayout, resizeBox, toFront } from './canvas';
+import { GAP, MIN_H, MIN_W, canvasZoom, extent, moveBox, parseLayout, resizeBox, snapMove, snapResize, stack, toFront } from './canvas';
 
 describe('moveBox', () => {
   it('moves by whole pixels and stops at the canvas edge', () => {
@@ -91,5 +91,53 @@ describe('canvasZoom', () => {
     expect(canvasZoom(1140, { width: 1880 })).toBe(0.606);
     expect(canvasZoom(1880, { width: 1880 })).toBe(1);
     expect(canvasZoom(0, { width: 1880 })).toBe(1);
+    expect(canvasZoom(1880, { width: 1865 })).toBe(1); // a scrollbar's worth
+    expect(canvasZoom(1960, { width: 1865 })).toBe(1.051);
+  });
+});
+
+describe('stack', () => {
+  const heights: Record<string, number> = { a: 300, b: 200, c: 100, wide: 150 };
+  const h = (id: string) => heights[id];
+
+  it('keeps one gap between cards in a column, starting at the top', () => {
+    const out = stack({ a: { x: 0, y: 40, w: 300 }, b: { x: 0, y: 500, w: 300 }, c: { x: 50, y: 900, w: 300 } }, h);
+    expect([out.a.y, out.b.y, out.c.y]).toEqual([0, 300 + GAP, 300 + GAP + 200 + GAP]);
+  });
+
+  it('moves the cards below when a card grows, and back up when it shrinks', () => {
+    const boxes = { a: { x: 0, y: 0, w: 300 }, b: { x: 0, y: 318, w: 300 } };
+    expect(stack(boxes, (id) => (id === 'a' ? 420 : 200)).b.y).toBe(420 + GAP);
+    expect(stack(boxes, (id) => (id === 'a' ? 120 : 200)).b.y).toBe(120 + GAP);
+  });
+
+  it('uses a fixed height over the rendered one', () => {
+    expect(stack({ a: { x: 0, y: 0, w: 300, h: 500 }, b: { x: 0, y: 10, w: 300 } }, h).b.y).toBe(500 + GAP);
+  });
+
+  it('cards side by side do not push each other; a wide card goes under both', () => {
+    const out = stack({ a: { x: 0, y: 0, w: 300 }, b: { x: 318, y: 0, w: 300 }, wide: { x: 100, y: 400, w: 400 } }, h);
+    expect([out.a.y, out.b.y]).toEqual([0, 0]);
+    expect(out.wide.y).toBe(300 + GAP); // below the taller of the two
+  });
+
+  it('a card dropped above another goes before it', () => {
+    const out = stack({ a: { x: 0, y: 0, w: 300 }, b: { x: 0, y: 318, w: 300 }, c: { x: 0, y: 200, w: 300 } }, h);
+    expect([out.a.y, out.c.y, out.b.y]).toEqual([0, 300 + GAP, 300 + GAP + 100 + GAP]);
+  });
+});
+
+describe('snapping', () => {
+  const others = [{ x: 0, y: 0, w: 300 }];
+
+  it('pulls a moved card a gap away from its neighbour, or onto the canvas edge', () => {
+    expect(snapMove({ x: 330, y: 0, w: 200 }, others, 1000, 16).x).toBe(300 + GAP);
+    expect(snapMove({ x: 790, y: 0, w: 200 }, others, 1000, 16).x).toBe(800);
+    expect(snapMove({ x: 400, y: 0, w: 200 }, others, 1000, 16).x).toBe(400); // nothing near
+  });
+
+  it('pulls a resized edge onto a target, never below the minimum width', () => {
+    expect(snapResize({ x: 600, y: 0, w: 390 }, { r: true }, others, 1000, 16).w).toBe(400);
+    expect(snapResize({ x: 330, y: 0, w: 300 }, { l: true }, others, 1000, 16)).toEqual({ x: 318, y: 0, w: 312 });
   });
 });
