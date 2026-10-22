@@ -1,3 +1,10 @@
+# [1.41.0](https://github.com/Kanna727/ha-dashboard/compare/v1.40.0...v1.41.0) (2026-10-22)
+
+
+### Features
+
+* **layout:** keep a constant gap between cards as they grow and shrink ([#55](https://github.com/Kanna727/ha-dashboard/issues/55)) ([bc17418](https://github.com/Kanna727/ha-dashboard/commit/bc174180a8633a426e850e76b0df424a208d3cad))
+
 # [1.40.0](https://github.com/Kanna727/ha-dashboard/compare/v1.39.0...v1.40.0) (2026-10-22)
 
 
