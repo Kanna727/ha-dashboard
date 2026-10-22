@@ -1958,3 +1958,12 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .layout.tablet .vrobot3d { max-height: 250px; }
 .vrobot3d { margin-bottom: 10px; }
 .vrobot3d .vrobot-pct { bottom: -12px; }
+
+/* Pages that follow the finger (layout/Pager.tsx). The current page stays in the normal flow; while a
+   sideways drag runs, the neighbours sit either side of it (absolute, at ±100 %) and the track moves.
+   `overflow: clip` hides them without making the pager a scroll container (sticky panels keep working). */
+.pager { position: relative; overflow: clip; min-width: 0; }
+.pager-track { position: relative; }
+.pager-page.side { position: absolute; top: 0; width: 100%; }
+.layout.tablet .pager, .layout.tablet .pager-track, .layout.tablet .pager-page.current { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.layout.tablet .pager-page.side { height: 100%; display: flex; flex-direction: column; }

@@ -26,6 +26,7 @@ import {
   Scene,
   Shape,
   SRGBColorSpace,
+  TOUCH,
   TubeGeometry,
   Vector2,
   Vector3,
@@ -161,6 +162,10 @@ export class RobotViewer {
     this.controls.minPolarAngle = 0.35;
     this.controls.maxPolarAngle = 1.35;
     this.controls.autoRotateSpeed = 1.2;
+    // On touch screens one finger belongs to the page (swiping between pages,
+    // scrolling): the robot turns with two fingers. The mouse still drags it.
+    this.controls.touches = { ONE: null, TWO: TOUCH.DOLLY_ROTATE };
+    canvas.style.touchAction = 'pan-y';
     this.controls.addEventListener('change', () => (this.dirty = true));
     this.controls.addEventListener('start', () => {
       this.userHold = true;
