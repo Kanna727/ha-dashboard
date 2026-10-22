@@ -15,9 +15,9 @@ import { dragOffset, lockAxis, releaseDir, settleMs, stepPage, SWIPE } from '../
 
 // Things that use a sideways drag themselves (or must not change page): a
 // drag that starts on one of these is theirs.
+// (The vacuum map marks itself `data-no-swipe` only while it needs the drag:
+// zoomed in, drawing, editing a shape. The 3D robot turns with two fingers.)
 const OWN_DRAGS = [
-  '.vmap', // vacuum map: pan, draw
-  '.vrobot3d', // 3D robot: orbit
   '.car-stage-view', // 3D car: orbit
   '.slider',
   '.color-wheel',
@@ -104,7 +104,9 @@ export function Pager<T extends string>({ pages, current, onChange, render, clas
         g.axis = lockAxis(dx, dy);
         if (g.axis === 'y') return void (g = null); // a scroll: not ours
         if (!g.axis) return;
-        // A page drag starts: put the neighbours beside this page.
+        // A page drag starts: tell whatever was touched to let go of it
+        // (the vacuum map undoes its pan), and put the neighbours beside this page.
+        (e.target as Element | null)?.dispatchEvent(new CustomEvent('pagerdrag', { bubbles: true }));
         const top = el.getBoundingClientRect().top;
         setSideTop(top < 0 ? -top : 0);
         setSides(true);

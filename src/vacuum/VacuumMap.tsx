@@ -370,6 +370,25 @@ export function VacuumMap(props: MapProps) {
     setPreview(null);
   };
 
+  // A page swipe took this touch over (layout/Pager.tsx): forget it, and undo
+  // the little pan it made before the swipe was recognised.
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    const onPagerDrag = () => {
+      const g = gesture.current;
+      if (g?.kind === 'pan') {
+        setGlide(false);
+        setView(g.view);
+      }
+      gesture.current = null;
+      pointers.current.clear();
+      setPreview(null);
+    };
+    el.addEventListener('pagerdrag', onPagerDrag);
+    return () => el.removeEventListener('pagerdrag', onPagerDrag);
+  }, []);
+
   const zoomBy = (f: number) => (followOn ? zoomFollow(f) : userView(zoomAt(view, view.s * f, size.w / 2, size.h / 2)));
 
   const drawn = preview ? [...shapes.filter((s) => s.id !== preview.id), preview] : shapes;
@@ -432,6 +451,9 @@ export function VacuumMap(props: MapProps) {
     <div
       ref={box}
       className={`vmap ${draw ? 'drawing' : ''}`}
+      // At the fitted view a sideways drag on the map swipes between pages (layout/Pager.tsx);
+      // zoomed in, following the robot, drawing or editing a shape, the drag is the map's.
+      data-no-swipe={view.s > 1.02 || followOn || draw || active || preview ? '' : undefined}
       onPointerDown={onDown}
       onPointerMove={onMove}
       onPointerUp={onUp}
