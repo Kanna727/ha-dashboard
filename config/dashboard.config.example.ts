@@ -300,8 +300,10 @@ const config: DashboardConfig = {
       climate: 'climate.car_climate_control',
     },
   },
-  // Banners when the washer or dishwasher finishes, or a door stays open.
-  ALERTS: { chime: true, doorOpenMinutes: 3 },
+  // Full-screen alerts when the washer or dishwasher finishes, a door stays open,
+  // or a Home Assistant automation notifies the phones (notify.notify, notify.mobile_app_*).
+  // A notification whose title or message contains one of `alarms` is an alarm: red, a siren, up until tapped.
+  ALERTS: { chime: true, doorOpenMinutes: 3, notify: ['notify', 'mobile_app_*'], seconds: 30, alarms: ['shoe rack'] },
   // Night screen on the iPad: after 5 idle minutes, only while the sun is down.
   NIGHT_MODE: { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] },
   // Robot vacuum page (optional: without it the first vacuum.* entity is used).

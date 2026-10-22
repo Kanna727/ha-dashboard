@@ -69,7 +69,7 @@ export const {
 } = cfg;
 
 // Optional settings, with defaults for configs stored before they existed.
-export const ALERTS = { chime: true, doorOpenMinutes: 3, ...cfg.ALERTS };
+export const ALERTS = { chime: true, doorOpenMinutes: 3, notify: ['notify', 'mobile_app_*'], seconds: 30, alarms: [] as string[], ...cfg.ALERTS };
 export const VACATION_MODE = cfg.VACATION_MODE ?? '';
 export const VACUUM: NonNullable<DashboardConfig['VACUUM']> = { ...cfg.VACUUM };
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };

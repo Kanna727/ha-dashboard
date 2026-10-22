@@ -154,7 +154,11 @@ export interface DashboardConfig {
   // with defaults in entities.ts, because the stored config can be older than
   // the app.
   // "Done" and "door left open" banners.
-  ALERTS?: { chime?: boolean; doorOpenMinutes?: number };
+  // `notify`: the HA notify services whose messages also show here (a trailing
+  // * matches a prefix; [] turns mirroring off). `seconds`: how long an alert stays up.
+  // `alarms`: words that make a mirrored notification an alarm (red, a siren, up
+  // until tapped) when its title or message contains one, e.g. ['shoe rack'].
+  ALERTS?: { chime?: boolean; doorOpenMinutes?: number; notify?: string[]; seconds?: number; alarms?: string[] };
   // Robot vacuum page. Optional: without it the first vacuum.* entity is used,
   // and its map camera and settings are found from the vacuum's entity names.
   // `look` colours the 3D robot on the page: shell, laser band, and whether to draw its dock.

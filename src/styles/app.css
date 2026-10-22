@@ -1399,7 +1399,7 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .night-issues .warn { color: #fdba74; }
 .night-issues .info { color: #93c5fd; }
 /* Pause every other animation while the night screen is up. */
-html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toasts *) { animation-play-state: paused !important; }
+html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toasts *):not(.alert-screen):not(.alert-screen *) { animation-play-state: paused !important; }
 
 /* ---------- toasts (components/Toasts.tsx) ---------- */
 .toasts { position: fixed; top: 16px; right: 16px; z-index: 90; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }
@@ -1415,6 +1415,87 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .toast-text span { font-size: 13px; color: var(--muted); }
 @keyframes toast-in { from { transform: translateX(24px); opacity: 0; } }
 @media (max-width: 699px) { .toasts { left: 16px; right: 16px; width: auto; top: 12px; } }
+
+/* ---------- full-screen alerts (components/Toasts.tsx) ----------
+   Readable across the room: a tinted, blurred veil over everything (above the
+   night screen), a glowing orb with ripples and the emoji or icon bobbing in
+   it, a big title, and a bar along the bottom running down the lifetime. */
+.alert-screen {
+  --tint: var(--accent-energy);
+  position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; overflow: hidden; cursor: pointer;
+  padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  background:
+    radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--tint) 30%, transparent), transparent 62%),
+    rgba(3, 5, 10, 0.8);
+  backdrop-filter: blur(22px) saturate(1.3); -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  animation: alert-in 0.45s ease both;
+  -webkit-tap-highlight-color: transparent;
+}
+.alert-screen.warn { --tint: var(--warn); }
+/* Alarm: red, the edges glowing in and out (a slow pulse, not a strobe),
+   faster ripples, the glyph shaking, an "Alarm" badge; no lifetime bar. */
+.alert-screen.alarm { --tint: var(--danger); }
+.alert-screen.alarm::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  box-shadow: inset 0 0 120px 30px color-mix(in srgb, var(--danger) 70%, transparent);
+  animation: alarm-edge 1.6s ease-in-out infinite;
+}
+.alert-screen.alarm .alert-ring { animation-duration: 1.4s; }
+.alert-screen.alarm .alert-ring:nth-child(2) { animation-delay: 0.47s; }
+.alert-screen.alarm .alert-ring:nth-child(3) { animation-delay: 0.93s; }
+.alert-screen.alarm .alert-orb::before { animation-duration: 1.4s; }
+.alert-screen.alarm .alert-glyph { animation: alert-shake 1.4s ease-in-out 0.5s infinite; }
+.alert-badge {
+  padding: 6px 16px; border-radius: 999px; background: var(--danger); color: #fff;
+  font-size: clamp(13px, 1.9vmin, 18px); font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  box-shadow: 0 0 30px color-mix(in srgb, var(--danger) 60%, transparent);
+}
+@keyframes alarm-edge { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+.alert-screen.leaving { animation: alert-out 0.32s ease forwards; }
+.alert-screen::before {
+  content: ''; position: absolute; inset: -20%; pointer-events: none;
+  background: conic-gradient(from 0deg, transparent, color-mix(in srgb, var(--tint) 14%, transparent), transparent 40%);
+  animation: alert-sweep 9s linear infinite;
+}
+.alert-card { position: relative; display: grid; justify-items: center; gap: clamp(10px, 1.8vmin, 18px); text-align: center; max-width: min(960px, 100%); animation: alert-pop 0.7s cubic-bezier(0.2, 1.35, 0.4, 1) both; }
+.alert-orb { position: relative; width: clamp(150px, 24vmin, 240px); aspect-ratio: 1; display: grid; place-items: center; margin-bottom: clamp(10px, 2.4vmin, 26px); }
+.alert-orb::before {
+  content: ''; position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, color-mix(in srgb, var(--tint) 55%, #fff), var(--tint) 52%, color-mix(in srgb, var(--tint) 62%, #000));
+  box-shadow: 0 0 90px color-mix(in srgb, var(--tint) 60%, transparent), inset 0 -12px 34px rgba(0, 0, 0, 0.25);
+  animation: alert-breathe 2.4s ease-in-out infinite;
+}
+.alert-ring { position: absolute; inset: 0; border-radius: 50%; border: 3px solid var(--tint); opacity: 0; animation: alert-ripple 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
+.alert-ring:nth-child(2) { animation-delay: 0.8s; }
+.alert-ring:nth-child(3) { animation-delay: 1.6s; }
+.alert-glyph { position: relative; display: grid; place-items: center; color: #fff; animation: alert-bob 2.4s ease-in-out 0.7s infinite; }
+.alert-screen.warn .alert-glyph { animation: alert-shake 2.4s ease-in-out 0.7s infinite; }
+.alert-glyph svg { width: clamp(70px, 11vmin, 112px); height: auto; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.3)); }
+.alert-emoji { font-size: clamp(70px, 11vmin, 112px); line-height: 1; filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35)); }
+.alert-title { margin: 0; font-size: clamp(34px, 6.6vmin, 80px); font-weight: 750; line-height: 1.08; letter-spacing: -0.02em; color: #fff; text-wrap: balance; animation: alert-rise 0.6s ease 0.12s both; }
+.alert-text { margin: 0; font-size: clamp(18px, 3.2vmin, 32px); line-height: 1.3; color: rgba(255, 255, 255, 0.8); text-wrap: balance; animation: alert-rise 0.6s ease 0.22s both; }
+.alert-meta { margin: 4px 0 0; font-size: clamp(12px, 1.8vmin, 17px); font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); animation: alert-rise 0.6s ease 0.32s both; }
+.alert-count {
+  position: absolute; top: max(24px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+  padding: 7px 16px; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 15px; font-weight: 700;
+}
+.alert-hint { position: absolute; left: 0; right: 0; bottom: max(30px, calc(env(safe-area-inset-bottom) + 18px)); text-align: center; font-size: 15px; color: rgba(255, 255, 255, 0.45); animation: alert-in 0.6s ease 1.2s both; }
+.alert-life { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: var(--tint); box-shadow: 0 0 18px var(--tint); transform-origin: left; animation: alert-life var(--life, 30s) linear forwards; }
+@keyframes alert-in { from { opacity: 0; } }
+@keyframes alert-out { to { opacity: 0; transform: scale(1.04); } }
+@keyframes alert-pop { from { opacity: 0; transform: scale(0.7) translateY(30px); } }
+@keyframes alert-rise { from { opacity: 0; transform: translateY(22px); } }
+@keyframes alert-breathe { 50% { transform: scale(1.05); } }
+@keyframes alert-ripple { from { opacity: 0.55; transform: scale(1); } to { opacity: 0; transform: scale(2.3); } }
+@keyframes alert-bob { 50% { transform: translateY(-8px) rotate(-4deg); } }
+@keyframes alert-shake { 0%, 30%, 100% { transform: none; } 5%, 15%, 25% { transform: rotate(-12deg); } 10%, 20% { transform: rotate(12deg); } }
+@keyframes alert-sweep { to { transform: rotate(360deg); } }
+@keyframes alert-life { to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .alert-screen::before, .alert-ring { display: none; }
+  .alert-orb::before, .alert-glyph, .alert-screen.warn .alert-glyph, .alert-screen.alarm .alert-glyph, .alert-card, .alert-title, .alert-text, .alert-meta { animation: none; }
+  .alert-screen.alarm::after { animation: none; opacity: 0.7; }
+}
 
 /* ---------- modal ---------- */
 .modal-backdrop {
@@ -1718,6 +1799,7 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .mc-week-cell .meal-avatar { width: 20px; height: 20px; font-size: 10px; }
 /* Meals test chip (mock/MealsTestPanel.tsx), left of the commute test chip. */
 .meals-test.car-test-chip { right: calc(max(16px, env(safe-area-inset-right)) + 280px); }
+.alerts-test.car-test-chip { right: calc(max(16px, env(safe-area-inset-right)) + 410px); }
 
 /* ---------- vacuum page (vacuum/*) ----------
    A page of its own (#vacuum): header with status and controls, the live map

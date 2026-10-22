@@ -126,6 +126,10 @@ export interface HassApi {
   saveLayout(layout: object): Promise<void>;
   // Calls back whenever any device saves the layout.
   subscribeLayout(cb: () => void): () => void;
+  // Every notify.* service call in HA (an automation messaging the phones), from
+  // the call_service event, which only admin users may subscribe to. `ready`
+  // says once whether the subscription was accepted.
+  subscribeNotifyCalls(cb: (service: string, data: Record<string, unknown>) => void, ready: (ok: boolean) => void): () => void;
   logout(): void;
 }
 

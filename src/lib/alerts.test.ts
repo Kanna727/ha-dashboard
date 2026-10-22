@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cycleEnded, overdueDoors } from './alerts';
+import { cycleEnded, mirrorsService, noticeFrom, overdueDoors } from './alerts';
 
 describe('cycle ended', () => {
   it('fires only on a seen running -> stopped transition', () => {
@@ -28,5 +28,83 @@ describe('overdue doors', () => {
   it('treats a reopen as a new episode', () => {
     const alerted = new Set([`binary_sensor.front@${now - 20 * min}`]);
     expect(overdueDoors([{ id: 'binary_sensor.front', open: true, since: now - 4 * min }], now, 3, alerted)).toHaveLength(1);
+  });
+});
+
+describe('mirrored notify services', () => {
+  const patterns = ['notify', 'mobile_app_*'];
+  it('matches exact names and prefixes', () => {
+    expect(mirrorsService('notify', patterns)).toBe(true);
+    expect(mirrorsService('mobile_app_pixel_9', patterns)).toBe(true);
+    expect(mirrorsService('tv', patterns)).toBe(false);
+    expect(mirrorsService('notify', [])).toBe(false);
+  });
+});
+
+describe('notice from a notify call', () => {
+  it('uses the message as the title when there is none, and lifts the emoji out', () => {
+    expect(noticeFrom({ message: 'Laundry is done! 🧺' })).toEqual({ title: 'Laundry is done!', text: undefined, emoji: '🧺', tone: 'ok' });
+    expect(noticeFrom({ message: '🍽️ Dishwasher cycle completed!' })).toMatchObject({ title: 'Dishwasher cycle completed!', emoji: '🍽️' });
+    expect(noticeFrom({ message: 'Common Bathroom Geyser turned off — water is hot! ♨️' })).toMatchObject({
+      title: 'Common Bathroom Geyser turned off — water is hot!',
+      emoji: '♨️',
+    });
+  });
+
+  it('puts the message under a title', () => {
+    expect(noticeFrom({ title: 'Laundry Reminder 🧺', message: 'Clean laundry has been waiting for 40 minutes!' })).toEqual({
+      title: 'Laundry Reminder',
+      text: 'Clean laundry has been waiting for 40 minutes!',
+      emoji: '🧺',
+      tone: 'ok',
+    });
+    expect(noticeFrom({ title: 'Shoe Rack', message: 'A shoe rack door was opened.' })).toMatchObject({ title: 'Shoe Rack', emoji: undefined });
+  });
+
+  it('marks warnings by emoji or wording', () => {
+    expect(noticeFrom({ message: '⚠️ Fridge door has been left open for 2 minutes!' })?.tone).toBe('warn');
+    expect(noticeFrom({ message: 'Your car is unlocked' })?.tone).toBe('warn');
+  });
+
+  it('keeps ZWJ emoji whole', () => {
+    expect(noticeFrom({ message: 'Dinner is ready 👩‍🍳' })?.emoji).toBe('👩‍🍳');
+  });
+
+  it('skips empty messages and companion-app commands', () => {
+    expect(noticeFrom({})).toBeNull();
+    expect(noticeFrom({ message: '  ' })).toBeNull();
+    expect(noticeFrom({ message: 'clear_notification', data: { tag: 'x' } })).toBeNull();
+    expect(noticeFrom({ message: 'request_location_update' })).toBeNull();
+    expect(noticeFrom({ message: '🧺' })).toBeNull();
+  });
+});
+
+describe('alarm notices', () => {
+  it('matches the configured words in the title or message, in any case', () => {
+    expect(noticeFrom({ title: 'Shoe Rack', message: 'A shoe rack door was opened.' }, ['shoe rack'])?.tone).toBe('alarm');
+    expect(noticeFrom({ message: 'SHOE RACK opened' }, ['Shoe rack'])?.tone).toBe('alarm');
+    expect(noticeFrom({ message: 'Laundry is done! 🧺' }, ['shoe rack'])?.tone).toBe('ok');
+    expect(noticeFrom({ message: 'Laundry is done!' }, ['', '  '])?.tone).toBe('ok');
+  });
+
+  it('follows the companion app alarm flags', () => {
+    expect(noticeFrom({ message: 'Water leak!', data: { channel: 'alarm_stream' } })?.tone).toBe('alarm');
+    expect(noticeFrom({ message: 'Smoke', data: { push: { 'interruption-level': 'critical' } } })?.tone).toBe('alarm');
+    expect(noticeFrom({ message: 'Smoke', data: { push: { sound: { name: 'default', critical: 1, volume: 1 } } } })?.tone).toBe('alarm');
+    expect(noticeFrom({ message: 'Hi', data: { channel: 'General', priority: 'high' } })?.tone).toBe('ok');
+  });
+});
+
+describe('tone asked for by the automation', () => {
+  it('wins over the alarm words and the wording', () => {
+    expect(noticeFrom({ message: 'Vacuum finished cleaning', data: { dashboard: 'warn' } })?.tone).toBe('warn');
+    expect(noticeFrom({ message: 'Main door opened', data: { dashboard: 'alarm' } })?.tone).toBe('alarm');
+    expect(noticeFrom({ message: 'Shoe rack opened (test)', data: { dashboard: 'ok' } }, ['shoe rack'])?.tone).toBe('ok');
+    expect(noticeFrom({ message: 'Car unlocked', data: { dashboard: 'ok' } })?.tone).toBe('ok');
+  });
+
+  it('ignores unknown values', () => {
+    expect(noticeFrom({ message: 'Hello', data: { dashboard: 'loud' } })?.tone).toBe('ok');
+    expect(noticeFrom({ message: 'Door left open', data: { dashboard: 1 } })?.tone).toBe('warn');
   });
 });
