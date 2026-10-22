@@ -10,16 +10,31 @@ import { TopBar } from '../panels/TopBar';
 import { WeatherPanel } from '../panels/WeatherPanel';
 import { VacuumPage } from '../vacuum/VacuumPage';
 import { useVacuumId } from '../vacuum/useVacuum';
-import { usePage } from './pages';
+import { usePage, type Page } from './pages';
+import { usePageSwipe } from './usePageSwipe';
+import { stepPage } from '../lib/swipe';
 
 // Tablet and desktop: the cards start in columns and can be arranged freely
 // (Canvas.tsx). iPad kiosk: the page never scrolls; the columns, or the
 // canvas, scroll inside it.
-export function TabletLayout() {
+// Swipe between the pages tablet and desktop have (the home dashboard, then the vacuum).
+function useSwipePages() {
   const [page, go] = usePage();
+  const hasVacuum = !!useVacuumId();
+  const pages: Page[] = hasVacuum ? ['home', 'vacuum'] : ['home'];
+  const enter = usePageSwipe((dir) => {
+    const next = stepPage(pages, page, dir);
+    if (next) go(next);
+    return !!next;
+  });
+  return { page, go, enter: enter ?? undefined };
+}
+
+export function TabletLayout() {
+  const { page, go, enter } = useSwipePages();
   return (
     <ArrangeProvider>
-      <div className="layout tablet">
+      <div className="layout tablet" data-enter={enter}>
         <TopBar />
         {page === 'vacuum' ? (
           <VacuumPage onBack={() => go('home')} />
@@ -40,10 +55,10 @@ export function TabletLayout() {
 }
 
 export function DesktopLayout() {
-  const [page, go] = usePage();
+  const { page, go, enter } = useSwipePages();
   return (
     <ArrangeProvider>
-      <div className="layout desktop">
+      <div className="layout desktop" data-enter={enter}>
         <TopBar />
         {page === 'vacuum' ? (
           <VacuumPage onBack={() => go('home')} />
@@ -97,9 +112,19 @@ export function PhoneLayout() {
     if (page !== 'home') go('home');
     window.scrollTo({ top: 0 });
   };
+  // Swipe left/right for the next/previous tab.
+  const enter = usePageSwipe((dir) => {
+    const next = stepPage(
+      tabs.map((t) => t.id),
+      current,
+      dir,
+    );
+    if (next) select(next);
+    return !!next;
+  });
 
   return (
-    <div className="layout phone">
+    <div className="layout phone" data-enter={enter ?? undefined}>
       <TopBar compact />
       <main className="phone-body">
         {current === 'home' && (

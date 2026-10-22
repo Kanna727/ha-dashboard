@@ -1958,3 +1958,10 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 .layout.tablet .vrobot3d { max-height: 250px; }
 .vrobot3d { margin-bottom: 10px; }
 .vrobot3d .vrobot-pct { bottom: -12px; }
+
+/* Page swipes (layout/usePageSwipe.ts): the incoming page slides in from the side the finger moved to. */
+.layout[data-enter='next'] > :not(.topbar):not(.tabbar), .layout.phone[data-enter='next'] .phone-body > * { animation: page-in-next 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.layout[data-enter='prev'] > :not(.topbar):not(.tabbar), .layout.phone[data-enter='prev'] .phone-body > * { animation: page-in-prev 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.layout.phone[data-enter] > .phone-body { animation: none; }
+@keyframes page-in-next { from { transform: translateX(56px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes page-in-prev { from { transform: translateX(-56px); opacity: 0; } to { transform: none; opacity: 1; } }
