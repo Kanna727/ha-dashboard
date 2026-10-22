@@ -13,6 +13,7 @@ import { StatusDialog } from './StatusDialog';
 import { ArrangeButton } from '../layout/Canvas';
 import { usePage } from '../layout/pages';
 import { VacuumPill } from '../vacuum/VacuumPill';
+import { VacationButton } from '../components/VacationMode';
 
 const greeting = (h: number) => (h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening');
 
@@ -180,6 +181,7 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         <NowPlayingPill />
         <StatusPill />
         <LeaveHomeButton />
+        <VacationButton />
         {!compact && <VacuumPill />}
         {page === 'home' && <ArrangeButton />}
       </div>

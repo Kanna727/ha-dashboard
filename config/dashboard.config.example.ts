@@ -123,6 +123,7 @@ const config: DashboardConfig = {
     'fan.bedroom_fan': 'input_boolean.bedroom_fan_manual_off',
     'fan.work_room_fan': 'input_boolean.workroom_fan_manual_off',
   },
+  VACATION_MODE: 'input_boolean.vacation_mode',
   WEATHER: 'weather.forecast_home',
   OUTDOOR_TEMP: 'sensor.outdoor_temperature',
   SUN: 'sun.sun',

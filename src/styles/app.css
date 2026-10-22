@@ -846,6 +846,18 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .leave-home { color: var(--accent); }
 .leave-home.confirm { width: auto; padding: 0 16px; gap: 8px; color: var(--warn); border-color: var(--warn); }
 .leave-home.note { width: auto; padding: 0 16px; gap: 8px; color: var(--ok); border-color: var(--ok); }
+.vacation-mode { color: var(--muted); }
+.vacation-mode.on { color: var(--accent); border-color: var(--accent); }
+.vacation-screen {
+  position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 24px; text-align: center;
+  background: color-mix(in srgb, var(--bg, #0b0e14) 94%, transparent); backdrop-filter: blur(18px); color: var(--text); animation: fade 0.3s ease;
+}
+.vacation-screen.locked { background: var(--bg, #0b0e14); }
+.vacation-box { display: grid; justify-items: center; gap: 14px; max-width: 460px; color: var(--accent); }
+.vacation-box h2 { margin: 0; font-size: 30px; color: var(--text); }
+.vacation-box p { margin: 0; font-size: 17px; color: var(--muted); }
+.vacation-actions { display: flex; gap: 12px; margin-top: 10px; }
+.vacation-actions .v-btn { min-height: 52px; padding: 0 24px; font-size: 17px; }
 .pill-hint { font-size: 14px; font-weight: 700; }
 /* Lights and fan chips: slide across to dim or set the speed (useSlide), vertical
    drags still scroll. While one slides, it grows a little and its fill follows the level. */

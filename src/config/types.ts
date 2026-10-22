@@ -57,6 +57,8 @@ export interface DashboardConfig {
   FAN_MANUAL_OFF: Record<string, string>;
   WEATHER: string;
   OUTDOOR_TEMP: string;
+  // Optional: an input_boolean toggled from the status bar, beside the leaving-home button.
+  VACATION_MODE?: string;
   SUN: string;
   PEOPLE: string[];
   HOME_ZONE: string;
