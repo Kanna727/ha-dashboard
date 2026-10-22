@@ -1,3 +1,10 @@
+# [1.40.0](https://github.com/Kanna727/ha-dashboard/compare/v1.39.0...v1.40.0) (2026-10-22)
+
+
+### Features
+
+* **topbar:** vacation mode toggle with confirmation and full-screen lock ([#54](https://github.com/Kanna727/ha-dashboard/issues/54)) ([892e792](https://github.com/Kanna727/ha-dashboard/commit/892e7921857f3a0d095be373512f843d33c83cbc))
+
 # [1.39.0](https://github.com/Kanna727/ha-dashboard/compare/v1.38.0...v1.39.0) (2026-10-22)
 
 
