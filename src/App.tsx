@@ -4,6 +4,7 @@ import { SheetProvider } from './components/Sheet';
 import { ToastProvider } from './components/Toasts';
 import { Alerts } from './components/Alerts';
 import { NightMode } from './components/NightMode';
+import { VacationLock } from './components/VacationMode';
 import { SkyBackdrop } from './components/SkyBackdrop';
 import { DesktopLayout, PhoneLayout, TabletLayout } from './layout/Layouts';
 import { useSelfUpdate } from './update/useSelfUpdate';
@@ -37,6 +38,7 @@ export function App() {
           <SkyBackdrop />
           <Alerts />
           <NightMode layout={layout} />
+          <VacationLock />
           {layout === 'phone' ? <PhoneLayout /> : layout === 'tablet' ? <TabletLayout /> : <DesktopLayout />}
         </ToastProvider>
       </ModalProvider>
