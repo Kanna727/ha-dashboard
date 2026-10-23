@@ -1349,6 +1349,61 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .appliance.running > svg { color: var(--accent-energy); }
 .app-body, .media-info { flex: 1; min-width: 0; display: grid; gap: 6px; }
 .app-title { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; font-weight: 700; }
+/* Dishwasher modal (components/dishwasher/PanelLayout.tsx) */
+.dw-stage {
+  position: relative; min-height: 440px; border-radius: 24px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 30%, color-mix(in srgb, var(--text) 9%, transparent), transparent 70%), var(--tile);
+}
+.dw-stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.dw-stage-note { position: absolute; top: 16px; right: 16px; padding: 6px 12px; border-radius: 99px; font-size: 13px; font-weight: 700; color: var(--warn); background: color-mix(in srgb, var(--warn) 15%, transparent); }
+.dw-state { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dw-chart { margin-top: 10px; display: grid; gap: 4px; }
+.dw-error { color: var(--danger); }
+.dw-warn-text { color: var(--warn); }
+.appliance.tappable { cursor: pointer; }
+.dw-b .card { margin: 0; }
+.dw-b .hold-banner { grid-column: 1 / -1; margin-bottom: 0; }
+/* The machine's own control panel, in CSS */
+.dw-b { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.dw-b-stage, .dwp { grid-column: 1 / -1; }
+.dw-b-stage { min-height: 380px; }
+.dwp { padding: 12px 18px 14px; border-radius: 18px; color: #2f2f2e; background: linear-gradient(180deg, #cfcdc9, #b9b7b3); }
+.dwp .muted { color: #4c4b48; }
+.dwp-brand { display: flex; justify-content: space-between; padding: 0 76px 6px; font-size: 13px; font-weight: 300; }
+.dwp-brand b { font-weight: 700; }
+.dwp-serie { letter-spacing: 2px; }
+.dwp-serie i { font-style: normal; }
+.dwp-row { display: flex; align-items: center; gap: 16px; }
+.dwp-knob { display: grid; place-items: center; flex-shrink: 0; width: 54px; height: 54px; border-radius: 50%; color: #55544f; border: 4px solid #6d6c68; background: radial-gradient(circle at 35% 30%, #fdfdfc, #cfcdc9 58%, #9d9b97); transition: transform 0.1s, border-color 0.2s; }
+.dwp-knob:active:not(:disabled) { transform: scale(0.94); }
+.dwp-knob.on { color: #d22630; }
+.dwp-knob.armed { border-color: var(--warn); color: var(--warn); }
+.dwp-knob:disabled { opacity: 0.55; }
+.dwp-module { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) auto minmax(0, 1.15fr); gap: 12px; align-items: start; padding: 10px 12px 8px; border: 5px solid #74726e; border-radius: 10px; background: #dedcd7; }
+.dwp-programs, .dwp-options { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.dwp-options { position: relative; gap: 2px; padding-top: 12px; }
+.dwp-key { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; padding: 0; background: none; color: #3a3937; font-size: 11px; line-height: 1.15; }
+.dwp-key:disabled { cursor: default; }
+.dwp-key:not(:disabled):hover span { text-decoration: underline; }
+.dwp-cap { display: block; width: 100%; height: 26px; border: 1px solid #8f8d88; border-radius: 3px; background: linear-gradient(180deg, #f6f5f1, #d6d5d0); }
+.dwp-key:active:not(:disabled) .dwp-cap { background: #d0cfca; }
+.dwp-programs .dwp-cap { display: none; }
+.dwp-led { display: block; width: 100%; height: 5px; background: #a4a29e; transition: background 0.2s, box-shadow 0.2s; }
+.dwp-key.lit .dwp-led { background: #ff4d57; box-shadow: 0 0 8px #ff4d57; }
+.dwp-temps { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 2px; font-size: 11px; text-align: center; color: #3a3937; }
+.dwp-lcd { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 112px; height: 66px; border: 3px solid #6f6e6a; border-radius: 6px; color: #f4f5f3; background: linear-gradient(180deg, #525354, #3f4041); }
+.dwp-digits { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 24px; letter-spacing: 1px; }
+.dwp.off .dwp-lcd { color: rgba(255, 255, 255, 0.12); }
+.dwp-lock { position: absolute; top: -3px; right: 7%; color: #3a3937; pointer-events: none; }
+.dwp-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+.dwp .v-select { background: #f2f1ed; color: #2f2f2e; }
+@media (max-width: 860px) {
+  .dw-b { grid-template-columns: 1fr; }
+  .dw-b-stage { min-height: 340px; }
+  .dwp-module { grid-template-columns: 1fr; }
+  .dwp-brand { padding: 0 0 6px; }
+  .dwp-row { flex-wrap: wrap; justify-content: center; }
+}
 /* Water purifier (Appliances card) */
 .purifier + .appliance, .appliance + .purifier { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
 .purifier .appliance > svg { color: var(--accent-fan); }

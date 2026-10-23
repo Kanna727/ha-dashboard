@@ -69,7 +69,22 @@ export interface DashboardConfig {
     plugs: Record<string, { name?: string; icon?: string; color?: string }>;
   };
   APPLIANCES: {
-    dishwasher: { state: string; progress: string; finish: string; connectivity: string };
+    dishwasher: {
+      state: string;
+      progress: string;
+      finish: string;
+      connectivity: string;
+      // Optional (Home Connect): pick a program and start or stop it. Starting
+      // needs the device id, which is found from the `program` entity's device.
+      control?: {
+        program: string; // select.* selected program
+        stop: string; // button.* stop program
+        power?: string; // switch.* Home Connect power (on / standby)
+        plug?: string; // switch.* smart plug on the mains; when off the dishwasher can't be reached
+        watts?: string; // sensor.* power draw, for the modal's chart
+        remoteStart?: string; // binary_sensor.*, on = the door-side "remote start" is allowed
+      };
+    };
     washer: { running: string; power: string; door: string };
     // Optional (added after the config moved into HA): a water purifier with
     // TDS readings. The dashboard may change its mode (two taps) and refresh it.

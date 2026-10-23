@@ -2,6 +2,8 @@ import { APPLIANCES, type RoomDef } from '../config/entities';
 import { useEntity } from '../ha/store';
 import { fmtWatts, isUnavailable, num, stateLabel } from '../ha/format';
 import { Icon } from './Icon';
+import { openDishwasher } from './DishwasherModal';
+import { useModal } from './Modal';
 import { PurifierRow } from './PurifierRow';
 
 type Kind = NonNullable<RoomDef['appliances']>[number];
@@ -16,10 +18,11 @@ function DishwasherRow() {
   const dwState = useEntity(APPLIANCES.dishwasher.state);
   const dwProgress = useEntity(APPLIANCES.dishwasher.progress);
   const dwFinish = useEntity(APPLIANCES.dishwasher.finish);
+  const modal = useModal();
   const progress = num(dwProgress);
   const dwRunning = progress !== undefined && progress > 0 && progress < 100;
   return (
-    <div className={`appliance ${dwRunning ? 'running' : ''}`}>
+    <div className={`appliance tappable ${dwRunning ? 'running' : ''}`} role="button" tabIndex={0} onClick={() => openDishwasher(modal)}>
       <Icon name="dishwasher" size={22} />
       <div className="app-body">
         <div className="app-title">

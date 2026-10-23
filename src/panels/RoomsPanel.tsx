@@ -16,6 +16,7 @@ import { MediaCard } from '../components/MediaCard';
 import { EntityTile } from '../components/EntityTile';
 import { Icon, type IconName } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
+import { openDishwasher } from '../components/DishwasherModal';
 import { useSlide } from '../hooks/useSlide';
 import { useThrottle } from '../hooks/useThrottle';
 import { useNow } from '../hooks/useNow';
@@ -354,7 +355,8 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
           className={`row-btn ${a} ${appStatus[a].running ? 'on' : ''}`}
           onClick={(e) => {
             e.stopPropagation();
-            openDetail();
+            if (a === 'dishwasher') openDishwasher(modal);
+            else openDetail();
           }}
           aria-label={appStatus[a].text}
           title={appStatus[a].text}

@@ -10,6 +10,7 @@ import { installMockCommute, MOCK_COMMUTE_CARD } from './commute';
 import { CommuteTestPanel } from './CommuteTestPanel';
 import { MEALS_TEST, MealsTestPanel } from './MealsTestPanel';
 import { vacuumService } from './vacuum';
+import { dishwasherService } from './dishwasher';
 import { mockNotify, notifyListeners } from './notify';
 import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
@@ -202,6 +203,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       async callService(domain, service, data = {}, target) {
         console.info('[mock] %s.%s', domain, service, data, target);
         if (vacuumService(domain, service, data, ids(target), patch)) return {};
+        if (dishwasherService(domain, service, data, ids(target), patch, (id) => states[id])) return {};
         if (domain === 'notify') mockNotify(service, data);
         applyService(domain, service, data, ids(target));
         // A forced car refresh lands a few seconds later.
