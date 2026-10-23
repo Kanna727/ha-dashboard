@@ -10,6 +10,8 @@ import { installMockCommute, MOCK_COMMUTE_CARD } from './commute';
 import { CommuteTestPanel } from './CommuteTestPanel';
 import { MEALS_TEST, MealsTestPanel } from './MealsTestPanel';
 import { vacuumService } from './vacuum';
+import { mockNotify, notifyListeners } from './notify';
+import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
@@ -23,7 +25,7 @@ function patch(id: string, update: Partial<HassEntity> & { attributes?: Record<s
   if (!prev) return;
   states = {
     ...states,
-    [id]: { ...prev, ...update, attributes: { ...prev.attributes, ...update.attributes }, last_changed: new Date().toISOString() },
+    [id]: { ...prev, ...update, attributes: { ...prev.attributes, ...update.attributes }, last_changed: update.last_changed ?? new Date().toISOString() },
   };
   store.set(states);
 }
@@ -181,6 +183,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
     store.set(states);
     // Test hook (mock build only): window.__mockPatch('sensor.x', { state: '0' })
     (window as unknown as { __mockPatch: typeof patch }).__mockPatch = patch;
+    (window as unknown as { __mockNotify: typeof mockNotify }).__mockNotify = mockNotify;
     // Jitter power sensors so live updates are visible.
     if (FROZEN) return;
     const id = window.setInterval(() => {
@@ -199,6 +202,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       async callService(domain, service, data = {}, target) {
         console.info('[mock] %s.%s', domain, service, data, target);
         if (vacuumService(domain, service, data, ids(target), patch)) return {};
+        if (domain === 'notify') mockNotify(service, data);
         applyService(domain, service, data, ids(target));
         // A forced car refresh lands a few seconds later.
         if (domain === 'button' && ids(target).includes('button.car_force_refresh')) {
@@ -312,6 +316,14 @@ export default function MockProvider({ children }: { children: ReactNode }) {
           window.removeEventListener(MOCK_LAYOUT, on);
         };
       },
+      subscribeNotifyCalls(cb, ready) {
+        // ?mockNotify=denied behaves like a non-admin login (no mirroring).
+        const denied = new URLSearchParams(window.location.search).get('mockNotify') === 'denied';
+        queueMicrotask(() => ready(!denied));
+        if (denied) return () => undefined;
+        notifyListeners.add(cb);
+        return () => notifyListeners.delete(cb);
+      },
       logout() {
         console.info('[mock] logout');
       },
@@ -326,6 +338,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         {CAR_TEST && <CarTestPanel patch={patch} />}
         {CAR_TEST && <CommuteTestPanel />}
         {(CAR_TEST || MEALS_TEST) && <MealsTestPanel />}
+        {(CAR_TEST || ALERTS_TEST) && <AlertsTestPanel patch={patch} />}
       </HassStatusContext.Provider>
     </HassContext.Provider>
   );

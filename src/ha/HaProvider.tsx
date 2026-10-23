@@ -264,6 +264,27 @@ export const haApi: HassApi = {
       unsub.then((u) => u?.()).catch(() => undefined);
     };
   },
+  subscribeNotifyCalls(cb, ready) {
+    let cancelled = false;
+    type Call = { data?: { domain?: string; service?: string; service_data?: Record<string, unknown> } };
+    // call_service is admin-only: a non-admin login gets "unauthorized" here.
+    // The library re-subscribes on its own after a reconnect.
+    const unsub = getConnection().then((conn) =>
+      cancelled
+        ? undefined
+        : conn.subscribeEvents<Call>((ev) => {
+            if (ev.data?.domain === 'notify' && ev.data.service) cb(ev.data.service, ev.data.service_data ?? {});
+          }, 'call_service'),
+    );
+    unsub.then(
+      () => !cancelled && ready(true),
+      () => !cancelled && ready(false),
+    );
+    return () => {
+      cancelled = true;
+      unsub.then((u) => u?.()).catch(() => undefined);
+    };
+  },
   logout() {
     saveTokens(null);
     window.location.reload();
