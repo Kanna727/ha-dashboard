@@ -8,6 +8,7 @@ import { cycleEnded, mirrorsService, noticeFrom, overdueDoors } from '../lib/ale
 import { useToasts } from './Toasts';
 
 const DOORS = [...new Set([...ROOMS.flatMap((r) => r.doors), FRIDGE.door])];
+const WASHER_DOOR = DOORS.find((id) => id.includes('washing_machine'));
 const doorName = (id: string) => {
   if (id === FRIDGE.door) return 'Fridge door';
   if (id.includes('washing_machine')) return 'Washer door';
@@ -76,7 +77,9 @@ export function Alerts() {
     if (!dishRunning) aborted.current = false;
     if (mirroring.current) return;
     if (cycleEnded(was.washer, washerRunning)) {
-      push({ id: `washer-${Date.now()}`, title: 'Washer is done', text: 'Time to unload the laundry.', icon: 'washer', full: true, seconds }, { chime: ALERTS.chime });
+      // Gone once the washer door opens (someone is unloading).
+      const dismissWhen = WASHER_DOOR ? { entities: [WASHER_DOOR], states: ['on'] } : undefined;
+      push({ id: `washer-${Date.now()}`, title: 'Washer is done', text: 'Time to unload the laundry.', icon: 'washer', full: true, seconds, dismissWhen }, { chime: ALERTS.chime });
     }
     if (cycleEnded(was.dish, dishRunning) && !stopped) {
       push({ id: `dish-${Date.now()}`, title: 'Dishwasher is done', text: 'The cycle has ended.', icon: 'dishwasher', full: true, seconds }, { chime: ALERTS.chime });
@@ -95,7 +98,16 @@ export function Alerts() {
     for (const d of overdueDoors(readings, now, ALERTS.doorOpenMinutes, alerted.current)) {
       alerted.current.add(d.key);
       push(
-        { id: d.key, title: `${doorName(d.id)} open`, text: `Open for ${d.openMin} minutes.`, icon: 'doorOpen', tone: 'warn', full: true, seconds },
+        {
+          id: d.key,
+          title: `${doorName(d.id)} open`,
+          text: `Open for ${d.openMin} minutes.`,
+          icon: 'doorOpen',
+          tone: 'warn',
+          full: true,
+          seconds,
+          dismissWhen: { entities: [d.id], states: ['off'] }, // gone as soon as it closes
+        },
         { chime: ALERTS.chime },
       );
     }

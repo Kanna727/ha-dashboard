@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 import { chime, siren } from '../lib/chime';
+import { isResolved, type DismissWhen } from '../lib/alerts';
+import { store } from '../ha/store';
 
 export interface Toast {
   id: string;
@@ -14,6 +16,7 @@ export interface Toast {
   emoji?: string; // shown big in place of the icon (full-screen only)
   source?: string; // "Home Assistant" for mirrored notifications
   seconds?: number; // full-screen lifetime, default 30 (alarms have none)
+  dismissWhen?: DismissWhen; // full-screen: taken down once resolved (the door closes)
 }
 
 const ToastContext = createContext<{ push: (t: Toast, opts?: { chime?: boolean }) => void; toasts: Toast[] }>({ push: () => undefined, toasts: [] });
@@ -34,8 +37,9 @@ type Alert = Toast & { at: number; sound: boolean };
 // everything, queued, each up for its own lifetime from when it shows; a tap
 // or Esc dismisses it and the next one comes in. Alarms go ahead of the
 // queue (in front of an alert already showing) and stay until tapped, the
-// siren repeating for up to 2 minutes. Pushing an id that is already shown or
-// queued is a no-op.
+// siren repeating for up to 2 minutes. An alert with `dismissWhen` goes as
+// soon as it's resolved (see the effect below). Pushing an id that is already
+// shown or queued is a no-op.
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -85,6 +89,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       setLeaving(false);
     }, LEAVE_MS);
   }, [currentId]);
+
+  // Resolved alerts (the door they're about closed) go at once: the one
+  // showing leaves as if tapped, siren and all; queued ones are dropped unseen.
+  useEffect(() => {
+    if (!alerts.some((a) => a.dismissWhen)) return;
+    const check = () => {
+      const states = store.getAll();
+      const done = alerts.filter((a) => a.dismissWhen && isResolved(a.dismissWhen, states, a.at));
+      if (!done.length) return;
+      if (done[0] === current) close();
+      const drop = new Set(done.filter((a) => a !== current).map((a) => a.id));
+      if (!drop.size) return;
+      drop.forEach((id) => queued.current.delete(id));
+      setAlerts((as) => as.filter((a) => !drop.has(a.id)));
+    };
+    check();
+    return store.subscribe(check);
+  }, [alerts, current, close]);
 
   const alarm = current?.tone === 'alarm';
   const sound = !!current?.sound;
