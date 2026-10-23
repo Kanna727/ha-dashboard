@@ -164,6 +164,14 @@ const config: DashboardConfig = {
       progress: 'sensor.dishwasher_program_progress',
       finish: 'sensor.dishwasher_program_finish_time',
       connectivity: 'binary_sensor.dishwasher_connectivity',
+      control: {
+        program: 'select.utility_dishwasher_selected_program',
+        stop: 'button.dishwasher_stop_program',
+        power: 'switch.utility_dishwasher_power',
+        plug: 'switch.utility_dishwasher',
+        watts: 'sensor.utility_dishwasher_power',
+        remoteStart: 'binary_sensor.utility_dishwasher_remote_start',
+      },
     },
     washer: {
       running: 'input_boolean.washing_machine_running',

@@ -61,20 +61,27 @@ export function Alerts() {
   const washerRunning = washer?.state === 'on';
   const p = num(dwProgress);
   const dishRunning = p !== undefined && p > 0 && p < 100;
+  // A stopped cycle also drops the progress: Home Connect then reports
+  // aborting / ready rather than finished, and that isn't "done".
+  const dwOp = useEntity(APPLIANCES.dishwasher.state)?.state;
+  const aborted = useRef(false);
+  if (dwOp === 'aborting') aborted.current = true;
 
   const prev = useRef<{ washer?: boolean; dish?: boolean }>({});
   useEffect(() => {
     if (!live) return;
     const was = prev.current;
     prev.current = { washer: washerRunning, dish: dishRunning };
+    const stopped = aborted.current || dwOp === 'ready' || dwOp === 'inactive';
+    if (!dishRunning) aborted.current = false;
     if (mirroring.current) return;
     if (cycleEnded(was.washer, washerRunning)) {
       push({ id: `washer-${Date.now()}`, title: 'Washer is done', text: 'Time to unload the laundry.', icon: 'washer', full: true, seconds }, { chime: ALERTS.chime });
     }
-    if (cycleEnded(was.dish, dishRunning)) {
+    if (cycleEnded(was.dish, dishRunning) && !stopped) {
       push({ id: `dish-${Date.now()}`, title: 'Dishwasher is done', text: 'The cycle has ended.', icon: 'dishwasher', full: true, seconds }, { chime: ALERTS.chime });
     }
-  }, [live, washerRunning, dishRunning, push, seconds]);
+  }, [live, washerRunning, dishRunning, dwOp, push, seconds]);
 
   const doors = useEntities(DOORS);
   const alerted = useRef(new Set<string>());
