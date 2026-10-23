@@ -1,5 +1,6 @@
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
 import { VACUUM_DEVICE, vacuumEntities } from './vacuum';
+import { DESK_DEVICE, deskEntities, isDeskEntity } from './desk';
 
 // States for the fictional home in config/dashboard.config.example.ts, tuned so
 // every card has something to show (car online, dishwasher mid-cycle).
@@ -318,6 +319,8 @@ const list: HassEntity[] = [
   e('button.car_stop_valet_mode', 'unknown'),
   // The robot vacuum and its ~90 settings and sensors (mock/vacuum.ts).
   ...vacuumEntities(),
+  // The standing desk's controller (mock/desk.ts).
+  ...deskEntities(),
 ];
 
 export const FIXTURES: HassEntities = Object.fromEntries(list.map((x) => [x.entity_id, x]));
@@ -351,6 +354,7 @@ export const REGISTRY = {
     { id: 'dev_car', name: 'MY CAR', areaId: null, model: 'Sport (2024)', disabled: false },
     VACUUM_DEVICE,
     { id: 'dev_dishwasher', name: 'Dishwasher', areaId: 'utility', model: 'Dishwasher', disabled: false },
+    DESK_DEVICE,
   ],
   entities: [
     ...[
@@ -396,6 +400,16 @@ export const REGISTRY = {
       .map((x) => x.entity_id)
       .filter((id) => /^[a-z_]+\.robot(_|$)/.test(id))
       .map((entityId) => ({ entityId, deviceId: VACUUM_DEVICE.id, platform: 'dreame_vacuum' })),
+    // The desk's device: every standing_desk_* entity.
+    ...list
+      .map((x) => x.entity_id)
+      .filter(isDeskEntity)
+      .map((entityId) => ({
+        entityId,
+        deviceId: DESK_DEVICE.id,
+        platform: 'esphome',
+        category: /_(min_height|max_height|offset_up_by|offset_down_by|nudge_delay|enable_idle_counter)$/.test(entityId) ? 'config' : /_esp32_/.test(entityId) ? 'diagnostic' : undefined,
+      })),
   ],
 };
 

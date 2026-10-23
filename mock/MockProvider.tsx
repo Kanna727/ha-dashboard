@@ -11,6 +11,7 @@ import { CommuteTestPanel } from './CommuteTestPanel';
 import { MEALS_TEST, MealsTestPanel } from './MealsTestPanel';
 import { vacuumService } from './vacuum';
 import { dishwasherService } from './dishwasher';
+import { deskHistory, deskService, isDeskEntity, startDeskMock } from './desk';
 import { mockNotify, notifyListeners } from './notify';
 import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
@@ -185,6 +186,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
     // Test hook (mock build only): window.__mockPatch('sensor.x', { state: '0' })
     (window as unknown as { __mockPatch: typeof patch }).__mockPatch = patch;
     (window as unknown as { __mockNotify: typeof mockNotify }).__mockNotify = mockNotify;
+    startDeskMock(patch);
     // Jitter power sensors so live updates are visible.
     if (FROZEN) return;
     const id = window.setInterval(() => {
@@ -204,6 +206,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         console.info('[mock] %s.%s', domain, service, data, target);
         if (vacuumService(domain, service, data, ids(target), patch)) return {};
         if (dishwasherService(domain, service, data, ids(target), patch, (id) => states[id])) return {};
+        if (deskService(domain, service, data, ids(target), patch)) return {};
         if (domain === 'notify') mockNotify(service, data);
         applyService(domain, service, data, ids(target));
         // A forced car refresh lands a few seconds later.
@@ -226,7 +229,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         return Object.fromEntries(
           entityIds.map((id) => [
             id,
-            CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : TDS_HISTORY[id] ? tdsHistory(TDS_HISTORY[id], hours) : fakeHistory(1400, hours),
+            CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : TDS_HISTORY[id] ? tdsHistory(TDS_HISTORY[id], hours) : isDeskEntity(id) ? deskHistory(hours) : fakeHistory(1400, hours),
           ]),
         );
       },
