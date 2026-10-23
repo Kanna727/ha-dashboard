@@ -1,3 +1,10 @@
+# [1.43.0](https://github.com/Kanna727/ha-dashboard/compare/v1.42.0...v1.43.0) (2026-10-23)
+
+
+### Features
+
+* **dishwasher:** modal with a 3D replica and the machine's own control panel ([#57](https://github.com/Kanna727/ha-dashboard/issues/57)) ([9aecb87](https://github.com/Kanna727/ha-dashboard/commit/9aecb8735fa5a3ee79b12ed02d37bc07c71dc91f))
+
 # [1.42.0](https://github.com/Kanna727/ha-dashboard/compare/v1.41.0...v1.42.0) (2026-10-23)
 
 
