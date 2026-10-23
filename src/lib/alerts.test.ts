@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cycleEnded, mirrorsService, noticeFrom, overdueDoors } from './alerts';
+import { cycleEnded, isResolved, mirrorsService, noticeFrom, overdueDoors } from './alerts';
 
 describe('cycle ended', () => {
   it('fires only on a seen running -> stopped transition', () => {
@@ -106,5 +106,41 @@ describe('tone asked for by the automation', () => {
   it('ignores unknown values', () => {
     expect(noticeFrom({ message: 'Hello', data: { dashboard: 'loud' } })?.tone).toBe('ok');
     expect(noticeFrom({ message: 'Door left open', data: { dashboard: 1 } })?.tone).toBe('warn');
+  });
+});
+
+describe('dismiss when resolved', () => {
+  it('reads data.dashboard_dismiss as a string or a list', () => {
+    expect(noticeFrom({ message: 'Door open', data: { dashboard_dismiss: { entity_id: 'binary_sensor.door', state: 'off' } } })?.dismissWhen).toEqual({
+      entities: ['binary_sensor.door'],
+      states: ['off'],
+    });
+    expect(noticeFrom({ message: 'Laundry', data: { dashboard_dismiss: { entity_id: ['binary_sensor.a', 'binary_sensor.b'], state: ['on'] } } })?.dismissWhen).toEqual({
+      entities: ['binary_sensor.a', 'binary_sensor.b'],
+      states: ['on'],
+    });
+  });
+
+  it('ignores an incomplete one', () => {
+    expect(noticeFrom({ message: 'Door open', data: { dashboard_dismiss: { entity_id: 'binary_sensor.door' } } })?.dismissWhen).toBeUndefined();
+    expect(noticeFrom({ message: 'Door open', data: { dashboard_dismiss: 'binary_sensor.door' } })?.dismissWhen).toBeUndefined();
+    expect(noticeFrom({ message: 'Door open' })).not.toHaveProperty('dismissWhen');
+  });
+
+  const since = Date.parse('2026-10-23T10:00:00Z');
+  const at = (ms: number) => new Date(since + ms).toISOString();
+  const dw = { entities: ['binary_sensor.door', 'binary_sensor.other'], states: ['off'] };
+
+  it('counts a change to a resolving state after the alert came in', () => {
+    expect(isResolved(dw, { 'binary_sensor.door': { state: 'off', last_changed: at(3_000) } }, since)).toBe(true);
+    expect(isResolved(dw, { 'binary_sensor.other': { state: 'off', last_changed: at(60_000) } }, since)).toBe(true);
+    expect(isResolved(dw, { 'binary_sensor.door': { state: 'on', last_changed: at(3_000) } }, since)).toBe(false);
+    expect(isResolved(dw, {}, since)).toBe(false);
+  });
+
+  it('allows a few seconds of race but not an old state', () => {
+    expect(isResolved(dw, { 'binary_sensor.door': { state: 'off', last_changed: at(-4_000) } }, since)).toBe(true);
+    // Closed two minutes before a late alert (e.g. after an arrival check): keep showing it.
+    expect(isResolved(dw, { 'binary_sensor.door': { state: 'off', last_changed: at(-120_000) } }, since)).toBe(false);
   });
 });

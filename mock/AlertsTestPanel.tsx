@@ -43,11 +43,24 @@ export function AlertsTestPanel({ patch }: { patch: Patch }) {
     patch(APPLIANCES.washer.running, { state: 'on' });
     window.setTimeout(() => patch(APPLIANCES.washer.running, { state: 'off' }), 300);
   };
+  // The overlay covers this panel, so the door closes by itself to show the
+  // alert taking itself down (dismissWhen).
+  const door = ROOMS.flatMap((r) => r.doors)[0];
   const doorLeftOpen = () => {
-    const door = ROOMS.flatMap((r) => r.doors)[0];
     if (!door) return;
     patch(door, { state: 'off' });
     window.setTimeout(() => patch(door, { state: 'on', last_changed: new Date(Date.now() - (ALERTS.doorOpenMinutes + 1) * 60_000).toISOString() }), 100);
+    window.setTimeout(() => patch(door, { state: 'off' }), 6_000);
+  };
+  const doorOpenedAlarm = () => {
+    if (!door) return;
+    patch(door, { state: 'on' });
+    mockNotify('notify', {
+      title: 'Front door opened 🚪',
+      message: 'It closes in 4 s and this alarm goes with it.',
+      data: { dashboard: 'alarm', dashboard_dismiss: { entity_id: door, state: 'off' } },
+    });
+    window.setTimeout(() => patch(door, { state: 'off' }), 4_000);
   };
 
   if (!open) {
@@ -74,6 +87,9 @@ export function AlertsTestPanel({ patch }: { patch: Patch }) {
                 {s.label}
               </button>
             ))}
+            <button className="chip-btn small" onClick={doorOpenedAlarm}>
+              Door alarm (gone when it closes)
+            </button>
           </div>
         </div>
         <div className="car-test-group">
@@ -83,7 +99,7 @@ export function AlertsTestPanel({ patch }: { patch: Patch }) {
               Washer done{denied ? '' : ' (off while mirroring)'}
             </button>
             <button className="chip-btn small" onClick={doorLeftOpen}>
-              Door left open
+              Door left open (closes in 6 s)
             </button>
           </div>
         </div>

@@ -25,11 +25,46 @@ export function overdueDoors(doors: DoorReading[], now: number, minutes: number,
 export const mirrorsService = (service: string, patterns: string[]) =>
   patterns.some((p) => (p.endsWith('*') ? service.startsWith(p.slice(0, -1)) : service === p));
 
+// An alert that takes itself down once what it is about is resolved: any of
+// `entities` reaching one of `states` (the door it's about closes).
+export interface DismissWhen {
+  entities: string[];
+  states: string[];
+}
+
 export interface HaNotice {
   title: string;
   text?: string;
   emoji?: string; // the first emoji in the notification, shown big instead of an icon
   tone: 'ok' | 'warn' | 'alarm';
+  dismissWhen?: DismissWhen;
+}
+
+// A change this long before the alert arrived still counts: the door can
+// close while HA is still sending the notification.
+const RESOLVE_GRACE_MS = 5_000;
+
+// Whether an alert shown since `since` (epoch ms) is resolved: one of its
+// entities is in a resolving state, reached after the alert came in (less the
+// grace). One already resolved long before doesn't count, so a late alert,
+// e.g. sent minutes after the door opened, is still shown.
+export function isResolved(dw: DismissWhen, states: Record<string, { state: string; last_changed: string } | undefined>, since: number): boolean {
+  return dw.entities.some((id) => {
+    const s = states[id];
+    return !!s && dw.states.includes(s.state) && Date.parse(s.last_changed) >= since - RESOLVE_GRACE_MS;
+  });
+}
+
+const strings = (v: unknown): string[] => (Array.isArray(v) ? v : [v]).filter((x): x is string => typeof x === 'string' && x !== '');
+
+// `data: { dashboard_dismiss: { entity_id, state } }` in the notify call (each
+// a string or a list), shaped like a state condition.
+function dismissFrom(data: Record<string, unknown>): DismissWhen | undefined {
+  const d = (data.data as { dashboard_dismiss?: { entity_id?: unknown; state?: unknown } } | undefined)?.dashboard_dismiss;
+  if (!d || typeof d !== 'object') return undefined;
+  const entities = strings(d.entity_id);
+  const states = strings(d.state);
+  return entities.length && states.length ? { entities, states } : undefined;
 }
 
 // One emoji with its variation selector, skin tone and ZWJ joins (🧺, ♨️, 👩‍🍳).
@@ -62,8 +97,8 @@ function askedTone(data: Record<string, unknown>): HaNotice['tone'] | undefined 
 // none), the message under it, and the first emoji lifted out as the picture.
 // The tone: the one the automation asked for (data.dashboard), else an alarm
 // when it was sent as one to the phones or its title or message contains one
-// of `alarms` (any case), else a warning by emoji or wording. Null for an
-// empty message or a companion-app command.
+// of `alarms` (any case), else a warning by emoji or wording. `dismissWhen`
+// from data.dashboard_dismiss. Null for an empty message or a companion-app command.
 export function noticeFrom(data: Record<string, unknown>, alarms: string[] = []): HaNotice | null {
   const message = typeof data.message === 'string' ? data.message.trim() : '';
   const rawTitle = typeof data.title === 'string' ? data.title.trim() : '';
@@ -73,10 +108,14 @@ export function noticeFrom(data: Record<string, unknown>, alarms: string[] = [])
   const title = clean(rawTitle) || clean(message);
   const text = rawTitle && clean(message) ? clean(message) : undefined;
   if (!title) return null;
-  const asked = askedTone(data);
-  if (asked) return { title, text, emoji, tone: asked };
   const all = `${rawTitle} ${message}`.toLowerCase();
-  if (sentAsAlarm(data) || alarms.some((a) => a.trim() && all.includes(a.trim().toLowerCase()))) return { title, text, emoji, tone: 'alarm' };
-  const warn = (emoji !== undefined && WARN_EMOJI.has(emoji)) || WARN_WORDS.test(all);
-  return { title, text, emoji, tone: warn ? 'warn' : 'ok' };
+  const tone =
+    askedTone(data) ??
+    (sentAsAlarm(data) || alarms.some((a) => a.trim() && all.includes(a.trim().toLowerCase()))
+      ? 'alarm'
+      : (emoji !== undefined && WARN_EMOJI.has(emoji)) || WARN_WORDS.test(all)
+        ? 'warn'
+        : 'ok');
+  const dismissWhen = dismissFrom(data);
+  return dismissWhen ? { title, text, emoji, tone, dismissWhen } : { title, text, emoji, tone };
 }
