@@ -1,3 +1,10 @@
+# [1.44.0](https://github.com/Kanna727/ha-dashboard/compare/v1.43.0...v1.44.0) (2026-10-23)
+
+
+### Features
+
+* **alerts:** dismiss an alert as soon as what it is about is resolved ([#58](https://github.com/Kanna727/ha-dashboard/issues/58)) ([7b2f5aa](https://github.com/Kanna727/ha-dashboard/commit/7b2f5aadf903230ff2c53f365fa9386227022a68))
+
 # [1.43.0](https://github.com/Kanna727/ha-dashboard/compare/v1.42.0...v1.43.0) (2026-10-23)
 
 
