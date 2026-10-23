@@ -1,3 +1,10 @@
+# [1.42.0](https://github.com/Kanna727/ha-dashboard/compare/v1.41.0...v1.42.0) (2026-10-23)
+
+
+### Features
+
+* **alerts:** full-screen animated alerts that mirror HA's phone notifications ([#56](https://github.com/Kanna727/ha-dashboard/issues/56)) ([798a52b](https://github.com/Kanna727/ha-dashboard/commit/798a52b1e5c55e72f16015cd8ec95ae65d007660))
+
 # [1.41.0](https://github.com/Kanna727/ha-dashboard/compare/v1.40.0...v1.41.0) (2026-10-22)
 
 
