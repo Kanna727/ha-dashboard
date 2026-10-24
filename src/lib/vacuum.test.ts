@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AUTO_OPEN_START,
+  autoOpenStep,
   calibration,
   chipStatus,
   commonPrefix,
@@ -137,6 +139,66 @@ describe('status', () => {
     expect(fmtMinutes(1544)).toBe('25 h 44 min');
     expect(fmtMinutes(120)).toBe('2 h');
     expect(fmtMinutes(undefined)).toBe('–');
+  });
+});
+
+describe('auto open', () => {
+  type In = Parameters<typeof autoOpenStep>[1];
+  const base: In = { state: 'docked', page: 'home', idleMs: 60_000, busy: false, now: 0 };
+  // Runs the steps in order and collects where it went.
+  const run = (steps: Partial<In>[]) => {
+    let s = AUTO_OPEN_START;
+    let page = 'home';
+    const went: (string | undefined)[] = [];
+    for (const step of steps) {
+      const r = autoOpenStep(s, { ...base, page, ...step });
+      s = r.next;
+      if (r.go) page = r.go;
+      went.push(r.go);
+    }
+    return went;
+  };
+
+  it('opens the page once when a run starts, and goes home a minute after it docks', () => {
+    expect(run([{}, { state: 'cleaning' }, { state: 'cleaning', now: 5000 }, { state: 'docked', now: 10_000 }, { state: 'docked', now: 40_000 }, { state: 'docked', now: 70_000 }])).toEqual([
+      undefined,
+      'vacuum',
+      undefined,
+      undefined,
+      undefined,
+      'home',
+    ]);
+  });
+
+  it('opens it on load when a run is under way', () => {
+    expect(run([{ state: 'cleaning' }])).toEqual(['vacuum']);
+  });
+
+  it('waits until the screen is left alone and nothing is open on it', () => {
+    expect(run([{}, { state: 'cleaning', idleMs: 1000 }, { state: 'cleaning', busy: true }, { state: 'cleaning' }])).toEqual([undefined, undefined, undefined, 'vacuum']);
+  });
+
+  it('does not reopen it during the run once someone went back, nor send them home after', () => {
+    expect(run([{}, { state: 'cleaning' }, { state: 'cleaning', page: 'home' }, { state: 'cleaning', page: 'home' }, { state: 'docked', page: 'home', now: 100_000 }])).toEqual([
+      undefined,
+      'vacuum',
+      undefined,
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it('treats a pause as part of the run and holds the page on an error', () => {
+    expect(run([{}, { state: 'cleaning' }, { state: 'paused' }, { state: 'cleaning' }, { state: 'error', now: 100_000 }])).toEqual([undefined, 'vacuum', undefined, undefined, undefined]);
+  });
+
+  it('leaves the page alone when someone opened it themselves', () => {
+    expect(run([{ page: 'vacuum' }, { state: 'cleaning', page: 'vacuum' }, { state: 'docked', page: 'vacuum', now: 0 }, { state: 'docked', page: 'vacuum', now: 100_000 }])).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    ]);
   });
 });
 

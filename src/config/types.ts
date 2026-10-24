@@ -178,7 +178,8 @@ export interface DashboardConfig {
   // Robot vacuum page. Optional: without it the first vacuum.* entity is used,
   // and its map camera and settings are found from the vacuum's entity names.
   // `look` colours the 3D robot on the page: shell, laser band, and whether to draw its dock.
-  VACUUM?: { entity?: string; map?: string; look?: { body?: string; laser?: string; dock?: boolean } };
+  // `autoOpen` (default true): the page opens by itself while the robot runs.
+  VACUUM?: { entity?: string; map?: string; autoOpen?: boolean; look?: { body?: string; laser?: string; dock?: boolean } };
   // Standing desk (a height-adjustable desk controller with a cover, a height
   // number and preset buttons). Optional: without it the first number.*_desk_height
   // is used, and the desk's other entities are found from its name prefix and device.
