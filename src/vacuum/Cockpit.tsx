@@ -253,6 +253,8 @@ function RobotHero({ battery, state, tone, emptying }: { battery?: number; state
     const ro = new ResizeObserver(() => viewer.current?.resize(el.clientWidth, el.clientHeight));
     ro.observe(el);
     viewer.current.resize(el.clientWidth, el.clientHeight);
+    // Mock builds: poke the viewer from the console.
+    if (import.meta.env.VITE_MOCK) (window as unknown as { __robotViewer?: RobotViewer }).__robotViewer = viewer.current;
     const onVisible = () => !document.hidden && viewer.current?.wake();
     document.addEventListener('visibilitychange', onVisible);
     return () => {

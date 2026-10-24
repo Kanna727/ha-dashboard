@@ -98,7 +98,11 @@ const PANEL_H = DOOR_H - FACE_TOP;
 const MOD = 0.144; // half width of the module, logo strip and scoop
 const STRIP_Y0 = 0.6251;
 const STRIP_Y1 = 0.6398;
-const SCOOP_Y = 0.5857;
+const SCOOP_Y = 0.5857; // bottom of the recess behind the face
+const SCOOP_END = STRIP_Y0 - 0.022; // the handle opening's bottom edge at its ends …
+const SCOOP_MID = STRIP_Y0 - 0.036; // … and in the middle
+// The opening's bottom edge at x (a parabola between the ends and the middle).
+const scoopEdge = (x: number) => SCOOP_MID + (SCOOP_END - SCOOP_MID) * (x / MOD) ** 2;
 const OPEN = Math.PI / 2 - 0.012; // the door's stop, a hair above level
 const PX = 6000; // panel canvas pixels per metre
 const RESUME_MS = 8000;
@@ -740,8 +744,8 @@ export class DishwasherViewer {
         (m.material as Material).dispose();
       }
     });
-    this.scene.add(new HemisphereLight('#ffffff', '#4a4b4e', 0.7));
-    const key = new DirectionalLight('#ffffff', 0.7);
+    this.scene.add(new HemisphereLight('#ffffff', '#4a4b4e', 0.35));
+    const key = new DirectionalLight('#ffffff', 1.15);
     key.position.set(-1.4, 2.4, 2.2);
     this.scene.add(key);
     const fill = new DirectionalLight('#eef2ff', 0.4);
@@ -792,8 +796,8 @@ export class DishwasherViewer {
   }
 
   // Brushed stainless: anisotropic highlights stretched across the grain.
-  private steel(opts: { color?: string; rough?: number; aniso?: number; vertical?: boolean; repeat?: number; base?: number } = {}) {
-    const t = this.track(tex(brushed(512, opts.base ?? 230, 13, opts.vertical)));
+  private steel(opts: { color?: string; rough?: number; aniso?: number; vertical?: boolean; repeat?: number; base?: number; grain?: number } = {}) {
+    const t = this.track(tex(brushed(512, opts.base ?? 230, opts.grain ?? 13, opts.vertical)));
     t.wrapS = t.wrapT = RepeatWrapping;
     t.repeat.set(opts.repeat ?? 1.6, opts.repeat ?? 1.6);
     return new MeshPhysicalMaterial({
@@ -809,9 +813,11 @@ export class DishwasherViewer {
   /* ---------- cabinet: sides, back, lid, plinth, feet ---------- */
 
   private buildCabinet() {
-    const sideMat = new MeshPhysicalMaterial({ color: '#b6b4b0', metalness: 0.65, roughness: 0.5 });
+    const sideMat = new MeshPhysicalMaterial({ color: '#cac8c4', metalness: 0.5, roughness: 0.45 });
     const lidMat = new MeshPhysicalMaterial({ color: '#d9d7d3', metalness: 1, roughness: 0.4 });
-    const plinthMat = this.steel({ rough: 0.2, aniso: 0.3, color: '#d6d5d2' });
+    // The plinth is the door's brushed steel (it reads as one sheet in the photos).
+    const plinthMat = this.steel({ rough: 0.24, aniso: 0.45, color: '#c9c8c5', base: 214, grain: 34 });
+    plinthMat.map!.repeat.set(1 / 0.6, 1 / 0.6);
     const black = new MeshStandardMaterial({ color: '#0a0a0b', roughness: 0.7 });
     const dark = new MeshStandardMaterial({ color: '#1c1d1f', roughness: 0.8 });
     const foot = new MeshStandardMaterial({ color: '#3c3d40', roughness: 0.6 });
@@ -884,15 +890,15 @@ export class DishwasherViewer {
     // Inside the closed box light bounces between the steel walls, which the
     // studio reflections alone don't give (they'd mirror the dark floor): a
     // partly diffuse steel and a soft light in the cavity keep it bright.
-    const tub = this.steel({ vertical: true, rough: 0.34, aniso: 0.5, color: '#dcdddf' });
-    tub.metalness = 0.5;
+    const tub = this.steel({ vertical: true, rough: 0.3, aniso: 0.5, color: '#b9bbbe' });
+    tub.metalness = 0.6;
     tub.side = DoubleSide;
     tub.bumpMap = bumpTex;
-    tub.bumpScale = 0.35;
-    const plain = this.steel({ vertical: true, rough: 0.34, aniso: 0.5, color: '#dcdddf' });
-    plain.metalness = 0.5;
+    tub.bumpScale = 0.7;
+    const plain = this.steel({ vertical: true, rough: 0.3, aniso: 0.5, color: '#b9bbbe' });
+    plain.metalness = 0.6;
     plain.side = DoubleSide;
-    const glow = new PointLight('#ffffff', 0.9, 1.1, 1.2);
+    const glow = new PointLight('#ffffff', 0.65, 1.1, 1.2);
     glow.position.set(0, 0.62, 0.12);
     this.scene.add(glow);
     const tw = 0.54;
@@ -913,30 +919,65 @@ export class DishwasherViewer {
     wall(tw, tz1 - tz0, [0, ty0, (tz0 + tz1) / 2], [-Math.PI / 2, 0, 0], plain);
 
     const greyPlastic = new MeshStandardMaterial({ color: '#8f9398', roughness: 0.55 });
-    // Riser pipe up the back wall to the upper spray arm.
-    const riser = new Mesh(new RoundedBoxGeometry(0.042, 0.34, 0.024, 3, 0.011), plain);
-    riser.position.set(0, ty0 + 0.17, tz0 + 0.013);
+    // Riser: a wide, flat grey duct up the back wall to the upper spray arm,
+    // flaring where it leaves the floor.
+    const duct = new MeshStandardMaterial({ color: '#a4a7ab', roughness: 0.5 });
+    const riser = new Mesh(new RoundedBoxGeometry(0.078, 0.37, 0.02, 3, 0.006), duct);
+    riser.position.set(0, ty0 + 0.185, tz0 + 0.01);
     this.scene.add(riser);
-    const bulge = new Mesh(new RoundedBoxGeometry(0.06, 0.07, 0.03, 3, 0.014), plain);
-    bulge.position.set(0, ty0 + 0.1, tz0 + 0.016);
-    this.scene.add(bulge);
+    const flare = new Shape();
+    flare.moveTo(-0.06, 0);
+    flare.lineTo(0.06, 0);
+    flare.quadraticCurveTo(0.039, 0.01, 0.039, 0.06);
+    flare.lineTo(-0.039, 0.06);
+    flare.quadraticCurveTo(-0.039, 0.01, -0.06, 0);
+    const foot = new Mesh(new ExtrudeGeometry(flare, { depth: 0.022, bevelEnabled: true, bevelSize: 0.003, bevelThickness: 0.003, bevelSegments: 2 }), duct);
+    foot.position.set(0, ty0, tz0 + 0.001);
+    this.scene.add(foot);
 
     // Filter: perforated plate round the sump, the filter cup in the middle.
-    const perf = this.track(tex(grid(256, 8, '#b9bbbd', '#55585c')));
+    const perf = this.track(tex(grid(256, 6, '#a9acaf', '#4a4d51')));
     perf.wrapS = perf.wrapT = RepeatWrapping;
-    perf.repeat.set(3, 3);
-    const plateShape = new Shape();
-    plateShape.moveTo(-0.11, 0.06);
-    plateShape.quadraticCurveTo(0, 0.12, 0.11, 0.06);
-    plateShape.quadraticCurveTo(0.08, -0.08, 0, -0.09);
-    plateShape.quadraticCurveTo(-0.08, -0.08, -0.11, 0.06);
-    const plate = new Mesh(new ExtrudeGeometry(plateShape, { depth: 0.003, bevelEnabled: false }), new MeshStandardMaterial({ map: perf, metalness: 0.6, roughness: 0.4 }));
+    perf.repeat.set(12, 12);
+    // Shape space: x across, y = −z (rotated flat below); back edge narrower.
+    const sump = new Shape();
+    sump.moveTo(-0.1, 0.07);
+    sump.lineTo(0.1, 0.07);
+    sump.quadraticCurveTo(0.125, 0.07, 0.13, 0.045);
+    sump.lineTo(0.155, -0.11);
+    sump.quadraticCurveTo(0.158, -0.135, 0.13, -0.135);
+    sump.lineTo(-0.13, -0.135);
+    sump.quadraticCurveTo(-0.158, -0.135, -0.155, -0.11);
+    sump.lineTo(-0.13, 0.045);
+    sump.quadraticCurveTo(-0.125, 0.07, -0.1, 0.07);
+    const plate = new Mesh(new ExtrudeGeometry(sump, { depth: 0.002, bevelEnabled: true, bevelSize: 0.004, bevelThickness: 0.002, bevelSegments: 2 }), new MeshStandardMaterial({ map: perf, metalness: 0.6, roughness: 0.42 }));
     plate.rotation.x = -Math.PI / 2;
-    plate.position.set(0.02, ty0 + 0.001, 0.05);
+    plate.position.set(0.02, ty0 + 0.001, 0.02);
     this.scene.add(plate);
-    const cup = new Mesh(new CylinderGeometry(0.034, 0.03, 0.03, 32), greyPlastic);
-    cup.position.set(0.02, ty0 + 0.015, 0.06);
-    this.scene.add(cup);
+    // Coarse filter: a grey cage of vertical slats round a dark core, with a rim on top.
+    const slots = this.track(
+      tex(
+        (() => {
+          const c = canvas(256, 64);
+          const g = c.getContext('2d')!;
+          g.fillStyle = '#fff';
+          g.fillRect(0, 0, 256, 64);
+          g.fillStyle = '#000';
+          for (let x = 4; x < 256; x += 16) g.fillRect(x, 10, 9, 44);
+          return c;
+        })(),
+        false,
+      ),
+    );
+    const cage = new Mesh(new CylinderGeometry(0.036, 0.034, 0.034, 40, 1, true), new MeshStandardMaterial({ color: '#9a9ea3', roughness: 0.5, alphaMap: slots, alphaTest: 0.5, side: DoubleSide }));
+    cage.position.set(0.02, ty0 + 0.018, 0.09);
+    this.scene.add(cage);
+    const core = new Mesh(new CylinderGeometry(0.026, 0.026, 0.03, 24), new MeshStandardMaterial({ color: '#3b3e42', roughness: 0.7 }));
+    core.position.set(0.02, ty0 + 0.015, 0.09);
+    this.scene.add(core);
+    const rim = new Mesh(new CylinderGeometry(0.039, 0.039, 0.004, 40, 1, true), greyPlastic);
+    rim.position.set(0.02, ty0 + 0.035, 0.09);
+    this.scene.add(rim);
     // Salt cap, front left: round grey screw cap with its lettering.
     const salt = canvas(256, 256);
     const sg = salt.getContext('2d')!;
@@ -1023,9 +1064,9 @@ export class DishwasherViewer {
 
   private buildLowerRack() {
     const r = this.lowerRack;
-    const frameMat = new MeshStandardMaterial({ color: '#b9bcc0', metalness: 0.2, roughness: 0.42 });
-    const tineMat = new MeshStandardMaterial({ color: '#4a4d52', metalness: 0.1, roughness: 0.5 });
-    const plastic = new MeshStandardMaterial({ color: '#9a9ea3', roughness: 0.55 });
+    const frameMat = new MeshStandardMaterial({ color: '#76797e', metalness: 0.15, roughness: 0.5 });
+    const tineMat = new MeshStandardMaterial({ color: '#696c71', metalness: 0.15, roughness: 0.5 });
+    const plastic = new MeshStandardMaterial({ color: '#7a7e83', roughness: 0.6 });
     const red = new MeshStandardMaterial({ color: '#d22630', roughness: 0.45 });
     const frame = new Wires();
     const tines = new Wires();
@@ -1085,8 +1126,8 @@ export class DishwasherViewer {
 
   private buildUpperRack() {
     const r = this.upperRack;
-    const frameMat = new MeshStandardMaterial({ color: '#b3b6ba', metalness: 0.2, roughness: 0.42 });
-    const plastic = new MeshStandardMaterial({ color: '#8f9398', roughness: 0.55 });
+    const frameMat = new MeshStandardMaterial({ color: '#76797e', metalness: 0.15, roughness: 0.5 });
+    const plastic = new MeshStandardMaterial({ color: '#73777c', roughness: 0.6 });
     const red = new MeshStandardMaterial({ color: '#d22630', roughness: 0.45 });
     const wires = new Wires();
     const xw = 0.25;
@@ -1210,10 +1251,11 @@ export class DishwasherViewer {
     d.position.z = DOOR_T;
     this.door.add(d);
 
-    const faceMat = this.keep(this.steel({ repeat: 1 / 0.6, rough: 0.17, aniso: 0.45 }));
+    // Visible horizontal brushing, as in the photos (a fine grain alone reads as plain grey).
+    const faceMat = this.keep(this.steel({ repeat: 1 / 0.6, rough: 0.22, aniso: 0.5, color: '#cbcac7', base: 214, grain: 26 }));
     faceMat.map!.repeat.set(1 / 0.6, 1 / 0.6);
     const edgeMat = this.keep(this.steel({ rough: 0.35, aniso: 0.5 }));
-    const scoopMat = this.keep(new MeshPhysicalMaterial({ color: '#7e8083', metalness: 1, roughness: 0.2, side: DoubleSide }));
+    const scoopMat = this.keep(new MeshPhysicalMaterial({ color: '#bdbcb9', metalness: 1, roughness: 0.24, side: DoubleSide }));
     const dw = W - 0.006;
 
     // Body behind the face, left open where the scoop goes in.
@@ -1231,16 +1273,22 @@ export class DishwasherViewer {
 
     // Face: one brushed sheet folded round its edges (the bevel catches the
     // light like the photos' bright edge line), notched for the scoop.
-    const R = 0.011; // scoop corner radius
+    // The handle recess under the module: straight sides, its bottom edge a
+    // shallow arc that sags in the middle (the photos' "smile").
+    const R = 0.009; // corner radius
     const face = new Shape();
     face.moveTo(-dw / 2, 0);
     face.lineTo(dw / 2, 0);
     face.lineTo(dw / 2, FACE_TOP);
     face.lineTo(MOD, FACE_TOP);
-    face.lineTo(MOD, SCOOP_Y + R);
-    face.quadraticCurveTo(MOD, SCOOP_Y, MOD - R, SCOOP_Y);
-    face.lineTo(-MOD + R, SCOOP_Y);
-    face.quadraticCurveTo(-MOD, SCOOP_Y, -MOD, SCOOP_Y + R);
+    face.lineTo(MOD, SCOOP_END + R);
+    face.quadraticCurveTo(MOD, SCOOP_END, MOD - R, SCOOP_END);
+    for (let i = 1; i < 32; i++) {
+      const x = MOD - R - (i / 32) * (2 * (MOD - R));
+      face.lineTo(x, scoopEdge(x));
+    }
+    face.lineTo(-MOD + R, SCOOP_END);
+    face.quadraticCurveTo(-MOD, SCOOP_END, -MOD, SCOOP_END + R);
     face.lineTo(-MOD, FACE_TOP);
     face.lineTo(-dw / 2, FACE_TOP);
     face.closePath();
@@ -1251,30 +1299,48 @@ export class DishwasherViewer {
     seam.position.set(0, FACE_TOP + 0.0004, -0.002);
     d.add(seam);
 
-    // Scoop: a polished quarter-round recess under the strip, closed at the ends.
-    const r = STRIP_Y0 - SCOOP_Y;
-    const shell = new Shape();
-    shell.moveTo(0, -r);
-    shell.absarc(0, 0, r, -Math.PI / 2, -Math.PI, true);
-    shell.lineTo(-r - 0.004, 0);
-    shell.lineTo(-r - 0.004, -r - 0.004);
-    shell.lineTo(0, -r - 0.004);
-    shell.closePath();
-    const scoop = new Mesh(new ExtrudeGeometry(shell, { depth: MOD * 2 - 0.004, bevelEnabled: false, curveSegments: 28 }), scoopMat);
-    scoop.rotation.y = -Math.PI / 2; // shape x -> into the door, extrusion -> −x
-    scoop.position.set(MOD - 0.002, STRIP_Y0, -0.002);
-    d.add(scoop);
-    const cap = new Shape();
-    cap.moveTo(0, 0);
-    cap.lineTo(0, -r);
-    cap.absarc(0, 0, r, -Math.PI / 2, -Math.PI, true);
-    cap.closePath();
+    // Handle recess: a dark pocket reaching up behind the strip. The face sheet
+    // rolls over the opening's bottom edge (a small radius that catches the
+    // light: the photos' bright band along the bottom of the dark recess) into
+    // a shallow floor.
+    const pocket = this.keep(new MeshPhysicalMaterial({ color: '#2c2e31', metalness: 0.6, roughness: 0.55, side: DoubleSide }));
+    const depth = 0.026;
+    const backWall = new Mesh(new PlaneGeometry(MOD * 2, STRIP_Y0 - SCOOP_MID), pocket);
+    backWall.position.set(0, (STRIP_Y0 + SCOOP_MID) / 2, -0.003 - depth);
+    d.add(backWall);
     for (const sx of [-1, 1]) {
-      const c = new Mesh(new ExtrudeGeometry(cap, { depth: 0.001, bevelEnabled: false, curveSegments: 28 }), scoopMat);
-      c.rotation.y = -Math.PI / 2;
-      c.position.set(sx * (MOD - 0.002) + (sx < 0 ? 0.001 : 0), STRIP_Y0, -0.002);
-      d.add(c);
+      const end = new Mesh(new PlaneGeometry(depth, STRIP_Y0 - SCOOP_END), pocket);
+      end.rotation.y = Math.PI / 2;
+      end.position.set(sx * (MOD - 0.0008), (STRIP_Y0 + SCOOP_END) / 2, -0.003 - depth / 2);
+      d.add(end);
     }
+    const roll = 0.005;
+    // A strip along the opening's edge: profile(a) gives [dy, z] for a in 0..1.
+    const edgeStrip = (profile: (a: number) => [number, number], mat: Material) => {
+      const nx = 48;
+      const nv = 8;
+      const pos: number[] = [];
+      const idx: number[] = [];
+      for (let i = 0; i <= nx; i++) {
+        const x = -MOD + 0.001 + (i / nx) * (2 * MOD - 0.002);
+        for (let j = 0; j <= nv; j++) {
+          const [dy, z] = profile(j / nv);
+          pos.push(x, scoopEdge(x) + dy, z);
+          if (i < nx && j < nv) {
+            const k = i * (nv + 1) + j;
+            idx.push(k, k + nv + 1, k + 1, k + 1, k + nv + 1, k + nv + 2);
+          }
+        }
+      }
+      const geo = new BufferGeometry();
+      geo.setAttribute('position', new Float32BufferAttribute(pos, 3));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      d.add(new Mesh(geo, mat));
+    };
+    edgeStrip((a) => [roll * Math.sin((a * Math.PI) / 2), -0.0005 - roll * (1 - Math.cos((a * Math.PI) / 2))], scoopMat);
+    const floor = this.keep(new MeshPhysicalMaterial({ color: '#4c4e51', metalness: 0.7, roughness: 0.45, side: DoubleSide }));
+    edgeStrip((a) => [roll + a * 0.002, -0.0005 - roll - a * (depth - roll)], floor);
 
     // Control panel (canvases): colour, emissive (LEDs, LCD), metalness mask.
     const pw = Math.round(W * PX);
@@ -1310,13 +1376,13 @@ export class DishwasherViewer {
     // Power and Start knobs: domed steel caps.
     const knobMat = this.keep(new MeshPhysicalMaterial({ color: '#dddcd8', metalness: 0.3, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.15 }));
     const knobProfile = [
-      [0, 0.0068],
-      [0.004, 0.0066],
-      [0.0085, 0.0058],
-      [0.0106, 0.0042],
-      [0.0115, 0.0022],
       [0.0117, 0],
-    ].map(([x, y]) => new Vector2(x, y));
+      [0.0115, 0.0022],
+      [0.0106, 0.0042],
+      [0.0085, 0.0058],
+      [0.004, 0.0066],
+      [0, 0.0068],
+    ].map(([x, y]) => new Vector2(x, y)); // rim to centre, so the normals face out
     const knobGeo = new LatheGeometry(knobProfile, 64);
     for (const x of [POWER_X, START_X]) {
       const k = new Mesh(knobGeo, knobMat);
