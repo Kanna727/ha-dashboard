@@ -22,6 +22,7 @@ import { useThrottle } from '../hooks/useThrottle';
 import { useNow } from '../hooks/useNow';
 import { useOpenSheet } from '../components/Sheet';
 import { VacuumChip } from '../vacuum/VacuumChip';
+import { DeskChip, DeskRow } from '../desk/DeskChip';
 import { brightnessPct, canDim, cssRgb, inColorMode, lightRgb, luminance } from '../lib/lightColor';
 import { percentToSend, speedCount, speedOf } from '../lib/fanSpeed';
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
@@ -144,7 +145,8 @@ function RoomDetail({ room, gates }: { room: RoomDef; gates: Gate[] }) {
       <div className="tiles roomy">{room.controls.map((c) => <EntityTile key={c.entity} {...c} />)}</div>
       {room.detailCards?.includes('climate') && <div className="detail-card"><ClimateCard /></div>}
       {room.detailCards?.includes('media') && <div className="detail-card"><MediaCard /></div>}
-      {room.appliances?.some((a) => a !== 'vacuum') && <div className="detail-card"><AppliancesCard kinds={room.appliances} /></div>}
+      {room.appliances?.includes('desk') && <DeskRow />}
+      {room.appliances?.some((a) => a !== 'vacuum' && a !== 'desk') && <div className="detail-card"><AppliancesCard kinds={room.appliances} /></div>}
     </div>
   );
 }
@@ -211,7 +213,8 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
   const occupied = presence.some((p) => p?.state === 'on');
   const doorOpen = doors.some((d) => d?.state === 'on');
   const appStatus = useApplianceStatus();
-  const runningApps = (room.appliances ?? []).filter((a) => a !== 'vacuum' && appStatus[a].running);
+  // Only the appliances with a status here (a config can name kinds this build doesn't know).
+  const runningApps = (room.appliances ?? []).filter((a): a is keyof typeof appStatus => a in appStatus && appStatus[a as keyof typeof appStatus].running);
   // Dishwasher cycle progress, drawn as a read-only fill behind the card.
   const progress = room.appliances?.includes('dishwasher') ? appStatus.dishwasher.pct : undefined;
   // For a few minutes after a cycle, the dishes on the card shine.
@@ -376,6 +379,7 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
         </button>
       ))}
       {room.appliances?.includes('vacuum') && <VacuumChip />}
+      {room.appliances?.includes('desk') && <DeskChip />}
       {room.quick && (
         <button
           className={`row-btn ${room.quick.kind} ${quickOn ? 'on' : ''} ${isFan ? 'lvl-fill' : ''} ${quickHeld && !quickOn ? 'held' : ''} ${fanSlide.sliding ? 'sliding' : ''}`}

@@ -28,8 +28,9 @@ export interface RoomDef {
   // Appliances shown in the room's detail modal. Washer and dishwasher also get
   // status buttons on the room card (tap opens the details, never toggles power);
   // the purifier has no button, only a fault note in the card's subtitle. The
-  // vacuum gets a chip with its live status that opens the vacuum page.
-  appliances?: ('washer' | 'dishwasher' | 'purifier' | 'vacuum')[];
+  // vacuum gets a chip with its live status that opens the vacuum page; the
+  // desk a chip with its height that opens the desk's popup.
+  appliances?: ('washer' | 'dishwasher' | 'purifier' | 'vacuum' | 'desk')[];
   // Extra cards shown in the room's detail modal.
   detailCards?: ('climate' | 'media')[];
 }
@@ -178,6 +179,13 @@ export interface DashboardConfig {
   // and its map camera and settings are found from the vacuum's entity names.
   // `look` colours the 3D robot on the page: shell, laser band, and whether to draw its dock.
   VACUUM?: { entity?: string; map?: string; look?: { body?: string; laser?: string; dock?: boolean } };
+  // Standing desk (a height-adjustable desk controller with a cover, a height
+  // number and preset buttons). Optional: without it the first number.*_desk_height
+  // is used, and the desk's other entities are found from its name prefix and device.
+  // `standAbove`: the height (cm) from which it counts as standing (default: halfway
+  // between the learned Sit and Stand heights, else 90). `look` sizes and colours the
+  // 3D desk: the top's width × depth in cm, the top's and the frame's colours.
+  DESK?: { entity?: string; standAbove?: number; look?: { top?: [number, number]; board?: string; frame?: string } };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
 }

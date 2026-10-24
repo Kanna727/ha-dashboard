@@ -64,6 +64,7 @@ const config: DashboardConfig = {
     },
     {
       id: 'workroom',
+      appliances: ['desk'],
       quick: { entity: 'fan.work_room_fan', kind: 'fan' },
       name: 'Workroom',
       icon: 'desk',
@@ -316,6 +317,10 @@ const config: DashboardConfig = {
   NIGHT_MODE: { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] },
   // Robot vacuum page (optional: without it the first vacuum.* entity is used).
   VACUUM: { entity: 'vacuum.robot', map: 'camera.robot_map' },
+  // Standing desk (optional: without it the first number.*_desk_height is used;
+  // the rest of its entities are found from its name and device). `look` sizes the
+  // 3D desk's top in cm and colours the top and frame.
+  DESK: { entity: 'number.standing_desk_desk_height', look: { top: [140, 70], board: '#cf9452', frame: '#17181b' } },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {
