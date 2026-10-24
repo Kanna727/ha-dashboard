@@ -1,3 +1,10 @@
+# [1.46.0](https://github.com/Kanna727/ha-dashboard/compare/v1.45.0...v1.46.0) (2026-10-24)
+
+
+### Features
+
+* **3d:** photo-accurate robot vacuum, dock and dishwasher models ([#60](https://github.com/Kanna727/ha-dashboard/issues/60)) ([83ab2d5](https://github.com/Kanna727/ha-dashboard/commit/83ab2d5e12f081a3c4fcf9a569dc6316392dac36))
+
 # [1.45.0](https://github.com/Kanna727/ha-dashboard/compare/v1.44.0...v1.45.0) (2026-10-24)
 
 
