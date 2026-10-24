@@ -1,3 +1,10 @@
+# [1.45.0](https://github.com/Kanna727/ha-dashboard/compare/v1.44.0...v1.45.0) (2026-10-24)
+
+
+### Features
+
+* **desk:** standing desk chip, popup and 3D model ([#59](https://github.com/Kanna727/ha-dashboard/issues/59)) ([3a1e3c8](https://github.com/Kanna727/ha-dashboard/commit/3a1e3c868b9aad978063a47561084d4fc2a88785))
+
 # [1.44.0](https://github.com/Kanna727/ha-dashboard/compare/v1.43.0...v1.44.0) (2026-10-23)
 
 
