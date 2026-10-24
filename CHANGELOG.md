@@ -1,3 +1,10 @@
+# [1.47.0](https://github.com/Kanna727/ha-dashboard/compare/v1.46.0...v1.47.0) (2026-10-24)
+
+
+### Features
+
+* **vacuum:** open the vacuum page by itself while the robot runs ([#61](https://github.com/Kanna727/ha-dashboard/issues/61)) ([bccf155](https://github.com/Kanna727/ha-dashboard/commit/bccf1556a4a511f2b3db8a14dc92ac58935cb82c))
+
 # [1.46.0](https://github.com/Kanna727/ha-dashboard/compare/v1.45.0...v1.46.0) (2026-10-24)
 
 
