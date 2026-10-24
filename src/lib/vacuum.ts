@@ -237,6 +237,45 @@ export function vacuumStatus(state: string | undefined, attrs: Record<string, un
 
 export const isRunning = (state: string | undefined) => state === 'cleaning' || state === 'returning';
 
+/* ---------- opening the page by itself ---------- */
+
+// While the robot runs, the vacuum page opens by itself (VACUUM.autoOpen), once
+// per run, and only after the screen has been left alone for a while (never
+// out from under a finger, a modal or a sheet). If it opened the page, it goes
+// back home a minute after the robot is docked again. A pause is part of the
+// run; an error or going offline holds the page.
+export const AUTO_OPEN = { idleMs: 30_000, homeAfterMs: 60_000 };
+
+export interface AutoOpenState {
+  inRun?: boolean; // last seen (undefined before the first state)
+  armed: boolean; // a run started and the page hasn't been shown yet
+  auto: boolean; // the page is open because we opened it
+  endedAt: number | null; // when the run we opened it for ended
+}
+export const AUTO_OPEN_START: AutoOpenState = { armed: false, auto: false, endedAt: null };
+
+export function autoOpenStep(
+  s: AutoOpenState,
+  i: { state: string | undefined; page: string; idleMs: number; busy: boolean; now: number },
+): { next: AutoOpenState; go?: 'vacuum' | 'home' } {
+  const inRun = isRunning(i.state) || i.state === 'paused';
+  const ended = i.state === 'docked' || i.state === 'idle';
+  const here = i.page === 'vacuum';
+  const n: AutoOpenState = { ...s, inRun };
+  if (inRun && !s.inRun && isRunning(i.state)) n.armed = true; // a run starts (or is under way at load)
+  if (!inRun) n.armed = false;
+  if (inRun) n.endedAt = null;
+  else if (ended && n.auto && n.endedAt === null) n.endedAt = i.now;
+  if (!here) n.auto = false; // someone left the page: it's theirs now
+  if (here) n.armed = false; // already there
+  const quiet = i.idleMs >= AUTO_OPEN.idleMs && !i.busy;
+  if (n.armed && quiet) return { next: { ...n, armed: false, auto: true }, go: 'vacuum' };
+  if (n.auto && ended && n.endedAt !== null && i.now - n.endedAt >= AUTO_OPEN.homeAfterMs && quiet) {
+    return { next: { ...n, auto: false, endedAt: null }, go: 'home' };
+  }
+  return { next: n };
+}
+
 // The room card's vacuum chip: a few words that fit a chip (`short`), the full
 // line for its label/tooltip (`long`), and whether it lights up.
 export function chipStatus(

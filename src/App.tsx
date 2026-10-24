@@ -8,6 +8,7 @@ import { VacationLock } from './components/VacationMode';
 import { SkyBackdrop } from './components/SkyBackdrop';
 import { DesktopLayout, PhoneLayout, TabletLayout } from './layout/Layouts';
 import { useSelfUpdate } from './update/useSelfUpdate';
+import { useVacuumAutoOpen } from './vacuum/useAutoOpen';
 
 type LayoutName = 'tablet' | 'phone' | 'desktop';
 
@@ -24,6 +25,7 @@ function detectLayout(): LayoutName {
 export function App() {
   const [layout, setLayout] = useState<LayoutName>(detectLayout);
   useSelfUpdate();
+  useVacuumAutoOpen();
 
   useEffect(() => {
     const onResize = () => setLayout(detectLayout());

@@ -316,6 +316,7 @@ const config: DashboardConfig = {
   // Night screen on the iPad: after 5 idle minutes, only while the sun is down.
   NIGHT_MODE: { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] },
   // Robot vacuum page (optional: without it the first vacuum.* entity is used).
+  // It opens by itself while the robot runs; `autoOpen: false` turns that off.
   VACUUM: { entity: 'vacuum.robot', map: 'camera.robot_map' },
   // Standing desk (optional: without it the first number.*_desk_height is used;
   // the rest of its entities are found from its name and device). `look` sizes the
