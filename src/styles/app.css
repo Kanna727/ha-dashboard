@@ -848,12 +848,11 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .leave-home.confirm { width: auto; padding: 0 16px; gap: 8px; color: var(--warn); border-color: var(--warn); }
 .leave-home.note { width: auto; padding: 0 16px; gap: 8px; color: var(--ok); border-color: var(--ok); }
 .vacation-mode { color: var(--muted); }
-.vacation-mode.on { color: var(--accent); border-color: var(--accent); }
+.vacation-mode.on { color: #fff; background: var(--accent); border-color: var(--accent); box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 60%, transparent); }
 .vacation-screen {
   position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 24px; text-align: center;
   background: color-mix(in srgb, var(--bg, #0b0e14) 94%, transparent); backdrop-filter: blur(18px); color: var(--text); animation: fade 0.3s ease;
 }
-.vacation-screen.locked { background: var(--bg, #0b0e14); }
 .vacation-box { display: grid; justify-items: center; gap: 14px; max-width: 460px; color: var(--accent); }
 .vacation-box h2 { margin: 0; font-size: 30px; color: var(--text); }
 .vacation-box p { margin: 0; font-size: 17px; color: var(--muted); }
