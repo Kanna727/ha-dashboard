@@ -12,16 +12,15 @@ const useVacation = () => {
   return { on: !!VACATION_MODE && isOn(state), set };
 };
 
-// Status-bar toggle. Turning it on asks first, full screen; while it is on the
-// whole dashboard sits behind <VacationLock />, whose button is the way off.
+// Status-bar toggle. Turning it on asks first, full screen; turning it off is one tap.
 export function VacationButton() {
   const { on, set } = useVacation();
   const [asking, setAsking] = useState(false);
   if (!VACATION_MODE) return null;
-  const label = on ? 'Vacation mode is on' : 'Turn on vacation mode';
+  const label = on ? 'Vacation mode is on: tap to turn off' : 'Turn on vacation mode';
   return (
     <>
-      <button className={`pill icon-pill vacation-mode ${on ? 'on' : ''}`} onClick={() => !on && setAsking(true)} aria-label={label} title={label}>
+      <button className={`pill icon-pill vacation-mode ${on ? 'on' : ''}`} onClick={() => (on ? set(false) : setAsking(true))} aria-label={label} title={label}>
         <Icon name="vacation" size={22} />
       </button>
       {asking && !on && (
@@ -29,7 +28,7 @@ export function VacationButton() {
           <div className="vacation-box">
             <Icon name="vacation" size={64} />
             <h2>Turn on vacation mode?</h2>
-            <p>The dashboard will be locked behind a full-screen message until vacation mode is turned off.</p>
+            <p>Your automations will treat the house as being on vacation until you turn it off again.</p>
             <div className="vacation-actions">
               <button className="v-btn" onClick={() => setAsking(false)}>Cancel</button>
               <button
@@ -46,23 +45,5 @@ export function VacationButton() {
         </div>
       )}
     </>
-  );
-}
-
-// Covers everything (above night mode and modals) while vacation mode is on.
-export function VacationLock() {
-  const { on, set } = useVacation();
-  if (!on) return null;
-  return (
-    <div className="vacation-screen locked" role="alertdialog" aria-modal="true" aria-label="Vacation mode is on">
-      <div className="vacation-box">
-        <Icon name="vacation" size={80} />
-        <h2>Vacation mode is on</h2>
-        <p>The dashboard is locked while the house is on vacation mode.</p>
-        <div className="vacation-actions">
-          <button className="v-btn primary" onClick={() => set(false)}>Turn off vacation mode</button>
-        </div>
-      </div>
-    </div>
   );
 }

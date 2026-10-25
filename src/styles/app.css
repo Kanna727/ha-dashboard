@@ -853,7 +853,6 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
   position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; padding: 24px; text-align: center;
   background: color-mix(in srgb, var(--bg, #0b0e14) 94%, transparent); backdrop-filter: blur(18px); color: var(--text); animation: fade 0.3s ease;
 }
-.vacation-screen.locked { background: var(--bg, #0b0e14); }
 .vacation-box { display: grid; justify-items: center; gap: 14px; max-width: 460px; color: var(--accent); }
 .vacation-box h2 { margin: 0; font-size: 30px; color: var(--text); }
 .vacation-box p { margin: 0; font-size: 17px; color: var(--muted); }
