@@ -1,3 +1,10 @@
+## [1.47.1](https://github.com/Kanna727/ha-dashboard/compare/v1.47.0...v1.47.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* **topbar:** remove the vacation mode lock screen ([#62](https://github.com/Kanna727/ha-dashboard/issues/62)) ([28d594b](https://github.com/Kanna727/ha-dashboard/commit/28d594b308cb3c3dfeaf628f5d0cdba51236f1da))
+
 # [1.47.0](https://github.com/Kanna727/ha-dashboard/compare/v1.46.0...v1.47.0) (2026-10-24)
 
 
