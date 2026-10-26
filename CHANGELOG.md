@@ -1,3 +1,10 @@
+## [1.47.2](https://github.com/Kanna727/ha-dashboard/compare/v1.47.1...v1.47.2) (2026-10-26)
+
+
+### Bug Fixes
+
+* **sky:** keep the page sky visible when <html> has a background ([#63](https://github.com/Kanna727/ha-dashboard/issues/63)) ([ad0578b](https://github.com/Kanna727/ha-dashboard/commit/ad0578ba2bae5c8c69c91dd6597c3b46ea3536f6)), closes [#root](https://github.com/Kanna727/ha-dashboard/issues/root) [#root](https://github.com/Kanna727/ha-dashboard/issues/root)
+
 ## [1.47.1](https://github.com/Kanna727/ha-dashboard/compare/v1.47.0...v1.47.1) (2026-10-25)
 
 
