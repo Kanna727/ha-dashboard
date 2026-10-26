@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GAP, MIN_H, MIN_W, canvasZoom, extent, moveBox, parseLayout, resizeBox, snapMove, snapResize, stack, toFront } from './canvas';
+import { GAP, MIN_H, MIN_W, canvasZoom, extent, moveBox, pageLayout, parseLayout, resizeBox, snapMove, snapResize, stack, toFront, withPageLayout } from './canvas';
 
 describe('moveBox', () => {
   it('moves by whole pixels and stops at the canvas edge', () => {
@@ -139,5 +139,22 @@ describe('snapping', () => {
   it('pulls a resized edge onto a target, never below the minimum width', () => {
     expect(snapResize({ x: 600, y: 0, w: 390 }, { r: true }, others, 1000, 16).w).toBe(400);
     expect(snapResize({ x: 330, y: 0, w: 300 }, { l: true }, others, 1000, 16)).toEqual({ x: 318, y: 0, w: 312 });
+  });
+});
+
+describe('page layouts', () => {
+  const home = { width: 1000, boxes: { rooms: { x: 0, y: 0, w: 400 } }, order: ['rooms'] };
+  it('reads one page out of the stored document', () => {
+    expect(pageLayout({ version: 2, pages: { home } }, 'home')).toBe(home);
+    expect(pageLayout({ version: 2, pages: { home } }, 'energy')).toBeNull();
+    expect(pageLayout(null, 'home')).toBeNull();
+  });
+  it('ignores layouts of another version', () => {
+    expect(pageLayout(home, 'home')).toBeNull();
+    expect(pageLayout({ pages: { home } }, 'home')).toBeNull();
+  });
+  it('saves one page and keeps the others', () => {
+    expect(withPageLayout({ version: 2, pages: { home } }, 'energy', {})).toEqual({ version: 2, pages: { home, energy: {} } });
+    expect(withPageLayout({ pages: { home } }, 'energy', {})).toEqual({ version: 2, pages: { energy: {} } });
   });
 });

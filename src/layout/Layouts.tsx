@@ -1,90 +1,82 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ArrangeProvider, FreeCanvas, type CardDef } from './Canvas';
-import { Icon, type IconName } from '../components/Icon';
-import { CarPanel } from '../panels/CarPanel';
+import { BatteriesPanel } from '../panels/BatteriesPanel';
+import { CarDrivingPanel, CarPanel } from '../panels/CarPanel';
 import { CommutePanel } from '../panels/CommutePanel';
+import { EnergyHistoryPanel } from '../panels/EnergyHistoryPanel';
 import { EnergyPanel } from '../panels/EnergyPanel';
+import { GlancePanel } from '../panels/GlancePanel';
+import { HealthPanel } from '../panels/HealthPanel';
 import { MealsPanel } from '../panels/MealsPanel';
+import { NetworkDevicesPanel, NetworkPanel } from '../panels/NetworkPanel';
 import { RoomsPanel } from '../panels/RoomsPanel';
 import { TopBar } from '../panels/TopBar';
 import { WeatherPanel } from '../panels/WeatherPanel';
-import { VacuumPage } from '../vacuum/VacuumPage';
-import { useVacuumId } from '../vacuum/useVacuum';
-import { usePage, type Page } from './pages';
+import { CleanPage, useHasClean } from './CleanPage';
+import { PAGES, usePage, type Page } from './pages';
 import { Pager } from './Pager';
+import { TabBar } from './TabBar';
 
-// The pages tablet and desktop swipe between: the home dashboard, then the vacuum.
-function usePages(): Page[] {
-  return useVacuumId() ? ['home', 'vacuum'] : ['home'];
+// The pages every layout swipes between and shows in the tab bar (pages.ts).
+// Clean is left out when the home has neither a robot vacuum nor a dishwasher.
+function usePages() {
+  const clean = useHasClean();
+  return PAGES.filter((p) => p.id !== 'clean' || clean);
 }
 
-// Tablet and desktop: the cards start in columns and can be arranged freely
-// (Canvas.tsx). iPad kiosk: the page never scrolls; the columns, or the
-// canvas, scroll inside it.
-export function TabletLayout() {
+// Each page's cards, in columns, for tablet and desktop. Weather shows a week on desktop.
+function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { className: string; columns: CardDef[][] } {
+  switch (page) {
+    case 'home':
+      return { className: 'cols cols-home', columns: [[card('rooms', <RoomsPanel />)], [card('glance', <GlancePanel />)]] };
+    case 'energy':
+      return {
+        className: 'cols cols-wide-mid',
+        columns: [
+          [card('energy', <EnergyPanel />), card('batteries', <BatteriesPanel />)],
+          [card('energyHistory', <EnergyHistoryPanel full />)],
+          [card('network', <NetworkPanel />), card('networkDevices', <NetworkDevicesPanel />)],
+        ],
+      };
+    case 'commute':
+      return {
+        className: 'cols cols-wide-mid',
+        columns: [
+          [card('car', <CarPanel />), card('driving', <CarDrivingPanel />)],
+          [card('commute', <CommutePanel full compact />)],
+          [card('weather', <WeatherPanel days={desktop ? 7 : undefined} />)],
+        ],
+      };
+    case 'health':
+      return { className: 'cols cols-2', columns: [[card('health', <HealthPanel full />)], [card('meals', <MealsPanel full />)]] };
+  }
+}
+
+// Tablet and desktop: each page's cards start in columns and can be arranged
+// freely (Canvas.tsx), each page on its own. iPad kiosk: the page never
+// scrolls; the columns, or the canvas, scroll inside it.
+function WideLayout({ kind }: { kind: 'tablet' | 'desktop' }) {
   const [page, go] = usePage();
   const pages = usePages();
+  const ids = pages.map((p) => p.id);
   return (
     <ArrangeProvider>
-      <div className="layout tablet">
+      <div className={`layout ${kind}`}>
         <TopBar />
         <Pager
-          pages={pages}
+          pages={ids}
           current={page}
           onChange={(p) => go(p, true)}
-          render={(p) =>
-            p === 'vacuum' ? (
-              <VacuumPage onBack={() => go('home')} />
-            ) : (
-              <FreeCanvas
-                name="tablet"
-                className="cols cols-3"
-                columns={[
-                  [card('energy', <EnergyPanel />), card('weather', <WeatherPanel />)],
-                  [card('rooms', <RoomsPanel />)],
-                  [card('car', <CarPanel />), card('commute', <CommutePanel />), card('meals', <MealsPanel />)],
-                ]}
-              />
-            )
-          }
+          render={(p) => (p === 'clean' ? <CleanPage /> : <FreeCanvas key={p} name={kind} page={p} {...pageColumns(p, kind === 'desktop')} />)}
         />
+        <TabBar pages={pages} current={page} onSelect={(p) => go(p)} />
       </div>
     </ArrangeProvider>
   );
 }
 
-export function DesktopLayout() {
-  const [page, go] = usePage();
-  const pages = usePages();
-  return (
-    <ArrangeProvider>
-      <div className="layout desktop">
-        <TopBar />
-        <Pager
-          pages={pages}
-          current={page}
-          onChange={(p) => go(p, true)}
-          render={(p) =>
-            p === 'vacuum' ? (
-              <VacuumPage onBack={() => go('home')} />
-            ) : (
-              <FreeCanvas
-                name="desktop"
-                className="cols cols-4"
-                columns={[
-                  [card('energy', <EnergyPanel />), card('weather', <WeatherPanel days={7} />)],
-                  [card('rooms', <RoomsPanel />)],
-                  [card('commute', <CommutePanel />), card('meals', <MealsPanel />)],
-                  [card('car', <CarPanel />)],
-                ]}
-              />
-            )
-          }
-        />
-      </div>
-    </ArrangeProvider>
-  );
-}
+export const TabletLayout = () => <WideLayout kind="tablet" />;
+export const DesktopLayout = () => <WideLayout kind="desktop" />;
 
 const LABELS: Record<string, string> = {
   energy: 'Energy',
@@ -93,69 +85,60 @@ const LABELS: Record<string, string> = {
   car: 'Car',
   commute: 'Commute',
   meals: 'Meals',
+  energyHistory: 'Energy history',
+  health: 'Health',
+  network: 'Network',
+  batteries: 'Batteries',
+  networkDevices: 'Connected devices',
+  driving: 'Driving',
+  glance: 'At a glance',
 };
 const card = (id: keyof typeof LABELS, node: ReactNode): CardDef => ({ id, label: LABELS[id], node });
 
-type Tab = 'home' | 'energy' | 'travel' | 'more';
-type TabId = Tab | 'vacuum';
-const TABS: { id: TabId; label: string; icon: IconName }[] = [
-  { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'energy', label: 'Energy', icon: 'flash' },
-  { id: 'travel', label: 'Travel', icon: 'car' },
-  { id: 'vacuum', label: 'Vacuum', icon: 'vacuum' },
-  { id: 'more', label: 'More', icon: 'music' },
-];
-
-function PhoneTab({ tab }: { tab: TabId }) {
+function PhoneTab({ page }: { page: Page }) {
   return (
     <div className="phone-body">
-      {tab === 'home' && <RoomsPanel />}
-      {tab === 'energy' && (
+      {page === 'home' && (
         <>
-          <EnergyPanel />
-          <WeatherPanel days={5} />
+          <GlancePanel />
+          <RoomsPanel />
         </>
       )}
-      {tab === 'travel' && (
+      {page === 'energy' && (
+        <>
+          <EnergyPanel />
+          <EnergyHistoryPanel />
+          <BatteriesPanel />
+          <NetworkPanel />
+        </>
+      )}
+      {page === 'commute' && (
         <>
           <CarPanel />
           <CommutePanel />
+          <WeatherPanel days={5} />
         </>
       )}
-      {tab === 'vacuum' && <VacuumPage />}
-      {tab === 'more' && <MealsPanel />}
+      {page === 'health' && (
+        <>
+          <HealthPanel />
+          <MealsPanel />
+        </>
+      )}
+      {page === 'clean' && <CleanPage />}
     </div>
   );
 }
 
 export function PhoneLayout() {
-  const [tab, setTab] = useState<Tab>(() => (sessionStorage.getItem('dashTab') as Tab) || 'home');
-  // The vacuum is a page of its own (#vacuum), shown as a tab here when the home has one.
   const [page, go] = usePage();
-  const hasVacuum = !!useVacuumId();
-  const current: TabId = page === 'vacuum' ? 'vacuum' : tab;
-  const tabs = TABS.filter((t) => t.id !== 'vacuum' || hasVacuum);
-  // `swiped`: the pager lines the page up itself, so don't jump to the top.
-  const select = (t: TabId, swiped = false) => {
-    if (t === 'vacuum') return go('vacuum', swiped);
-    sessionStorage.setItem('dashTab', t);
-    setTab(t);
-    if (page !== 'home') go('home', swiped);
-    if (!swiped) window.scrollTo({ top: 0 });
-  };
-
+  const pages = usePages();
   return (
     <div className="layout phone">
       <TopBar compact />
-      <Pager pages={tabs.map((t) => t.id)} current={current} onChange={(t) => select(t, true)} render={(t) => <PhoneTab tab={t} />} />
-      <nav className="tabbar" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }}>
-        {tabs.map((t) => (
-          <button key={t.id} className={current === t.id ? 'active' : ''} onClick={() => select(t.id)}>
-            <Icon name={t.icon} size={22} />
-            <span>{t.label}</span>
-          </button>
-        ))}
-      </nav>
+      {/* `true` on a swipe: the pager lines the page up itself, so don't jump to the top. */}
+      <Pager pages={pages.map((p) => p.id)} current={page} onChange={(p) => go(p, true)} render={(p) => <PhoneTab page={p} />} />
+      <TabBar pages={pages} current={page} onSelect={(p) => go(p)} />
     </div>
   );
 }

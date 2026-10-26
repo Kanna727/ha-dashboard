@@ -85,6 +85,52 @@ function getConnection(): Promise<Connection> {
 // Methods wait for the connection, so the UI can render (from the snapshot)
 // before it exists. The object itself never changes. Exported for main.tsx,
 // which fetches the config through it before the app renders.
+// JSON documents kept as the config of hidden storage dashboards (the shared
+// layout, the client names). Reading works for any logged-in user; saving and
+// creating the dashboard need an admin.
+async function fetchDoc(urlPath: string): Promise<unknown | null> {
+  const conn = await getConnection();
+  try {
+    return await conn.sendMessagePromise({ type: 'lovelace/config', url_path: urlPath, force: false });
+  } catch (e) {
+    // No such dashboard yet, or it was never saved.
+    if ((e as { code?: string }).code === 'config_not_found') return null;
+    throw e;
+  }
+}
+
+async function saveDoc(urlPath: string, config: object, title: string, icon: string): Promise<void> {
+  const conn = await getConnection();
+  const save = () => conn.sendMessagePromise({ type: 'lovelace/config/save', url_path: urlPath, config });
+  try {
+    await save();
+  } catch (e) {
+    if ((e as { code?: string }).code !== 'config_not_found') throw e;
+    await conn.sendMessagePromise({
+      type: 'lovelace/dashboards/create',
+      url_path: urlPath,
+      title,
+      icon,
+      show_in_sidebar: false,
+      require_admin: false,
+      mode: 'storage',
+    });
+    await save();
+  }
+}
+
+function subscribeDoc(urlPath: string, cb: () => void): () => void {
+  let cancelled = false;
+  // HA fires lovelace_updated (with the dashboard's url_path) on every save; non-admins may subscribe to it.
+  const unsub = getConnection().then((conn) =>
+    cancelled ? undefined : conn.subscribeEvents<{ data?: { url_path?: string } }>((ev) => ev.data?.url_path === urlPath && cb(), 'lovelace_updated'),
+  );
+  return () => {
+    cancelled = true;
+    unsub.then((u) => u?.()).catch(() => undefined);
+  };
+}
+
 export const haApi: HassApi = {
   callService: async (domain, service, data, target) => callService(await getConnection(), domain, service, data, target),
   async fetchHistory(entityIds, hours) {
@@ -185,7 +231,17 @@ export const haApi: HassApi = {
   },
   async fetchRegistry() {
     const conn = await getConnection();
-    type Dev = { id: string; name: string | null; name_by_user: string | null; area_id: string | null; model: string | null; disabled_by: string | null };
+    type Dev = {
+      id: string;
+      name: string | null;
+      name_by_user: string | null;
+      area_id: string | null;
+      model: string | null;
+      disabled_by: string | null;
+      connections?: [string, string][];
+      identifiers?: [string, string][];
+      serial_number?: string | null;
+    };
     type Ents = { entity_categories: Record<string, string>; entities: { ei: string; di?: string; pl: string; ec?: number; tk?: string }[] };
     const [devices, ents] = await Promise.all([
       conn.sendMessagePromise<Dev[]>({ type: 'config/device_registry/list' }),
@@ -198,6 +254,9 @@ export const haApi: HassApi = {
         areaId: d.area_id,
         model: d.model,
         disabled: !!d.disabled_by,
+        macs: d.connections?.filter(([kind]) => kind === 'mac').map(([, mac]) => mac.toLowerCase()),
+        identifiers: d.identifiers?.map(([, id]) => String(id)),
+        serial: d.serial_number,
       })),
       entities: ents.entities
         .filter((e) => e.di)
@@ -224,45 +283,23 @@ export const haApi: HassApi = {
     // One that can't be read (e.g. removed meanwhile) is skipped rather than failing them all.
     return res.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
   },
-  async fetchLayout() {
-    const conn = await getConnection();
-    try {
-      return await conn.sendMessagePromise({ type: 'lovelace/config', url_path: LAYOUT_DASHBOARD, force: false });
-    } catch (e) {
-      // No such dashboard yet, or it was never saved.
-      if ((e as { code?: string }).code === 'config_not_found') return null;
-      throw e;
-    }
+  fetchLayout() {
+    return fetchDoc(LAYOUT_DASHBOARD);
   },
-  async saveLayout(layout) {
-    const conn = await getConnection();
-    const save = () => conn.sendMessagePromise({ type: 'lovelace/config/save', url_path: LAYOUT_DASHBOARD, config: layout });
-    try {
-      await save();
-    } catch (e) {
-      if ((e as { code?: string }).code !== 'config_not_found') throw e;
-      await conn.sendMessagePromise({
-        type: 'lovelace/dashboards/create',
-        url_path: LAYOUT_DASHBOARD,
-        title: 'Dashboard layout',
-        icon: 'mdi:view-dashboard-edit-outline',
-        show_in_sidebar: false,
-        require_admin: false,
-        mode: 'storage',
-      });
-      await save();
-    }
+  saveLayout(layout) {
+    return saveDoc(LAYOUT_DASHBOARD, layout, 'Dashboard layout', 'mdi:view-dashboard-edit-outline');
   },
   subscribeLayout(cb) {
-    let cancelled = false;
-    // HA fires lovelace_updated (with the dashboard's url_path) on every save; non-admins may subscribe to it.
-    const unsub = getConnection().then((conn) =>
-      cancelled ? undefined : conn.subscribeEvents<{ data?: { url_path?: string } }>((ev) => ev.data?.url_path === LAYOUT_DASHBOARD && cb(), 'lovelace_updated'),
-    );
-    return () => {
-      cancelled = true;
-      unsub.then((u) => u?.()).catch(() => undefined);
-    };
+    return subscribeDoc(LAYOUT_DASHBOARD, cb);
+  },
+  fetchStore(urlPath) {
+    return fetchDoc(urlPath);
+  },
+  saveStore(urlPath, data, title) {
+    return saveDoc(urlPath, data, title, 'mdi:database-outline');
+  },
+  subscribeStore(urlPath, cb) {
+    return subscribeDoc(urlPath, cb);
   },
   subscribeNotifyCalls(cb, ready) {
     let cancelled = false;

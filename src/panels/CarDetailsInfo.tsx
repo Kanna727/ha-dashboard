@@ -47,7 +47,7 @@ function ServiceGrid({ items }: { items: ServiceItem[] }) {
 }
 
 // This month's readings as tiles; distance, trips and drive time also say today's.
-function MonthTiles({ x }: { x: CarSensors }) {
+export function MonthTiles({ x }: { x: CarSensors }) {
   if (!x.distance_this_month && !x.trips_this_month) return null;
   const tiles: [string, string, string | undefined][] = [
     ['Distance', kmText(n(x, 'distance_this_month')), x.distance_today ? `${kmText(n(x, 'distance_today'))} today` : undefined],

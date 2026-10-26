@@ -1,6 +1,7 @@
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
 import { VACUUM_DEVICE, vacuumEntities } from './vacuum';
 import { DESK_DEVICE, deskEntities, isDeskEntity } from './desk';
+import { EXTRA_DEVICES, EXTRA_REGISTRY, extraEntities } from './extras';
 
 // States for the fictional home in config/dashboard.config.example.ts, tuned so
 // every card has something to show (car online, dishwasher mid-cycle).
@@ -321,6 +322,8 @@ const list: HassEntity[] = [
   ...vacuumEntities(),
   // The standing desk's controller (mock/desk.ts).
   ...deskEntities(),
+  // Health devices, router, gateway and batteries (mock/extras.ts).
+  ...extraEntities(),
 ];
 
 export const FIXTURES: HassEntities = Object.fromEntries(list.map((x) => [x.entity_id, x]));
@@ -355,6 +358,7 @@ export const REGISTRY = {
     VACUUM_DEVICE,
     { id: 'dev_dishwasher', name: 'Dishwasher', areaId: 'utility', model: 'Dishwasher', disabled: false },
     DESK_DEVICE,
+    ...EXTRA_DEVICES,
   ],
   entities: [
     ...[
@@ -410,6 +414,8 @@ export const REGISTRY = {
         platform: 'esphome',
         category: /_(min_height|max_height|offset_up_by|offset_down_by|nudge_delay|enable_idle_counter)$/.test(entityId) ? 'config' : /_esp32_/.test(entityId) ? 'diagnostic' : undefined,
       })),
+    // Health devices, router, gateway and batteries (mock/extras.ts).
+    ...EXTRA_REGISTRY,
   ],
 };
 

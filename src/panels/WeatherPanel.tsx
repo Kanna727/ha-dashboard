@@ -4,6 +4,7 @@ import { useHass } from '../ha/api';
 import { useForecast } from '../ha/forecast';
 import { useEntity } from '../ha/store';
 import { useNow } from '../hooks/useNow';
+import { GlanceTile } from '../components/GlanceTile';
 import { Icon } from '../components/Icon';
 import { WeatherIcon } from '../components/WeatherIcon';
 import { DailyList, HourlyChart, WeatherDetail } from '../components/WeatherDetail';
@@ -79,5 +80,32 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
       <HourlyChart hourly={hourly} count={12} minSlot={22} />
       <DailyList days={daily.slice(0, days)} compact />
     </section>
+  );
+}
+
+// Home page tile (GlancePanel): the temperature and the sky as a big icon,
+// filled blue by the highest rain chance in the next 6 hours (from 20 %).
+export function WeatherTile() {
+  const hass = useHass();
+  const now = useWeatherNow();
+  const sun = useEntity(SUN);
+  const hourly = useForecast(hass, WEATHER, 'hourly');
+  const time = useNow(60_000).getTime();
+  const raining = (now.rainRate ?? 0) > 0 || RAINING.includes(now.condition ?? '');
+  const o = rainOutlook(hourly, time, raining);
+  const chance = Math.max(raining ? 100 : 0, ...hourly.slice(0, 6).map((h) => h.precipitation_probability ?? 0));
+  return (
+    <GlanceTile
+      icon="weather"
+      label={now.label ?? 'Weather'}
+      page="commute"
+      color="var(--accent-fan)"
+      level={chance >= 20 ? chance : undefined}
+      fill="var(--accent-fan)"
+      tone={o.tone === 'storm' ? 'warn' : undefined}
+      value={now.temp !== undefined ? `${Math.round(now.temp)}°` : '–'}
+      art={<WeatherIcon condition={now.condition} night={sun?.state === 'below_horizon'} size={68} />}
+      sub={o.text || undefined}
+    />
   );
 }

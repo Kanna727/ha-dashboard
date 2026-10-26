@@ -14,13 +14,8 @@ for (const { layout, width, height } of LAYOUTS) {
     await page.clock.setFixedTime(FIXED_TIME);
     await page.setViewportSize({ width, height });
     await page.goto(`/index.html?layout=${layout}&mockFreeze=1`);
-    // Wait for async mock data: the phone's home tab shows rooms; the others
-    // also need the forecast icons and the 24h peak.
+    // Wait for async mock data: the home page shows the rooms.
     await expect(page.locator('.room-row').first()).toBeVisible();
-    if (layout !== 'phone') {
-      await expect(page.locator('.wx-img').first()).toBeVisible();
-      await expect(page.locator('.energy-panel .panel-summary')).toContainText('peak');
-    }
     await page.waitForTimeout(400);
     await expect(page).toHaveScreenshot(`${layout}.png`);
   });

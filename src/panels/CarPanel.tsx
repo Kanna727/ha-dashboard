@@ -4,16 +4,17 @@ import { CAR, CAR_DETAIL, HOME_ZONE } from '../config/entities';
 import { useHass, type HassApi } from '../ha/api';
 import { useEntities, useEntity } from '../ha/store';
 import { isUnavailable, num, relTime } from '../ha/format';
+import { GlanceTile } from '../components/GlanceTile';
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { CarScene } from '../car3d/CarScene';
 import { carVisual, type CarVisual } from '../lib/carVisual';
 import { heading8, pm25Band } from '../lib/carInfo';
 import { ClimateControl, RemoteActions, StageActions, StageClimate, StageRefresh } from './CarActions';
-import { CabinAirTile, DrivingSection, placeOf, ServiceCard, useCarSensors, VehicleLine } from './CarInfo';
+import { CabinAirTile, DriveHistory, DrivingSection, LastTripCard, placeOf, ServiceCard, useCarSensors, VehicleLine } from './CarInfo';
 import { useCarExtras, useCarService } from './useCarExtras';
 import { CarCard } from './CarCard';
-import { CarDetailsInfo } from './CarDetailsInfo';
+import { CarDetailsInfo, MonthTiles } from './CarDetailsInfo';
 
 export function distanceKm(a: HassEntity | undefined, b: HassEntity | undefined): number | undefined {
   const la1 = a?.attributes.latitude as number | undefined;
@@ -583,4 +584,47 @@ export function CarPanel() {
   );
 }
 
+// The popup's driving information as a card of its own (tablet and desktop
+// Commute page, under the car): this month, the last trip and the history.
+export function CarDrivingPanel() {
+  const { x } = useCar();
+  if (!x.distance_this_month && !x.trips_this_month && !x.last_trip_distance) return null;
+  return (
+    <section className="panel car-driving-panel">
+      <PanelHead label="Driving" />
+      <MonthTiles x={x} />
+      <LastTripCard x={x} />
+      <DriveHistory x={x} />
+    </section>
+  );
+}
+
 export type CarData = ReturnType<typeof useCar>;
+
+// Home page tile (GlancePanel): fuel as a fill (amber under 40 %, red under
+// 20 %) and a big lock (green locked, orange unlocked or something open).
+export function CarTile() {
+  const car = useCar();
+  const unlocked = !car.offline && car.lock !== undefined && !car.locked;
+  const fuel = car.fuelPct;
+  const warn = unlocked || !!car.openCount;
+  return (
+    <GlanceTile
+      icon="car"
+      label={CAR.name}
+      page="commute"
+      color="var(--accent-energy)"
+      level={fuel}
+      fill={fuel !== undefined && fuel < 20 ? 'var(--danger)' : fuel !== undefined && fuel < 40 ? 'var(--accent-light)' : 'var(--accent-energy)'}
+      tone={warn ? 'warn' : undefined}
+      value={fuel !== undefined ? Math.round(fuel) : '–'}
+      unit="%"
+      art={
+        <span className={`glance-icon ${car.offline ? 'off' : warn ? 'warn' : 'ok'}`}>
+          <Icon name={car.offline ? 'wifiOff' : car.locked ? 'lock' : 'unlock'} size={34} />
+        </span>
+      }
+      sub={[car.rangeKm !== undefined ? `${Math.round(car.rangeKm)} km` : undefined, car.openCount ? `${car.openCount} open` : car.moving ? 'Driving' : car.offline ? 'Offline' : car.where].filter(Boolean).join(' · ')}
+    />
+  );
+}

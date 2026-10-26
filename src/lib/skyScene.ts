@@ -249,13 +249,12 @@ export function skyScene(input: SkyInput): SkyScene {
   const east = input.windBearing === undefined ? 0 : -Math.sin((input.windBearing * Math.PI) / 180);
 
   // The city: layers fade into the sky with distance (aerial perspective) and
-  // darken towards night. The land sits above the page's dark veil, so the veil
-  // is mixed in here, matching .sky-veil (0.2 + 0.25 × day over --bg).
-  const veil = 0.2 + 0.25 * day;
+  // darken towards night. (There is no dark veil over the sky any more: the
+  // owner wanted only the live sky and the city behind the pages, 2026-10-26.)
   const skyLow = weathered(sky.low, w);
   const skyRef = mix(skyLow, weathered(sky.mid, w), 0.35);
   const ground = mix([2, 3, 6], [30, 44, 36], day); // near black at night, so ridges stay darker than the sky
-  const landAt = (k: number, from: Rgb = skyRef) => css(mix(mix(from, ground, k), [7, 9, 15], veil));
+  const landAt = (k: number, from: Rgb = skyRef) => css(mix(from, ground, k));
   const hum = input.humidity ?? 60;
   const wet = kind === 'rain' || kind === 'storm' || kind === 'fog';
 
@@ -291,7 +290,9 @@ export function skyScene(input: SkyInput): SkyScene {
     },
     wind: { kmh: Math.round(kmh), dir: east > 0.15 ? 1 : -1, level: +windLevel.toFixed(2) },
     hazeColor: css(mix(weathered(sky.low, w), [201, 209, 220], 0.1 + 0.5 * day)),
-    haze: +clamp01((hum - 55) / 45 + (wet ? 0.25 : 0)).toFixed(2),
+    // Only in rain, storms and fog: on a dry day humidity alone left a pale
+    // band over the city that read as a grey film behind the pages.
+    haze: wet ? +clamp01((hum - 55) / 45 + 0.25).toFixed(2) : 0,
     dew: +clamp01((hum - 75) / 25 + (kind === 'rain' || kind === 'storm' ? 0.5 : 0)).toFixed(2),
     land: {
       far: landAt(0.5),

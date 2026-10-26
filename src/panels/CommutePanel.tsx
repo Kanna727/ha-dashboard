@@ -6,6 +6,7 @@ import { CommuteAside, CommuteDetail, CommuteSubtitle } from '../commute/Commute
 import { arrival, LeaveLaterBars, leaveAdvice, LevelChip, TrafficStrip, Updated } from '../commute/parts';
 import { kmText, mins, TRAFFIC_TEXT, type CommuteConfig } from '../commute/routes';
 import { commuteMissingText, useCommute, useCommuteConfig, type Commute } from '../commute/useCommute';
+import { GlanceTile } from '../components/GlanceTile';
 import { PanelHead, useModal } from '../components/Modal';
 
 const via = (c: Commute) => (c.route ? `${kmText(c.route.meters)}${c.route.description ? ` · via ${c.route.description}` : ''}` : c.error ? 'Route unavailable' : 'Checking traffic…');
@@ -53,13 +54,54 @@ function Summary({ config }: { config: CommuteConfig }) {
   );
 }
 
-export function CommutePanel() {
+// `full` (tablet and desktop Commute page): the popup's map, routes and
+// leave-later times on the page itself; `compact` stacks them for a narrow column.
+function Full({ config, compact }: { config: CommuteConfig; compact: boolean }) {
+  return (
+    <section className="panel commute-panel full">
+      <PanelHead label="Commute" summary={<CommuteAside />} />
+      <CommuteDetail config={config} compact={compact} />
+    </section>
+  );
+}
+
+export function CommutePanel({ full = false, compact = false }: { full?: boolean; compact?: boolean }) {
   const { config, error } = useCommuteConfig();
-  if (config) return <Summary config={config} />;
+  if (config) return full ? <Full config={config} compact={compact} /> : <Summary config={config} />;
   return (
     <section className="panel commute-panel">
       <PanelHead label="Commute" />
       <p className="muted small">{commuteMissingText(config, error)}</p>
     </section>
   );
+}
+
+const TRAFFIC_TONE = { light: undefined, moderate: 'warn', heavy: 'bad' } as const;
+
+function CommuteGlance({ config }: { config: CommuteConfig }) {
+  // The same request as the Commute page's old card (no alternatives, with
+  // leave-later), so a remount within 2 min reuses its answer (useCommute).
+  const c = useCommute(config, { leaveLater: true });
+  const r = c.route;
+  const advice = c.leaveLater ? leaveAdvice(c.leaveLater, c.now) : undefined;
+  return (
+    <GlanceTile
+      icon="navigate"
+      label={config.title}
+      page="commute"
+      color="var(--accent-fan)"
+      tone={r ? TRAFFIC_TONE[r.level] : undefined}
+      value={r ? mins(r.seconds) : '–'}
+      unit="min"
+      sub={r ? advice ?? `Arrive ${arrival(r, c.now)}` : c.error ? 'Route unavailable' : 'Checking traffic…'}
+      foot={r ? <TrafficStrip segs={r.segs} ends={false} /> : undefined}
+    />
+  );
+}
+
+// Home page tile (GlancePanel): minutes to the destination now, tinted by the
+// traffic, with the route as a strip coloured by live speed.
+export function CommuteTile() {
+  const { config } = useCommuteConfig();
+  return config ? <CommuteGlance config={config} /> : null;
 }

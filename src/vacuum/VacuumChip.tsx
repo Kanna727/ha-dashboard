@@ -1,6 +1,7 @@
 import { useEntities } from '../ha/store';
 import { num } from '../ha/format';
 import { Icon } from '../components/Icon';
+import { showOnClean } from '../layout/CleanPage';
 import { usePage } from '../layout/pages';
 import { chipStatus } from '../lib/vacuum';
 import { useVacuumId } from './useVacuum';
@@ -23,7 +24,8 @@ export function VacuumChip() {
       className={`row-btn vacuum ${s.on ? 'on' : ''} tone-${s.tone} ${s.short ? 'labelled' : ''}`}
       onClick={(e) => {
         e.stopPropagation();
-        go('vacuum');
+        showOnClean('vacuum');
+        go('clean');
       }}
       aria-label={`${s.long}. Open the vacuum page`}
       title={s.long}

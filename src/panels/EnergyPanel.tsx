@@ -3,6 +3,7 @@ import { useHass } from '../ha/api';
 import { EnergyCard } from '../components/EnergyCard';
 import { OfflinePlugsNote } from '../components/OfflinePlugsNote';
 import { fetchHomePowerHistory, useHomePower } from '../components/useHomePower';
+import { GlanceTile } from '../components/GlanceTile';
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
 import { useTweenedNumber } from '../hooks/useTweenedNumber';
@@ -171,5 +172,27 @@ export function EnergyPanel() {
       </div>
       <OfflinePlugsNote offline={offline} hasTotal={totalW !== undefined} compact />
     </section>
+  );
+}
+
+// Home page tile (GlancePanel): the home's power now, filled against 4 kW and
+// green, amber (1.5 kW+) or red (3 kW+); the biggest user under it.
+export function EnergyTile() {
+  const { totalW, consumers } = useHomePower();
+  const [v, u] = splitWatts(totalW);
+  const top = [...consumers].filter((c) => !c.offline && c.w >= 5).sort((a, b) => b.w - a.w)[0];
+  const w = totalW ?? 0;
+  return (
+    <GlanceTile
+      icon="flash"
+      label="Power now"
+      page="energy"
+      color="var(--accent-energy)"
+      level={totalW === undefined ? undefined : (w / 4000) * 100}
+      fill={w >= 3000 ? 'var(--danger)' : w >= 1500 ? 'var(--accent-light)' : 'var(--accent-energy)'}
+      value={v}
+      unit={u}
+      sub={top ? `${top.name} ${splitWatts(top.w).join(' ')}` : undefined}
+    />
   );
 }

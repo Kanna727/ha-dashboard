@@ -73,7 +73,10 @@ export const ALERTS = { chime: true, doorOpenMinutes: 3, notify: ['notify', 'mob
 export const VACATION_MODE = cfg.VACATION_MODE ?? '';
 export const VACUUM: NonNullable<DashboardConfig['VACUUM']> = { ...cfg.VACUUM };
 export const DESK: NonNullable<DashboardConfig['DESK']> = { ...cfg.DESK };
+export const HEALTH = { people: [] as NonNullable<NonNullable<DashboardConfig['HEALTH']>['people']>, ...cfg.HEALTH };
+export const BATTERIES = { low: 20, hide: [] as string[], ...cfg.BATTERIES };
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };
+export const HOME_IDLE = { minutes: 2, layouts: ['tablet'] as string[], ...cfg.HOME_IDLE };
 
 // Deploys write "<app version>/<config hash>" here; open pages reload when it
 // stops matching what they run (see update/useSelfUpdate.ts).

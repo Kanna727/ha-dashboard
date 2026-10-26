@@ -12,6 +12,8 @@ export interface StoredConfig {
 export const CONFIG_DASHBOARD = 'dashboard-config';
 // The shared card layout (layout/Canvas.tsx), saved from the dashboard itself.
 export const LAYOUT_DASHBOARD = 'dashboard-layout';
+// Names the owner gave the router's clients (the network popup), saved from the dashboard itself.
+export const NAMES_DASHBOARD = 'dashboard-names';
 const CACHE_KEY = 'dashConfig';
 
 export function loadCachedConfig(): StoredConfig | null {
