@@ -167,6 +167,9 @@ export interface DashboardConfig {
     windowDays: number[]; // 0 = Sunday
     windowStartHour: number;
     windowEndHour: number;
+    // Optional "HH:MM": when you want to arrive. In the commute window the Home
+    // page's commute tile then counts down to when to leave.
+    arriveBy?: string;
   };
   MEALS: MealsConfig;
   // Optional: settings added after the config moved into HA must be optional

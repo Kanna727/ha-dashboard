@@ -134,6 +134,12 @@ export const SPEEDTEST_IDS = SPEEDTEST.map(([k]) => `sensor.speedtest_${k}`);
 export function speedTestResult(): Record<string, string> {
   return { 'sensor.speedtest_download': (88 + Math.random() * 10).toFixed(2), 'sensor.speedtest_upload': (9 + Math.random()).toFixed(2), 'sensor.speedtest_ping': String(10 + Math.round(Math.random() * 6)) };
 }
+// Google Air Quality (`google_air_quality`): Universal AQI, its category and the dominant pollutant.
+const AIR: [string, string, string][] = [
+  ['universal_air_quality_index', '64', 'uaqi'],
+  ['uaqi_category', 'Good air quality', 'uaqi_category'],
+  ['uaqi_dominant_pollutant', 'pm25', 'uaqi_dominant_pollutant'],
+];
 // Connected clients: [host name, band, connection]
 const CLIENTS: [string, string | null, string][] = [
   ...['a1b2c3', 'a1b2d4', 'a1b2e5', 'a1b2f6', 'a1b307', 'a1b318'].map((s): [string, string, string] => [`bulb_${s}`, '2G', 'host']),
@@ -182,6 +188,7 @@ export function extraEntities(): HassEntity[] {
   for (const [k, state] of ROUTER_SWITCHES) out.push(e(`switch.home_router_${k}`, state, { friendly_name: `Home Router ${k.replace(/_/g, ' ')}` }));
   out.push(e('button.home_router_reboot', 'unknown', { device_class: 'restart' }));
   for (const [k, state, attrs] of GATEWAY) out.push(e(`sensor.router_${k}`, state, attrs));
+  for (const [k, state] of AIR) out.push(e(`sensor.home_${k}`, state, k === 'universal_air_quality_index' ? { state_class: 'measurement' } : {}));
   const tested = new Date(Date.now() - 2 * 3_600_000).toISOString();
   for (const [k, state, attrs] of SPEEDTEST) out.push({ ...e(`sensor.speedtest_${k}`, state, attrs), last_updated: tested, last_changed: tested });
   CLIENTS.forEach(([host, band, connection], i) =>
@@ -244,6 +251,7 @@ export const EXTRA_DEVICES: RegistryDevice[] = [
   { id: 'dev_router', name: 'Home Router', areaId: 'living_room', model: 'Router', disabled: false },
   { id: 'dev_gateway', name: 'Gateway', areaId: 'living_room', model: 'IGD', disabled: false },
   { id: 'dev_speedtest', name: 'SpeedTest', areaId: null, model: null, disabled: false },
+  { id: 'dev_air', name: 'Home', areaId: null, model: null, disabled: false },
   ...BATTERIES.map(([id, name, area]) => ({ id, name, areaId: area, model: null, disabled: false })),
 ];
 
@@ -255,6 +263,7 @@ export const EXTRA_REGISTRY: RegistryEntity[] = [
   { entityId: 'binary_sensor.router_wan_status', deviceId: 'dev_gateway', platform: 'upnp' },
   ...GATEWAY.map(([k]) => ({ entityId: `sensor.router_${k}`, deviceId: 'dev_gateway', platform: 'upnp' })),
   ...SPEEDTEST.map(([k]) => ({ entityId: `sensor.speedtest_${k}`, deviceId: 'dev_speedtest', platform: 'speedtestdotnet' })),
+  ...AIR.map(([k, , key]) => ({ entityId: `sensor.home_${k}`, deviceId: 'dev_air', platform: 'google_air_quality', translationKey: key })),
   ...BATTERIES.map(([dev, , , id]) => ({ entityId: id, deviceId: dev, platform: 'mock', category: 'diagnostic' })),
   { entityId: 'sensor.alex_phone_battery_state', deviceId: 'dev_bat_phone', platform: 'mobile_app' },
 ];

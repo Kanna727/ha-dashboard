@@ -70,7 +70,8 @@ function dismissFrom(data: Record<string, unknown>): DismissWhen | undefined {
 // One emoji with its variation selector, skin tone and ZWJ joins (🧺, ♨️, 👩‍🍳).
 const EMOJI = /\p{Extended_Pictographic}[\uFE0F\p{Emoji_Modifier}]*(?:\u200D\p{Extended_Pictographic}[\uFE0F\p{Emoji_Modifier}]*)*/gu;
 // Messages the companion app treats as commands, not as something to show.
-const COMMAND = /^(clear_notification|remove_channel|request_location_update|update_sensors|command_\w+|TTS)$/i;
+// kiosk_*: the iOS app's kiosk mode (screensaver, brightness), sent to the wall tablet itself.
+const COMMAND = /^(clear_notification|remove_channel|request_location_update|update_sensors|command_\w+|kiosk_\w+|TTS)$/i;
 const WARN_EMOJI = new Set(['⚠️', '⚠', '🚨', '❗', '‼️', '🔥', '🛑']);
 const WARN_WORDS = /\b(left open|unlocked|leak|alarm|warning|alert|failed|error)\b/i;
 
