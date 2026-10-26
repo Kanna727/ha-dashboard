@@ -2669,3 +2669,28 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 /* With no veil over the sky, the top bar's greeting and clock sit right on the
    clouds: a soft shadow keeps them readable on a bright day. */
 .topbar .hello, .big-clock { text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45), 0 0 2px rgba(0, 0, 0, 0.35); }
+
+/* "Needs attention" (panels/AttentionPanel.tsx): large type and colour for the wall. */
+.att-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.att-item {
+  --tc: var(--warn);
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 16px; text-align: left;
+  font-size: 20px; font-weight: 800; letter-spacing: -0.01em; color: var(--text);
+  background: color-mix(in srgb, var(--tc) 16%, var(--card)); border: 2px solid color-mix(in srgb, var(--tc) 65%, transparent);
+}
+.att-item:disabled { cursor: default; opacity: 1; }
+.att-item.done { --tc: var(--ok); }
+.att-item.info { --tc: var(--accent-fan); }
+.att-item svg { flex-shrink: 0; color: var(--tc); }
+.att-item span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att-clear { display: flex; align-items: center; gap: 12px; padding: 6px 4px 2px; font-size: 24px; font-weight: 800; color: var(--ok); }
+/* Home: rooms three across (tablet, desktop), so "Needs attention" fits under them. */
+.cols-home .room-rows { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cols-home .room-row { padding: 10px 10px 12px; }
+.cols-home .row-buttons { gap: 5px; }
+.attention-panel .panel-head { margin-bottom: 8px; }
+/* Air quality line on the weather card (WeatherPanel AirLine). */
+.wx-outlook.air { background: color-mix(in srgb, var(--air) 14%, var(--card)); }
+.wx-outlook.air svg { color: var(--air); }
+/* The weather tile's air bar: a little shorter than the cleaning bars. */
+.glance-foot .glance-bar { height: 36px; font-size: 16px; }

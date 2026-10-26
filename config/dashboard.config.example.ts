@@ -235,6 +235,8 @@ const config: DashboardConfig = {
     windowDays: [2, 4, 5],
     windowStartHour: 9,
     windowEndHour: 11,
+    // When you want to arrive: the Home page's commute tile counts down to leaving.
+    arriveBy: '10:30',
   },
   FRIDGE: { power: 'sensor.kitchen_fridge_power', door: 'binary_sensor.kitchen_fridge_door_sensor_door' },
   MUSIC_PLAYERS: [

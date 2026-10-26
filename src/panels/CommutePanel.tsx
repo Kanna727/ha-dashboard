@@ -4,7 +4,8 @@
 // time if you leave in 15, 30 or 45 minutes. Tapping it opens the map popup.
 import { CommuteAside, CommuteDetail, CommuteSubtitle } from '../commute/CommuteDetail';
 import { arrival, LeaveLaterBars, leaveAdvice, LevelChip, TrafficStrip, Updated } from '../commute/parts';
-import { kmText, mins, TRAFFIC_TEXT, type CommuteConfig } from '../commute/routes';
+import { kmText, leaveIn, mins, TRAFFIC_TEXT, type CommuteConfig } from '../commute/routes';
+import { COMMUTE } from '../config/entities';
 import { commuteMissingText, useCommute, useCommuteConfig, type Commute } from '../commute/useCommute';
 import { GlanceTile } from '../components/GlanceTile';
 import { PanelHead, useModal } from '../components/Modal';
@@ -84,6 +85,26 @@ function CommuteGlance({ config }: { config: CommuteConfig }) {
   const c = useCommute(config, { leaveLater: true });
   const r = c.route;
   const advice = c.leaveLater ? leaveAdvice(c.leaveLater, c.now) : undefined;
+  // In the commute window with an arrival time: a countdown to leaving,
+  // orange from 10 minutes, red once it's too late.
+  const left = r && c.inWindow && !c.override ? leaveIn(COMMUTE.arriveBy, r.seconds, c.now) : undefined;
+  // Only within two hours of leaving (and an hour after it's too late).
+  if (r && left !== undefined && left <= 120 && left >= -60) {
+    return (
+      <GlanceTile
+        icon="navigate"
+        label={`Arrive by ${COMMUTE.arriveBy} · ${mins(r.seconds)} min trip`}
+        page="commute"
+        color="var(--accent-fan)"
+        tone={left < 0 ? 'bad' : left <= 10 ? 'warn' : TRAFFIC_TONE[r.level]}
+        text={left <= 0}
+        value={left < 0 ? `Late ${-left} min` : left === 0 ? 'Leave now' : left}
+        unit={left > 0 ? 'min to leave' : undefined}
+        sub={advice}
+        foot={<TrafficStrip segs={r.segs} ends={false} />}
+      />
+    );
+  }
   return (
     <GlanceTile
       icon="navigate"

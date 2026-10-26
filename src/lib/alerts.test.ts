@@ -75,6 +75,8 @@ describe('notice from a notify call', () => {
     expect(noticeFrom({ message: '  ' })).toBeNull();
     expect(noticeFrom({ message: 'clear_notification', data: { tag: 'x' } })).toBeNull();
     expect(noticeFrom({ message: 'request_location_update' })).toBeNull();
+    expect(noticeFrom({ message: 'kiosk_show_screensaver' })).toBeNull();
+    expect(noticeFrom({ message: 'kiosk_set_screensaver_mode', data: { mode: 'blank' } })).toBeNull();
     expect(noticeFrom({ message: '🧺' })).toBeNull();
   });
 });
