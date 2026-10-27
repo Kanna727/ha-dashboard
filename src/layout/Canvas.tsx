@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Icon } from '../components/Icon';
 import { useToasts } from '../components/Toasts';
 import {
@@ -8,12 +8,14 @@ import {
   extent,
   moveBox,
   overlapsX,
+  pageLayout,
   parseLayout,
   resizeBox,
   snapMove,
   snapResize,
   stack,
   toFront,
+  withPageLayout,
   type Box,
   type CanvasLayout,
   type Edge,
@@ -30,7 +32,7 @@ import { clearLegacy, legacyLayout, useSharedLayout } from './useSharedLayout';
 // commute's best time) the cards under it move with it. Sideways, edges snap a
 // gap away from their neighbours.
 //
-// One layout is shared by every device and both layouts (useSharedLayout): it
+// Each page's layout is shared by every device and both layouts (useSharedLayout): it
 // is kept at the canvas width it was arranged at, and each screen zooms it to
 // its own width (each card is scaled from its top-left corner).
 //
@@ -43,6 +45,8 @@ export function ArrangeProvider({ children }: { children: ReactNode }) {
   const [editing, setEditing] = useState(false);
   return <ArrangeContext.Provider value={{ editing, setEditing }}>{children}</ArrangeContext.Provider>;
 }
+
+export const useArranging = () => useContext(ArrangeContext)?.editing ?? false;
 
 // Top-bar button; renders nothing outside a canvas layout (the phone).
 export function ArrangeButton() {
@@ -97,7 +101,8 @@ const EDGE_ZONE = 56; // px from the visible edge where a drag scrolls the page
 const EDGE_STEP = 16;
 const ROOM = 400; // extra space below the cards while arranging, to drag into
 
-export function FreeCanvas({ name, className, columns }: { name: string; className: string; columns: CardDef[][] }) {
+// `page`: which page's layout this is (each page is arranged on its own).
+export function FreeCanvas({ name, page, className, columns }: { name: string; page: string; className: string; columns: CardDef[][] }) {
   const arrange = useContext(ArrangeContext);
   const editing = arrange?.editing ?? false;
   const shared = useSharedLayout();
@@ -120,7 +125,7 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
   // Cards glide to new places only once the first heights are in (no slide on load).
   const [settled, setSettled] = useState(false);
 
-  const stored = useMemo(() => parseLayout(shared.data, idsKey.split(',')), [shared.data, idsKey]);
+  const stored = useMemo(() => parseLayout(pageLayout(shared.data, page), idsKey.split(',')), [shared.data, page, idsKey]);
   const layout = editing ? (draft ?? stored) : stored;
   const z = layout ? canvasZoom(mainWidth, layout) : 1;
   // Where the cards are shown: stacked with a constant gap. A card being moved
@@ -148,7 +153,11 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
 
   // This device's layout from before layouts were shared: hand it to HA once,
   // if HA has never had one.
-  const { known, data, save } = shared;
+  const { known, data } = shared;
+  // Saves this page's layout into the shared document, keeping the other pages'.
+  const latest = useRef(shared);
+  latest.current = shared;
+  const save = useCallback((l: object) => latest.current.save(withPageLayout(latest.current.data, page, l)), [page]);
   useEffect(() => {
     if (!known || data !== null || editing) return;
     const old = parseLayout(legacyLayout(name), idsKey.split(','), mainRef.current?.clientWidth ?? 0);
@@ -377,7 +386,7 @@ export function FreeCanvas({ name, className, columns }: { name: string; classNa
         <ArrangeBar
           onDone={finish}
           onReset={() => {
-            // Back to the columns everywhere; measured again here while arranging.
+            // This page back to its columns on every screen; measured again here while arranging.
             save({}).catch(failed);
             setDraft(null);
             setChanged(false);

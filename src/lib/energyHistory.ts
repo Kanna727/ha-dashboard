@@ -30,3 +30,20 @@ export function averageKwh(days: DayEnergy[]): number | undefined {
   const full = days.filter((d) => !d.partial);
   return full.length ? full.reduce((s, d) => s + d.kwh, 0) / full.length : undefined;
 }
+
+// kWh per plug since `from` (local midnight), from daily mean power statistics.
+// `factor` turns a plug's unit into W (1000 for kW). Biggest first, zeros dropped.
+export function plugKwh(stats: Record<string, StatPoint[]>, from: number, to: number, now: number, factor: (id: string) => number = () => 1) {
+  return Object.entries(stats)
+    .map(([entity, pts]) => {
+      let kwh = 0;
+      for (const p of pts) {
+        if (p.start < from || p.start >= to || p.mean === undefined || !Number.isFinite(p.mean)) continue;
+        const hours = now < p.start + DAY ? Math.max(0, (now - p.start) / 3_600_000) : 24;
+        kwh += (p.mean * factor(entity) * hours) / 1000;
+      }
+      return { entity, kwh };
+    })
+    .filter((r) => r.kwh >= 0.05)
+    .sort((a, b) => b.kwh - a.kwh);
+}

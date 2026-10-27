@@ -191,3 +191,24 @@ export function parseLayout(raw: unknown, ids: string[], fallbackWidth = 0): Can
   const width = isNum(w) && w > 0 ? w : fallbackWidth > 0 ? fallbackWidth : extent({ boxes }, () => 0).w;
   return { width: Math.round(width), boxes, order };
 }
+
+// The stored document holds one layout per page (layout/pages.ts):
+// { version: 2, pages: { home: {...}, energy: {...} } }. A document of another
+// version arranged other cards: v1 (`pages` without a version) had each page's
+// cards before the pages were reorganised on 2026-10-26 (the owner asked for
+// them to be replaced), and the oldest one (`boxes` at the top) was from before
+// the pages. Every page then starts in its columns again.
+export const LAYOUT_VERSION = 2;
+const pagesOf = (doc: unknown): Record<string, unknown> | undefined => {
+  if (!doc || typeof doc !== 'object' || (doc as { version?: unknown }).version !== LAYOUT_VERSION) return undefined;
+  const pages = (doc as { pages?: unknown }).pages;
+  return pages && typeof pages === 'object' ? (pages as Record<string, unknown>) : undefined;
+};
+
+export function pageLayout(doc: unknown, page: string): unknown {
+  return pagesOf(doc)?.[page] ?? null;
+}
+
+export function withPageLayout(doc: unknown, page: string, layout: object): { version: number; pages: Record<string, unknown> } {
+  return { version: LAYOUT_VERSION, pages: { ...(pagesOf(doc) ?? {}), [page]: layout } };
+}

@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { build as esbuild } from 'esbuild';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 
@@ -83,9 +83,21 @@ function dashboardConfig(): Plugin {
   };
 }
 
+// `npm run dev:live`: the dev server with real data. Home Assistant's login
+// pages, auth, REST API and WebSocket are passed through to HA_PROXY (from the
+// environment or the gitignored .env.local; default http://homeassistant.local,
+// or e.g. a Tailscale address when away from home), so to the browser the app and HA share one origin
+// and the normal OAuth login works (a cross-origin token request would be
+// refused by HA's CORS policy). No X-Forwarded-For is added: HA answers 400 to
+// that header from an untrusted proxy. Listens on localhost only.
+const HA_PATHS = ['/auth', '/api', '/frontend_latest', '/frontend_es5', '/static', '/manifest.json', '/local'];
+function haProxy(target: string) {
+  return Object.fromEntries(HA_PATHS.map((p) => [p, { target, changeOrigin: true, ws: p === '/api', xfwd: false }]));
+}
+
 // BUILD_HASH is the release version (set by CI or scripts/deploy.py); kiosks
 // compare it against input_text.dashboard_build and reload when they differ.
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: './',
   plugins: [react(), viteSingleFile(), dashboardConfig()],
   define: {
@@ -96,5 +108,8 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
-  server: { host: true, port: 5173 },
-});
+  server:
+    mode === 'live'
+      ? { host: 'localhost', port: 5173, strictPort: true, proxy: haProxy(loadEnv(mode, process.cwd(), '').HA_PROXY || 'http://homeassistant.local') }
+      : { host: true, port: 5173 },
+}));

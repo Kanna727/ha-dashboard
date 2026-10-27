@@ -54,6 +54,9 @@ export interface RegistryDevice {
   areaId: string | null;
   model?: string | null;
   disabled: boolean;
+  macs?: string[]; // the device's MAC connections, as HA stores them (lower case, colons)
+  identifiers?: string[]; // the values of the device's identifiers (an appliance ID, a cloud device ID, a serial…)
+  serial?: string | null;
 }
 
 export interface RegistryEntity {
@@ -126,6 +129,12 @@ export interface HassApi {
   saveLayout(layout: object): Promise<void>;
   // Calls back whenever any device saves the layout.
   subscribeLayout(cb: () => void): () => void;
+  // A small JSON document kept as the config of another hidden storage
+  // dashboard (`urlPath`), the same way as the layout: null if never saved;
+  // saving needs an admin and creates the dashboard (titled `title`) the first time.
+  fetchStore(urlPath: string): Promise<unknown | null>;
+  saveStore(urlPath: string, data: object, title: string): Promise<void>;
+  subscribeStore(urlPath: string, cb: () => void): () => void;
   // Every notify.* service call in HA (an automation messaging the phones), from
   // the call_service event, which only admin users may subscribe to. `ready`
   // says once whether the subscription was accepted.

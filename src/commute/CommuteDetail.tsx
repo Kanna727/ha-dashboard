@@ -75,8 +75,11 @@ function RoutesCard({ c }: { c: Commute }) {
 }
 
 const STAGE_PAD = { top: 40, right: 200, bottom: 70, left: 210 };
+const COMPACT_PAD = { top: 30, right: 30, bottom: 30, left: 30 };
 
-export function CommuteDetail({ config }: { config: CommuteConfig }) {
+// `compact` (on the tablet's Commute page, a column narrower than the popup):
+// the ETA and buttons sit above and below the map instead of on it.
+export function CommuteDetail({ config, compact = false }: { config: CommuteConfig; compact?: boolean }) {
   const c = useCommute(config, { alternatives: true, leaveLater: true });
   const [search, setSearch] = useState(false);
   useEffect(() => {
@@ -91,9 +94,9 @@ export function CommuteDetail({ config }: { config: CommuteConfig }) {
   );
   const r = c.route;
   return (
-    <div className="cm-detail">
+    <div className={`cm-detail ${compact ? 'compact' : ''}`}>
       <div className="cm-stage">
-        <CommuteMapView config={c.config} routes={c.routes} origin={c.origin} dest={c.dest} selected={c.selected} onSelect={c.select} height="100%" padding={STAGE_PAD} />
+        <CommuteMapView config={c.config} routes={c.routes} origin={c.origin} dest={c.dest} selected={c.selected} onSelect={c.select} height="100%" padding={compact ? COMPACT_PAD : STAGE_PAD} />
         <div className="cm-stage-eta">
           <strong>{r ? mins(r.seconds) : '–'}<sup>min</sup></strong>
           <div>

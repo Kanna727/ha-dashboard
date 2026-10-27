@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { MEALS } from '../config/entities';
 import { Icon } from '../components/Icon';
+import { GlanceTile } from '../components/GlanceTile';
 import { PanelHead, useModal } from '../components/Modal';
 import { Avatar, DayToggle, Dishes, KitchenNotes, NoPlan, PersonPicker, SLOT_ICON } from '../meals/parts';
 import { DAYS, clock, dishesFor, plannedDays, shared } from '../meals/plan';
@@ -8,7 +9,8 @@ import { useMealDay } from '../meals/useMeals';
 
 // Menu board: people across, meals down. A dish everyone shares spans the row,
 // the next meal is highlighted with its "eat by" time and eaten ones fade.
-export function MealsPanel() {
+// `full` (tablet and desktop Health page): the popup's week under it.
+export function MealsPanel({ full = false }: { full?: boolean }) {
   const modal = useModal();
   const { day, today, offset, setOffset, active, states, plan } = useMealDay();
   const people = MEALS.people;
@@ -16,8 +18,8 @@ export function MealsPanel() {
     modal.open({ title: 'Meal plan', icon: 'utensils', accent: 'var(--accent-energy)', wide: true, subtitle: 'Weekly delivery schedule', body: <MealWeek today={today} /> });
 
   return (
-    <section className="panel meals-panel">
-      <PanelHead label="Meals" summary={<DayToggle offset={offset} setOffset={setOffset} />} onMore={open} />
+    <section className={`panel meals-panel ${full ? 'full' : ''}`}>
+      <PanelHead label="Meals" summary={<DayToggle offset={offset} setOffset={setOffset} />} onMore={full ? undefined : open} />
       {!plan ? (
         <NoPlan day={day} />
       ) : (
@@ -55,6 +57,12 @@ export function MealsPanel() {
             );
           })}
         </div>
+      )}
+      {full && (
+        <>
+          <h3 className="label meals-week-title">This week</h3>
+          <MealWeek today={today} />
+        </>
       )}
     </section>
   );
@@ -97,5 +105,46 @@ function MealWeek({ today }: { today: number }) {
       </div>
       <KitchenNotes />
     </div>
+  );
+}
+
+// Home page tile (GlancePanel): the next meal for everyone, in large type with
+// the meal's own icon, across the whole row.
+export function MealTile() {
+  const { today, next } = useMealDay();
+  const people = MEALS.people;
+  if (!people.length) return null;
+  const day = (today + next.offset) % 7;
+  const plan = MEALS.plan[day];
+  const slot = MEALS.slots.find((s) => s.id === next.slot);
+  const when = next.offset ? 'Tomorrow' : slot ? `by ${clock(slot.end)}` : '';
+  const all = plan && slot ? dishesFor(plan, slot.id) : [];
+  const same = people.length > 1 ? shared(all) : null;
+  return (
+    <GlanceTile
+      icon={slot ? SLOT_ICON[slot.id] : 'utensils'}
+      label={slot ? `${slot.label} · ${when}` : 'Meals'}
+      page="health"
+      color="var(--accent-light)"
+      span="all"
+      text
+      value={
+        !plan ? (
+          'No deliveries · eating out'
+        ) : same ? (
+          <span className="glance-dish">
+            {same} <em>{people.length === 2 ? 'Both' : 'Everyone'}</em>
+          </span>
+        ) : (
+          <span className="glance-dishes">
+            {people.map((p, i) => (
+              <span key={p.id}>
+                <Avatar i={i} name={p.name} /> {all[i] || '—'}
+              </span>
+            ))}
+          </span>
+        )
+      }
+    />
   );
 }

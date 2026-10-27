@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { COMMUTE } from '../config/entities';
 import { useHass } from '../ha/api';
 import { useNow } from '../hooks/useNow';
@@ -22,6 +22,12 @@ const REFRESH_MS = 2 * 60_000;
 const OVERRIDE_TIMEOUT_MS = 5 * 60_000;
 export const STALE_MS = 5 * 60_000;
 export const LEAVE_LATER_MIN = [15, 30, 45];
+
+// The last answer for each request, so a card that mounts again (the Home
+// page coming back after the dashboard was left idle on another page) reuses
+// it for up to REFRESH_MS instead of calling the Routes API again. A refresh
+// tap or the 2-min poll always fetches.
+const recent = new Map<string, { at: number; routes: Route[]; origin: LatLng; dest: LatLng; leaveLater: LeaveOption[] | null }>();
 const MAX_RECENTS = 5;
 
 // The mock's test panel fires this to make every commute view fetch again.
@@ -117,12 +123,25 @@ export function useCommute(config: CommuteConfig, opts: { alternatives?: boolean
   }, []);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
+  const firstRun = useRef(true);
   useEffect(() => {
     const ctrl = new AbortController();
     const home = config.origin;
     const away = override?.latLng ?? config.dest;
     const origin = swapped ? away : home;
     const dest = swapped ? home : away;
+    const key = JSON.stringify([origin, dest, mode, !!opts.alternatives, !!opts.leaveLater]);
+    const cached = recent.get(key);
+    const first = firstRun.current;
+    firstRun.current = false;
+    if (first && cached && Date.now() - cached.at < REFRESH_MS) {
+      setResult({ routes: cached.routes, origin: cached.origin, dest: cached.dest });
+      setSelected(cached.routes.reduce((bi, r, i) => (r.seconds < cached.routes[bi].seconds ? i : bi), 0));
+      setLastUpdate(cached.at);
+      setLeaveLater(cached.leaveLater);
+      return;
+    }
+    const remember = (routes: Route[], leaveLater: LeaveOption[] | null) => recent.set(key, { at: Date.now(), routes, origin, dest, leaveLater });
     setBusy(true);
     computeRoutes({ apiKey: config.apiKey, origin, dest, mode, alternatives: !!opts.alternatives, signal: ctrl.signal })
       .then(async (routes) => {
@@ -132,7 +151,10 @@ export function useCommute(config: CommuteConfig, opts: { alternatives?: boolean
         setSelected(best);
         setError(undefined);
         setLastUpdate(Date.now());
-        if (!opts.leaveLater || override || !inCommuteWindow()) return setLeaveLater(null);
+        if (!opts.leaveLater || override || !inCommuteWindow()) {
+          remember(routes, null);
+          return setLeaveLater(null);
+        }
         const later = await Promise.all(
           LEAVE_LATER_MIN.map((m) =>
             computeRoutes({ apiKey: config.apiKey, origin, dest, mode, alternatives: false, departureOffsetMin: m, signal: ctrl.signal })
@@ -140,7 +162,10 @@ export function useCommute(config: CommuteConfig, opts: { alternatives?: boolean
               .catch(() => null),
           ),
         );
-        if (!ctrl.signal.aborted) setLeaveLater([{ offset: 0, seconds: routes[best].seconds }, ...later.filter((x): x is LeaveOption => !!x)]);
+        if (ctrl.signal.aborted) return;
+        const options = [{ offset: 0, seconds: routes[best].seconds }, ...later.filter((x): x is LeaveOption => !!x)];
+        remember(routes, options);
+        setLeaveLater(options);
       })
       .catch((e) => {
         if (!ctrl.signal.aborted) setError(e.message);

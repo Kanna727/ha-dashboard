@@ -133,10 +133,11 @@ describe('wind and moisture', () => {
     expect(scene(day(30), 'windy', { wind: 60 }).wind.level).toBe(1);
   });
 
-  it('hazes and beads up with humidity and rain', () => {
+  it('hazes only in wet weather, and beads up with humidity and rain', () => {
     expect(scene(day(30), 'sunny', { humidity: 40 }).haze).toBe(0);
     expect(scene(day(30), 'sunny', { humidity: 40 }).dew).toBe(0);
-    expect(scene(day(30), 'sunny', { humidity: 95 }).haze).toBeGreaterThan(0.8);
+    expect(scene(day(30), 'sunny', { humidity: 95 }).haze).toBe(0);
+    expect(scene(day(30), 'rainy', { humidity: 95 }).haze).toBeGreaterThan(0.8);
     expect(scene(day(30), 'sunny', { humidity: 95 }).dew).toBeGreaterThan(0.7);
     expect(scene(day(30), 'rainy', { humidity: 70 }).dew).toBeGreaterThan(0.2);
   });

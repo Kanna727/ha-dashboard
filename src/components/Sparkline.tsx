@@ -4,19 +4,22 @@ import type { HistoryPoint } from '../ha/api';
 // Area sparkline. Points are resampled onto the time axis so gaps in
 // HA's state history (no change = no row) render as flat steps; a single
 // point is a flat line up to now. `start` (epoch ms) overrides the left edge,
-// e.g. to fit an entity whose history is shorter than `hours`.
+// e.g. to fit an entity whose history is shorter than `hours`. `fit` scales
+// the line to the readings' own range instead of from zero (body weight).
 export function Sparkline({
   points,
   height = 56,
   hours,
   start: startAt,
   color = 'var(--accent-energy)',
+  fit = false,
 }: {
   points: HistoryPoint[];
   height?: number;
   hours: number;
   start?: number;
   color?: string;
+  fit?: boolean;
 }) {
   // useId() contains ":" or "«»", which break url(#…); keep it to safe characters.
   const fillId = `spark${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
@@ -24,9 +27,12 @@ export function Sparkline({
   if (!points.length) return <div className="spark-empty" style={{ height }} />;
   const end = Date.now();
   const start = startAt ?? end - hours * 3600_000;
-  const max = Math.max(...points.map((p) => p.v), 1);
+  const hi = Math.max(...points.map((p) => p.v), fit ? -Infinity : 1);
+  const lo = fit ? Math.min(...points.map((p) => p.v)) : 0;
+  const pad = fit ? Math.max((hi - lo) * 0.15, 0.1) : 0;
+  const [min, max] = [lo - pad, hi + pad];
   const x = (t: number) => ((Math.max(t, start) - start) / (end - start)) * width;
-  const y = (v: number) => height - 2 - (v / max) * (height - 6);
+  const y = (v: number) => height - 2 - ((v - min) / (max - min)) * (height - 6);
 
   let d = `M ${x(points[0].t)} ${y(points[0].v)}`;
   for (let i = 1; i < points.length; i++) {

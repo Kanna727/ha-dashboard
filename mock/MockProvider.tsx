@@ -14,6 +14,8 @@ import { dishwasherService } from './dishwasher';
 import { deskHistory, deskService, isDeskEntity, startDeskMock } from './desk';
 import { mockNotify, notifyListeners } from './notify';
 import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
+import { extraHistory, extraStatChanges, extraStatistics, MOCK_MACS, SPEEDTEST_IDS, speedTestResult } from './extras';
+import { ENERGY } from '../src/config/entities';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
@@ -196,6 +198,8 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       jitter('sensor.home_power', 1650, 120);
       jitter('sensor.kitchen_fridge_power', 700, 60);
       jitter('sensor.workroom_pc_power', 470, 80);
+      jitter('sensor.router_download_speed', 2400, 1800);
+      jitter('sensor.router_upload_speed', 420, 300);
     }, 3000);
     return () => window.clearInterval(id);
   }, []);
@@ -208,6 +212,13 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         if (dishwasherService(domain, service, data, ids(target), patch, (id) => states[id])) return {};
         if (deskService(domain, service, data, ids(target), patch)) return {};
         if (domain === 'notify') mockNotify(service, data);
+        // A speed test: the service call returns when it's done (6 s here, ~30 s in HA).
+        if (domain === 'homeassistant' && service === 'update_entity' && [data.entity_id].flat().some((id) => SPEEDTEST_IDS.includes(String(id)))) {
+          await new Promise((r) => setTimeout(r, 6000));
+          const now = new Date().toISOString();
+          for (const [id, state] of Object.entries(speedTestResult())) patch(id, { state, last_updated: now });
+          return {};
+        }
         applyService(domain, service, data, ids(target));
         // A forced car refresh lands a few seconds later.
         if (domain === 'button' && ids(target).includes('button.car_force_refresh')) {
@@ -229,7 +240,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         return Object.fromEntries(
           entityIds.map((id) => [
             id,
-            CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : TDS_HISTORY[id] ? tdsHistory(TDS_HISTORY[id], hours) : isDeskEntity(id) ? deskHistory(hours) : fakeHistory(1400, hours),
+            extraHistory(id, hours) ?? (CAR_HISTORY[id] ? carHistory(CAR_HISTORY[id]) : TDS_HISTORY[id] ? tdsHistory(TDS_HISTORY[id], hours) : isDeskEntity(id) ? deskHistory(hours) : fakeHistory(1400, hours)),
           ]),
         );
       },
@@ -242,7 +253,9 @@ export default function MockProvider({ children }: { children: ReactNode }) {
           start: today.getTime() - (days - i) * 86_400_000,
           mean: 1300 + rand() * 1100,
         }));
-        return Object.fromEntries(ids.map((id, n) => [id, n === 0 ? series.slice(-3) : series.slice(0, -3)]));
+        return Object.fromEntries(
+          ids.map((id) => [id, extraStatistics(id, days) ?? (id === ENERGY.total ? series.slice(-3) : id === ENERGY.legacyTotal ? series.slice(0, -3) : [])]),
+        );
       },
       async fetchStatChanges(ids, days, period) {
         // (The car chart always asks for daily rows; weeks and months are summed by the caller.)
@@ -270,7 +283,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         return Object.fromEntries(
           ids.map((id) => [
             id,
-            id.endsWith('_odometer') ? series((d) => d.km) : id.endsWith('_trips_today') ? series((d) => d.trips, 21) : id.endsWith('_drive_time_today') ? series((d) => d.minutes, 21) : [],
+            extraStatChanges(id, days) ?? (id.endsWith('_odometer') ? series((d) => d.km) : id.endsWith('_trips_today') ? series((d) => d.trips, 21) : id.endsWith('_drive_time_today') ? series((d) => d.minutes, 21) : []),
           ]),
         );
       },
@@ -291,7 +304,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         return entityId.includes('to_do') ? TODO_ITEMS_2 : TODO_ITEMS;
       },
       async fetchRegistry() {
-        return REGISTRY;
+        return { ...REGISTRY, devices: REGISTRY.devices.map((d) => (MOCK_MACS[d.id] ? { ...d, macs: [MOCK_MACS[d.id]] } : d)) };
       },
       // The commute card's settings (fake routes and map, see commute.tsx).
       async fetchLovelaceConfig() {
@@ -319,6 +332,28 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         return () => {
           window.removeEventListener('storage', on);
           window.removeEventListener(MOCK_LAYOUT, on);
+        };
+      },
+      // Other hidden-dashboard documents (client names): localStorage per url_path, followed across tabs.
+      async fetchStore(urlPath) {
+        try {
+          return JSON.parse(localStorage.getItem(`mockStore:${urlPath}`) ?? 'null');
+        } catch {
+          return null;
+        }
+      },
+      async saveStore(urlPath, data) {
+        localStorage.setItem(`mockStore:${urlPath}`, JSON.stringify(data));
+        window.dispatchEvent(new Event(`mockStore:${urlPath}`));
+      },
+      subscribeStore(urlPath, cb) {
+        const key = `mockStore:${urlPath}`;
+        const on = (e: Event) => (e.type === key || (e as StorageEvent).key === key) && cb();
+        window.addEventListener('storage', on);
+        window.addEventListener(key, on);
+        return () => {
+          window.removeEventListener('storage', on);
+          window.removeEventListener(key, on);
         };
       },
       subscribeNotifyCalls(cb, ready) {

@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:live": "vite --mode live",
     "mock": "VITE_MOCK=1 vite",
     "preview:local": "node scripts/local-preview.mjs",
     "build": "tsc --noEmit && vite build",

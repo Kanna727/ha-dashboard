@@ -235,6 +235,8 @@ const config: DashboardConfig = {
     windowDays: [2, 4, 5],
     windowStartHour: 9,
     windowEndHour: 11,
+    // When you want to arrive: the Home page's commute tile counts down to leaving.
+    arriveBy: '10:30',
   },
   FRIDGE: { power: 'sensor.kitchen_fridge_power', door: 'binary_sensor.kitchen_fridge_door_sensor_door' },
   MUSIC_PLAYERS: [
@@ -315,6 +317,8 @@ const config: DashboardConfig = {
   ALERTS: { chime: true, doorOpenMinutes: 3, notify: ['notify', 'mobile_app_*'], seconds: 30, alarms: ['shoe rack'] },
   // Night screen on the iPad: after 5 idle minutes, only while the sun is down.
   NIGHT_MODE: { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] },
+  // Back to the Home page after 2 minutes left alone (tablet only); 0 = off.
+  HOME_IDLE: { minutes: 2, layouts: ['tablet'] },
   // Robot vacuum page (optional: without it the first vacuum.* entity is used).
   // It opens by itself while the robot runs; `autoOpen: false` turns that off.
   VACUUM: { entity: 'vacuum.robot', map: 'camera.robot_map' },
@@ -322,6 +326,17 @@ const config: DashboardConfig = {
   // the rest of its entities are found from its name and device). `look` sizes the
   // 3D desk's top in cm and colours the top and frame.
   DESK: { entity: 'number.standing_desk_desk_height', look: { top: [140, 70], board: '#cf9452', frame: '#17181b' } },
+  // Health panel: whose scale, recovery wearable and indoor-cycling account is
+  // whose (any one entity of each device; the rest is found from the device).
+  HEALTH: {
+    people: [
+      { name: 'Alex', color: '#60a5fa', scale: 'sensor.bathroom_scale_alex_weight', wearable: 'sensor.band_alex_recovery_score', cycling: 'sensor.ride_alex_ftp' },
+      { name: 'Sam', color: '#f472b6', scale: 'sensor.bathroom_scale_sam_weight', cycling: 'sensor.ride_sam_ftp' },
+    ],
+  },
+  // Batteries panel (every battery is found by itself): low below 20 %, and
+  // anything to leave out.
+  BATTERIES: { low: 20, hide: [] },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {

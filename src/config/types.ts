@@ -154,7 +154,10 @@ export interface DashboardConfig {
       climate?: string; // climate.* for remote climate with a target temperature
     };
   };
-  NETWORK: { wan: string };
+  // `wan`: the internet link's connectivity sensor (its device's speeds and byte
+  // counters feed the Network panel). `router`: any entity of the router, if
+  // the one with a "total clients" sensor isn't it.
+  NETWORK: { wan: string; router?: string };
   FRIDGE: { power: string; door: string };
   // Commute map settings (API key, origin/destination) are read at runtime from
   // this Lovelace card, so the key never lands in the public /local/ files.
@@ -164,6 +167,9 @@ export interface DashboardConfig {
     windowDays: number[]; // 0 = Sunday
     windowStartHour: number;
     windowEndHour: number;
+    // Optional "HH:MM": when you want to arrive. In the commute window the Home
+    // page's commute tile then counts down to when to leave.
+    arriveBy?: string;
   };
   MEALS: MealsConfig;
   // Optional: settings added after the config moved into HA must be optional
@@ -187,8 +193,18 @@ export interface DashboardConfig {
   // between the learned Sit and Stand heights, else 90). `look` sizes and colours the
   // 3D desk: the top's width × depth in cm, the top's and the frame's colours.
   DESK?: { entity?: string; standAbove?: number; look?: { top?: [number, number]; board?: string; frame?: string } };
+  // Health panel: who owns which scale, recovery wearable and indoor-cycling
+  // account. Each is any one entity of that device; its other readings are found
+  // from the device. Health devices no one is given still show, under the device's name.
+  HEALTH?: { people?: { name: string; color?: string; scale?: string; wearable?: string; cycling?: string }[] };
+  // Batteries panel: every battery is found by itself. `low`: the % at or below
+  // which one counts as low (default 20). `hide`: entity IDs to leave out.
+  BATTERIES?: { low?: number; hide?: string[] };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
+  // Back to the Home page (the glance page) after this many minutes without a
+  // touch, closing a popup left open. 0 turns it off. Default 2, tablet only.
+  HOME_IDLE?: { minutes?: number; layouts?: ('tablet' | 'phone' | 'desktop')[] };
 }
 
 declare global {

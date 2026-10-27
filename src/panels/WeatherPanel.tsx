@@ -4,6 +4,8 @@ import { useHass } from '../ha/api';
 import { useForecast } from '../ha/forecast';
 import { useEntity } from '../ha/store';
 import { useNow } from '../hooks/useNow';
+import { GlanceBar, GlanceTile } from '../components/GlanceTile';
+import { AIR_COLOR, useAirQuality } from '../components/useAirQuality';
 import { Icon } from '../components/Icon';
 import { WeatherIcon } from '../components/WeatherIcon';
 import { DailyList, HourlyChart, WeatherDetail } from '../components/WeatherDetail';
@@ -46,6 +48,22 @@ function Outlook({ now, hourly }: { now: WeatherNow; hourly: Parameters<typeof r
   );
 }
 
+// Outdoor air quality, when Google Air Quality is set up: index, category and the main pollutant.
+function AirLine() {
+  const air = useAirQuality();
+  if (!air) return null;
+  return (
+    <div className={`wx-outlook air ${air.tone}`} style={{ ['--air' as string]: AIR_COLOR[air.tone] }}>
+      <Icon name="airFilter" size={18} />
+      <span>
+        Air quality {Math.round(air.index)}
+        {air.category ? ` · ${air.category}` : ''}
+        {air.pollutant ? ` · mostly ${air.pollutant}` : ''}
+      </span>
+    </div>
+  );
+}
+
 export function WeatherPanel({ days = 5 }: { days?: number }) {
   const hass = useHass();
   const modal = useModal();
@@ -75,9 +93,44 @@ export function WeatherPanel({ days = 5 }: { days?: number }) {
         </div>
       </div>
       <Outlook now={now} hourly={hourly} />
+      <AirLine />
       <WeatherDials now={now} hourly={hourly} />
       <HourlyChart hourly={hourly} count={12} minSlot={22} />
       <DailyList days={daily.slice(0, days)} compact />
     </section>
+  );
+}
+
+// Home page tile (GlancePanel): the temperature and the sky as a big icon,
+// filled blue by the highest rain chance in the next 6 hours (from 20 %), and
+// the air quality as a bar when Google Air Quality is set up.
+export function WeatherTile() {
+  const hass = useHass();
+  const now = useWeatherNow();
+  const sun = useEntity(SUN);
+  const hourly = useForecast(hass, WEATHER, 'hourly');
+  const time = useNow(60_000).getTime();
+  const raining = (now.rainRate ?? 0) > 0 || RAINING.includes(now.condition ?? '');
+  const o = rainOutlook(hourly, time, raining);
+  const chance = Math.max(raining ? 100 : 0, ...hourly.slice(0, 6).map((h) => h.precipitation_probability ?? 0));
+  const air = useAirQuality();
+  return (
+    <GlanceTile
+      icon="weather"
+      label={now.label ?? 'Weather'}
+      page="commute"
+      color="var(--accent-fan)"
+      level={chance >= 20 ? chance : undefined}
+      fill="var(--accent-fan)"
+      tone={o.tone === 'storm' ? 'warn' : undefined}
+      value={now.temp !== undefined ? `${Math.round(now.temp)}°` : '–'}
+      art={<WeatherIcon condition={now.condition} night={sun?.state === 'below_horizon'} size={68} />}
+      sub={o.text || undefined}
+      foot={
+        air && (
+          <GlanceBar icon="airFilter" label={`Air ${Math.round(air.index)}`} level={air.index} color={AIR_COLOR[air.tone]} />
+        )
+      }
+    />
   );
 }

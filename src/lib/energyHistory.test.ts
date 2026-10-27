@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { averageKwh, dailyKwh } from './energyHistory';
+import { averageKwh, dailyKwh, plugKwh } from './energyHistory';
 
 const DAY = 86_400_000;
 const d0 = Date.parse('2026-10-10T00:00:00Z');
@@ -23,5 +23,22 @@ describe('daily kWh from mean power statistics', () => {
   it('skips missing means', () => {
     expect(dailyKwh([{ start: d0 }], [], d0 + 2 * DAY)).toEqual([]);
     expect(averageKwh([])).toBeUndefined();
+  });
+});
+
+describe('kWh per plug', () => {
+  const day = (y: number, m: number, d: number) => new Date(y, m, d).getTime();
+  const now = new Date(2026, 9, 28, 12).getTime(); // Wednesday noon
+  it('adds up kWh per plug', () => {
+    const stats = {
+      'sensor.a': [{ start: day(2026, 9, 26), mean: 1000 }, { start: day(2026, 9, 27), mean: 500 }, { start: day(2026, 9, 28), mean: 100 }],
+      'sensor.b': [{ start: day(2026, 9, 26), mean: 1 }],
+      'sensor.c': [{ start: day(2026, 9, 1), mean: 2 }],
+    };
+    const rows = plugKwh(stats, day(2026, 9, 26), Infinity, now, (id) => (id === 'sensor.b' ? 1000 : 1));
+    expect(rows.map((r) => [r.entity, +r.kwh.toFixed(2)])).toEqual([
+      ['sensor.a', 37.2],
+      ['sensor.b', 24],
+    ]);
   });
 });

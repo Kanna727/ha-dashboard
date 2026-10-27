@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodePolyline, delayMin, extractCommuteConfig, speedSegments, speedShares, trafficLevel, type Route } from './routes';
+import { decodePolyline, delayMin, extractCommuteConfig, leaveIn, speedSegments, speedShares, trafficLevel, type Route } from './routes';
 import type { LovelaceConfig } from '../ha/api';
 
 // The example config's COMMUTE.cardType is custom:commute-traffic-map.
@@ -79,5 +79,17 @@ describe('trafficLevel', () => {
     expect(trafficLevel(route([]), speedSegments(route([]), line))).toBe('light');
     expect(trafficLevel(route([]), r('SLOW', 1))).toBe('moderate');
     expect(trafficLevel(route([]), r('TRAFFIC_JAM', 1))).toBe('heavy');
+  });
+});
+
+describe('leaveIn', () => {
+  const now = new Date(2026, 9, 27, 9, 30);
+  it('counts down to leaving for the arrival time', () => {
+    expect(leaveIn('10:30', 40 * 60, now)).toBe(20);
+    expect(leaveIn('10:00', 40 * 60, now)).toBe(-10);
+  });
+  it('needs a valid HH:MM', () => {
+    expect(leaveIn(undefined, 600, now)).toBeUndefined();
+    expect(leaveIn('half ten', 600, now)).toBeUndefined();
   });
 });

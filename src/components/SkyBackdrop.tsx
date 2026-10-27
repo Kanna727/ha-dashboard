@@ -116,7 +116,6 @@ export function SkyBackdrop() {
             <i className="b" />
           </div>
         )}
-        <div className="sky-veil" />
         <div className="sky-moonglow" />
         {s.moon.opacity > 0 && <Moon phase={s.moon.phase} angle={s.moon.angle} />}
         <div className="sky-body">

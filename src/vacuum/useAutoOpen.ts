@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { VACUUM } from '../config/entities';
 import { useEntity } from '../ha/store';
 import { useNow } from '../hooks/useNow';
+import { showOnClean } from '../layout/CleanPage';
 import { usePage } from '../layout/pages';
 import { AUTO_OPEN_START, autoOpenStep } from '../lib/vacuum';
 import { useVacuumId } from './useVacuum';
@@ -32,8 +33,10 @@ export function useVacuumAutoOpen() {
   useEffect(() => {
     if (!on) return;
     const t = Date.now(); // `now` only re-runs this every 5 s
-    const r = autoOpenStep(s.current, { state, page, idleMs: t - lastInput.current, busy: busy(), now: t });
+    // The rules call the Clean page "vacuum" (it was the vacuum's own page before the tabs).
+    const r = autoOpenStep(s.current, { state, page: page === 'clean' ? 'vacuum' : page, idleMs: t - lastInput.current, busy: busy(), now: t });
     s.current = r.next;
-    if (r.go) go(r.go);
+    if (r.go === 'vacuum') showOnClean('vacuum');
+    if (r.go) go(r.go === 'vacuum' ? 'clean' : 'home');
   }, [on, state, page, now, go]);
 }

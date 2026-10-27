@@ -183,7 +183,7 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         <LeaveHomeButton />
         <VacationButton />
         {!compact && <VacuumPill />}
-        {page === 'home' && <ArrangeButton />}
+        {page !== 'clean' && <ArrangeButton />}
       </div>
       <div className="big-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
     </header>
