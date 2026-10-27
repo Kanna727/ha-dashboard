@@ -1,3 +1,10 @@
+# [1.48.0](https://github.com/Kanna727/ha-dashboard/compare/v1.47.2...v1.48.0) (2026-10-27)
+
+
+### Features
+
+* pages with a tab bar, glance Home, health, network, batteries and energy history panels ([#64](https://github.com/Kanna727/ha-dashboard/issues/64)) ([3493259](https://github.com/Kanna727/ha-dashboard/commit/34932598d3f77ef656cd08397eebeb59fcd30f1a))
+
 ## [1.47.2](https://github.com/Kanna727/ha-dashboard/compare/v1.47.1...v1.47.2) (2026-10-26)
 
 
