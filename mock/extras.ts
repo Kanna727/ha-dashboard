@@ -305,6 +305,8 @@ export function extraStatistics(id: string, days: number): StatPoint[] | undefin
     return daily(days, (i, r) => end + ((days - i) / 90) * 0.9 + (r() - 0.5) * 0.5, seed);
   }
   if (id.endsWith('_hrv')) return daily(days, (_i, r) => 50 + r() * 20, seed);
+  if (id.endsWith('_day_strain')) return daily(days, (_i, r) => 6 + r() * 12, seed);
+  if (id.startsWith('sensor.ride_') && id.endsWith('_ftp')) return daily(days, (i, r) => (id.includes('alex') ? 212 : 150) - ((days - i) / 90) * 12 + (r() - 0.5) * 2, seed);
   if (id.endsWith('_resting_heart_rate')) return daily(days, (_i, r) => 55 + r() * 7, seed);
   const stage = { sleep_light_sleep_time: [2.8, 1], sleep_sws_time: [1.2, 0.7], sleep_rem_sleep_time: [1.4, 0.8] }[id.replace(/^sensor\.band_alex_/, '')];
   if (stage) return daily(days, (_i, r) => stage[0] + r() * stage[1], seed);
@@ -322,6 +324,8 @@ export function extraStatistics(id: string, days: number): StatPoint[] | undefin
 
 // Bytes per day through the gateway (~4–9 GB down, ~0.4–1.2 GB up).
 export function extraStatChanges(id: string, days: number): StatChange[] | undefined {
+  // Km ridden per day: a ride most days, some rest days.
+  if (/^sensor\.ride_\w+_total_distance$/.test(id)) return daily(Math.min(days, 45), (_i, r) => (r() < 0.35 ? 0 : 10 + r() * 25), hash(id)).map((p) => ({ start: p.start, change: p.mean! }));
   if (!/^sensor\.router_data_(received|sent)$/.test(id)) return undefined;
   const down = id.endsWith('received');
   return daily(Math.min(days, 45), (_i, r) => (down ? 4e9 + r() * 5e9 : 4e8 + r() * 8e8), hash(id)).map((p) => ({ start: p.start, change: p.mean! }));

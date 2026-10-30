@@ -76,6 +76,7 @@ export interface RegistrySnapshot {
 export interface StatPoint {
   start: number; // epoch ms
   mean?: number;
+  max?: number; // only when asked for (`types` includes 'max')
 }
 
 // How much a total_increasing sensor grew in one statistics period.
@@ -111,7 +112,7 @@ export interface HassApi {
   // its time in ms. For last-known values of non-numeric entities (e.g. binary sensors).
   fetchLastStates(entityIds: string[], hours: number): Promise<Record<string, LastState | undefined>>;
   // Long-term statistics (kept beyond the recorder's ~10 days), mean per period.
-  fetchStatistics(ids: string[], days: number, period: 'hour' | 'day'): Promise<Record<string, StatPoint[]>>;
+  fetchStatistics(ids: string[], days: number, period: 'hour' | 'day', types?: ('mean' | 'max')[]): Promise<Record<string, StatPoint[]>>;
   // Growth per period of total_increasing sensors (odometer, trips today, ...), from long-term statistics.
   fetchStatChanges(ids: string[], days: number, period: 'day' | 'week' | 'month'): Promise<Record<string, StatChange[]>>;
   subscribeForecast(entityId: string, type: 'daily' | 'hourly', cb: (days: ForecastDay[]) => void): () => void;

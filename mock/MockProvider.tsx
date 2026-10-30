@@ -254,7 +254,8 @@ export default function MockProvider({ children }: { children: ReactNode }) {
           mean: 1300 + rand() * 1100,
         }));
         return Object.fromEntries(
-          ids.map((id) => [id, extraStatistics(id, days) ?? (id === ENERGY.total ? series.slice(-3) : id === ENERGY.legacyTotal ? series.slice(0, -3) : [])]),
+          // A day's max is close enough to its mean for the fake series.
+          ids.map((id) => [id, (extraStatistics(id, days) ?? (id === ENERGY.total ? series.slice(-3) : id === ENERGY.legacyTotal ? series.slice(0, -3) : [])).map((p) => ({ ...p, max: (p as { max?: number }).max ?? p.mean }))]),
         );
       },
       async fetchStatChanges(ids, days, period) {
