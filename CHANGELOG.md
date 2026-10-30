@@ -1,3 +1,10 @@
+# [1.49.0](https://github.com/Kanna727/ha-dashboard/compare/v1.48.0...v1.49.0) (2026-10-30)
+
+
+### Features
+
+* strain, riding and FTP in the health trends ([#65](https://github.com/Kanna727/ha-dashboard/issues/65)) ([821828f](https://github.com/Kanna727/ha-dashboard/commit/821828fcbceed6789966e5036a892b25a10cbddb)), closes [#64](https://github.com/Kanna727/ha-dashboard/issues/64)
+
 # [1.48.0](https://github.com/Kanna727/ha-dashboard/compare/v1.47.2...v1.48.0) (2026-10-27)
 
 
