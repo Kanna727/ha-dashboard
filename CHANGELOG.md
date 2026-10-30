@@ -1,3 +1,15 @@
+# [1.50.0](https://github.com/Kanna727/ha-dashboard/compare/v1.49.0...v1.50.0) (2026-10-30)
+
+
+### Bug Fixes
+
+* **desk:** the room chip shows only the icon ([#67](https://github.com/Kanna727/ha-dashboard/issues/67)) ([5eedfa0](https://github.com/Kanna727/ha-dashboard/commit/5eedfa04c9e8bf6f4c51ed7d9c9fd87773020744))
+
+
+### Features
+
+* **health:** home tile shows scale weight only, plus FTP ([#66](https://github.com/Kanna727/ha-dashboard/issues/66)) ([64fbfd4](https://github.com/Kanna727/ha-dashboard/commit/64fbfd47a1aaefa4351fbdf6d9e98c0825d28d8d))
+
 # [1.49.0](https://github.com/Kanna727/ha-dashboard/compare/v1.48.0...v1.49.0) (2026-10-30)
 
 
