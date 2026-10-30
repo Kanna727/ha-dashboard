@@ -32,7 +32,7 @@ export function openDesk(open: ReturnType<typeof useModal>['open']) {
 }
 
 // The desk's chip on a room card (RoomDef.appliances 'desk'): a little desk
-// at the current height and the height in cm; while it moves it lights up
+// at the current height (icon only, the card is narrow); while it moves it lights up
 // with an arrow. A tap opens the desk's popup.
 export function DeskChip() {
   const ids = useDeskIds();
@@ -42,14 +42,12 @@ export function DeskChip() {
   const modal = useModal();
   if (!ids) return null;
   const standing = isStanding(live.height, line);
-  // Just the number: the chip shares a narrow card with the fan and lights, and the little desk says what it is.
-  const text = live.offline ? 'Off' : live.moving ? displayHeight(live.height) : `${Math.round(live.height ?? 0)}`;
   const long = live.offline
     ? 'Desk offline'
     : `Desk ${live.moving ? (live.moving === 'up' ? 'rising' : 'lowering') : standing ? 'at standing height' : 'at sitting height'}, ${displayHeight(live.height)} cm`;
   return (
     <button
-      className={`row-btn desk labelled ${live.moving ? 'on' : ''} ${standing && !live.moving ? 'standing' : ''}`}
+      className={`row-btn desk ${live.moving ? 'on' : ''} ${standing && !live.moving ? 'standing' : ''}`}
       onClick={(e) => {
         e.stopPropagation();
         openDesk(modal.open);
@@ -58,7 +56,6 @@ export function DeskChip() {
       title={long}
     >
       {live.moving ? <Icon name={live.moving === 'up' ? 'raise' : 'lower'} size={20} className="desk-moving" /> : <DeskArt height={live.height} min={live.min} max={live.max} />}
-      <span className="row-btn-label">{text}</span>
     </button>
   );
 }

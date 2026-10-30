@@ -2177,7 +2177,6 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
 /* Room card chip: a little desk at the current height, then the height. Lit while it moves;
    at standing height the label turns maple. */
 .row-btn.desk { --tint: var(--accent-desk); }
-.row-btn.desk.labelled:not(.on) { flex-grow: 1.4; }
 .row-btn.desk.standing { color: var(--accent-desk); }
 .desk-art { flex-shrink: 0; overflow: visible; }
 .desk-art-top { fill: currentColor; }
