@@ -265,3 +265,14 @@ export function trafficLevel(route: Route, segs?: SpeedSegment[]): TrafficLevel 
 // Minutes lost to traffic, when Google says how long the trip takes without it.
 export const delayMin = (route: Route) =>
   route.staticSeconds && Number.isFinite(route.staticSeconds) ? Math.max(0, Math.round((route.seconds - route.staticSeconds) / 60)) : undefined;
+
+// Minutes until you need to leave to arrive by `arriveBy` ("HH:MM", today),
+// given the trip time now; negative once it's too late. Undefined without a
+// valid time.
+export function leaveIn(arriveBy: string | undefined, tripSeconds: number, now: Date): number | undefined {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(arriveBy ?? '');
+  if (!m) return undefined;
+  const target = new Date(now);
+  target.setHours(Number(m[1]), Number(m[2]), 0, 0);
+  return Math.floor((target.getTime() - tripSeconds * 1000 - now.getTime()) / 60_000);
+}

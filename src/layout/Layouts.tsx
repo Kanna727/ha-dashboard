@@ -5,6 +5,7 @@ import { CarDrivingPanel, CarPanel } from '../panels/CarPanel';
 import { CommutePanel } from '../panels/CommutePanel';
 import { EnergyHistoryPanel } from '../panels/EnergyHistoryPanel';
 import { EnergyPanel } from '../panels/EnergyPanel';
+import { AttentionPanel } from '../panels/AttentionPanel';
 import { GlancePanel } from '../panels/GlancePanel';
 import { HealthPanel } from '../panels/HealthPanel';
 import { MealsPanel } from '../panels/MealsPanel';
@@ -28,7 +29,10 @@ function usePages() {
 function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { className: string; columns: CardDef[][] } {
   switch (page) {
     case 'home':
-      return { className: 'cols cols-home', columns: [[card('rooms', <RoomsPanel />)], [card('glance', <GlancePanel />)]] };
+      return {
+        className: 'cols cols-home',
+        columns: [[card('rooms', <RoomsPanel />), card('attention', <AttentionPanel />)], [card('glance', <GlancePanel />)]],
+      };
     case 'energy':
       return {
         className: 'cols cols-wide-mid',
@@ -92,6 +96,7 @@ const LABELS: Record<string, string> = {
   networkDevices: 'Connected devices',
   driving: 'Driving',
   glance: 'At a glance',
+  attention: 'Needs attention',
 };
 const card = (id: keyof typeof LABELS, node: ReactNode): CardDef => ({ id, label: LABELS[id], node });
 
@@ -100,6 +105,7 @@ function PhoneTab({ page }: { page: Page }) {
     <div className="phone-body">
       {page === 'home' && (
         <>
+          <AttentionPanel />
           <GlancePanel />
           <RoomsPanel />
         </>

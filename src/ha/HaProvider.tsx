@@ -169,22 +169,23 @@ export const haApi: HassApi = {
     }
     return out;
   },
-  async fetchStatistics(ids, days, period) {
+  async fetchStatistics(ids, days, period, types = ['mean']) {
     const conn = await getConnection();
     const start = new Date(Date.now() - days * 86_400_000);
     start.setHours(0, 0, 0, 0);
-    const res = await conn.sendMessagePromise<Record<string, { start: number | string; mean?: number | null }[]>>({
+    const res = await conn.sendMessagePromise<Record<string, { start: number | string; mean?: number | null; max?: number | null }[]>>({
       type: 'recorder/statistics_during_period',
       start_time: start.toISOString(),
       statistic_ids: ids,
       period,
-      types: ['mean'],
+      types,
     });
     const out: Record<string, StatPoint[]> = {};
     for (const id of ids) {
       out[id] = (res[id] ?? []).map((r) => ({
         start: typeof r.start === 'number' ? r.start : Date.parse(r.start),
         mean: r.mean ?? undefined,
+        max: r.max ?? undefined,
       }));
     }
     return out;

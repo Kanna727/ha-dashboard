@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { HassEntity } from 'home-assistant-js-websocket';
 import { HEALTH } from '../config/entities';
-import { useHass, type HistoryPoint, type StatPoint } from '../ha/api';
+import { useHass, type HistoryPoint, type StatChange, type StatPoint } from '../ha/api';
 import { num } from '../ha/format';
 import { useEntities } from '../ha/store';
 import { readCache, useRegistry, writeCache } from '../ha/useRegistry';
@@ -75,8 +75,9 @@ function weightOf(r: Reader): { kind: SourceKind; value?: number; unit: string; 
   return undefined;
 }
 
-// Daily means from long-term statistics, refreshed every 6 h.
-function useDaily(ids: (string | undefined)[], days: number): Record<string, StatPoint[]> {
+// Daily means from long-term statistics, refreshed every 6 h. `max`: each
+// day's highest value instead, put in `mean` (a day's strain only climbs).
+function useDaily(ids: (string | undefined)[], days: number, stat: 'mean' | 'max' = 'mean'): Record<string, StatPoint[]> {
   const hass = useHass();
   const [stats, setStats] = useState<Record<string, StatPoint[]>>({});
   const key = ids.filter(Boolean).join(',');
@@ -85,8 +86,8 @@ function useDaily(ids: (string | undefined)[], days: number): Record<string, Sta
     let alive = true;
     const load = () =>
       hass
-        .fetchStatistics(key.split(','), days, 'day')
-        .then((s) => alive && setStats(s))
+        .fetchStatistics(key.split(','), days, 'day', [stat])
+        .then((s) => alive && setStats(stat === 'max' ? Object.fromEntries(Object.entries(s).map(([id, pts]) => [id, pts.map((p) => ({ start: p.start, mean: p.max }))])) : s))
         .catch(() => undefined);
     load();
     const t = window.setInterval(load, 6 * 3_600_000);
@@ -94,8 +95,30 @@ function useDaily(ids: (string | undefined)[], days: number): Record<string, Sta
       alive = false;
       window.clearInterval(t);
     };
-  }, [hass, key, days]);
+  }, [hass, key, days, stat]);
   return stats;
+}
+
+// Daily change of a total (km ridden from a lifetime distance), refreshed every 6 h.
+function useDailyChange(id: string | undefined, days: number): StatChange[] {
+  const hass = useHass();
+  const [rows, setRows] = useState<StatChange[]>([]);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    const load = () =>
+      hass
+        .fetchStatChanges([id], days, 'day')
+        .then((s) => alive && setRows(s[id] ?? []))
+        .catch(() => undefined);
+    load();
+    const t = window.setInterval(load, 6 * 3_600_000);
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [hass, id, days]);
+  return rows;
 }
 
 const toPoints = (pts: StatPoint[] = []): HistoryPoint[] => pts.filter((p) => p.mean !== undefined).map((p) => ({ t: p.start, v: p.mean! }));
@@ -185,9 +208,10 @@ function PersonRow({ p, color, trend, onOpen }: { p: HealthPerson; color: string
 // The popup ("Trends", the owner's pick on 2026-10-26 over per-person sections
 // and an everyone-side-by-side table): a tab per person, all charts: weight
 // and body fat over 90 days, recovery and sleep per night, HRV and resting
-// heart rate over 30 days.
+// heart rate over 30 days, then strain, km ridden per day and FTP.
 const TREND_KEYS: [SourceKind, string][] = [
   ['scale', 'body_fat'],
+  ['cycling', 'ftp'],
   ['wearable', 'recovery_score'],
   ['wearable', 'hrv'],
   ['wearable', 'resting_heart_rate'],
@@ -270,6 +294,15 @@ function TrendsPerson({ p }: { p: HealthPerson }) {
     .filter((x) => x.v > 0)
     .slice(-NIGHTS);
   const target = r.v('scale', 'target_weight');
+  // Riding and strain (the owner asked for them on 2026-10-27): each day's
+  // highest WHOOP strain, km ridden per day from the riding account's lifetime
+  // distance (km, or m converted), and FTP over 90 days.
+  const strainId = r.id('wearable', 'day_strain');
+  const strainDays = useDaily([strainId], NIGHTS, 'max');
+  const strain = recent(strainId ? strainDays[strainId] ?? [] : []).map((x) => ({ start: x.start, v: x.mean!, color: '#38bdf8' }));
+  const distId = r.id('cycling', 'total_distance');
+  const perKm = /^m$/i.test(r.unit('cycling', 'total_distance')) ? 1000 : 1;
+  const rides = useDailyChange(distId, NIGHTS).map((x) => ({ start: x.start, v: Math.max(0, x.change) / perKm, color: '#34d399' }));
   const sections = [
     w?.id && (
       <TrendLine key="w" title={target !== undefined ? `Weight · target ${fmt(target, 1)}` : 'Weight'} icon="scale" pts={h[w.id] ?? []} unit={w.unit} color="var(--pc)" days={TREND_DAYS} lowerIsBetter />
@@ -279,6 +312,11 @@ function TrendsPerson({ p }: { p: HealthPerson }) {
     <NightBars key="sleep" title="Sleep" icon="sleep" bars={sleep} caption={(v) => fmtHours(v)} />,
     <TrendLine key="hrv" title="HRV" icon="heart" pts={get('wearable', 'hrv').slice(-NIGHTS)} unit="ms" digits={0} color="var(--ok)" days={NIGHTS} />,
     <TrendLine key="rhr" title="Resting heart rate" icon="heart" pts={get('wearable', 'resting_heart_rate').slice(-NIGHTS)} unit="bpm" digits={0} color="var(--danger)" days={NIGHTS} lowerIsBetter />,
+    strainId && <NightBars key="strain" title="Strain" icon="workout" bars={strain} caption={(v) => v.toFixed(1)} />,
+    distId && rides.length > 0 && (
+      <NightBars key="ride" title={`Riding · ${Math.round(rides.reduce((s, x) => s + x.v, 0))} km`} icon="bike" bars={rides} caption={(v) => `${v.toFixed(1)} km`} />
+    ),
+    r.id('cycling', 'ftp') && <TrendLine key="ftp" title="FTP" icon="bike" pts={get('cycling', 'ftp')} unit="W" digits={0} color="#a78bfa" days={TREND_DAYS} />,
   ].filter(Boolean);
   // Two columns that stack on their own (no gaps under short charts); `order`
   // keeps the charts in this order when a phone shows one column.
