@@ -839,7 +839,7 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .row-btn.washer { --tint: var(--accent-energy); }
 .row-btn.dishwasher { --tint: #2dd4bf; }
 .row-btn.on { flex-grow: 2.2; background: var(--tint); color: var(--on-text); box-shadow: 0 0 22px color-mix(in srgb, var(--tint) 50%, transparent); border-color: transparent; }
-.row-btn.lvl-fill.on { background: linear-gradient(90deg, var(--tint) var(--level), color-mix(in srgb, var(--tint) 62%, var(--card)) var(--level)); }
+.row-btn.lvl-fill.on { background: linear-gradient(90deg, var(--tint) var(--level), color-mix(in srgb, var(--tint) 62%, var(--card)) var(--level)); background-origin: border-box; }
 /* While sliding, the fill follows the finger with no lag. (.lvl-fill before .fan: CI reads ".fan.lvl…" in the bundle as an entity ID.) */
 .row-btn.lvl-fill.sliding { transform: scale(1.06); z-index: 1; transition-duration: 0.2s, 0.2s, 0.2s, 0.15s, 0.3s, 0s; }
 .row-btn.held { flex-grow: 1.8; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
@@ -2604,7 +2604,7 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
   display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 10px 14px 12px; border-radius: 22px; text-align: left;
   background: var(--card); border: 2px solid var(--border); transition: border-color 0.3s, --level 0.6s ease;
 }
-.glance-tile.filled { background: linear-gradient(90deg, color-mix(in srgb, var(--fc) 34%, var(--card)) var(--level), var(--card) var(--level)); }
+.glance-tile.filled { background: linear-gradient(90deg, color-mix(in srgb, var(--fc) 34%, var(--card)) var(--level), var(--card) var(--level)); background-origin: border-box; }
 .glance-tile.span-all { grid-column: 1 / -1; }
 .glance-tile.span-2 { grid-column: span 2; }
 .glance-tile.tone-warn { border-color: color-mix(in srgb, var(--warn) 75%, transparent); }
@@ -2636,10 +2636,10 @@ html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toas
   --level: 0%;
   display: flex; align-items: center; gap: 10px; height: 42px; padding: 0 14px; border-radius: 14px; min-width: 0;
   font-size: 19px; font-weight: 800; color: var(--muted); border: 1px solid var(--border);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--fc) 26%, var(--tile)) var(--level), var(--tile) var(--level));
+  background: linear-gradient(90deg, color-mix(in srgb, var(--fc) 26%, var(--tile)) var(--level), var(--tile) var(--level)); background-origin: border-box;
   transition: --level 0.6s ease;
 }
-.glance-bar.active { color: var(--on-text); border-color: transparent; background: linear-gradient(90deg, var(--fc) var(--level), color-mix(in srgb, var(--fc) 45%, var(--tile)) var(--level)); box-shadow: 0 0 20px color-mix(in srgb, var(--fc) 40%, transparent); }
+.glance-bar.active { color: var(--on-text); border-color: transparent; background: linear-gradient(90deg, var(--fc) var(--level), color-mix(in srgb, var(--fc) 45%, var(--tile)) var(--level)); box-shadow: 0 0 20px color-mix(in srgb, var(--fc) 40%, transparent); background-origin: border-box; }
 .glance-bar svg { flex-shrink: 0; }
 /* Health: a recovery ring and the weight per person. */
 .glance-people { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 16px; }
