@@ -396,7 +396,8 @@ export function HealthPanel({ full = false }: { full?: boolean }) {
 
 function PersonGlance({ p, color }: { p: HealthPerson; color: string }) {
   const r = useReader(p);
-  const w = weightOf(r);
+  const weight = r.v('scale', 'weight');
+  const ftp = r.v('cycling', 'ftp');
   const recovery = r.v('wearable', 'recovery_score');
   return (
     <span className="glance-person" style={{ ['--pc' as string]: color }}>
@@ -408,22 +409,26 @@ function PersonGlance({ p, color }: { p: HealthPerson; color: string }) {
         <span className="glance-avatar">{p.name.charAt(0).toUpperCase()}</span>
       )}
       <span className="glance-person-text">
-        <b>{w?.value !== undefined ? fmt(w.value, 1) : '–'}</b>
-        <small>{p.name}</small>
+        <b>{weight !== undefined ? fmt(weight, 1) : '–'}</b>
+        <small>
+          {p.name}
+          {ftp !== undefined ? ` · FTP ${Math.round(ftp)} W` : ''}
+        </small>
       </span>
     </span>
   );
 }
 
 // Home page tile (GlancePanel): per person a recovery ring (green, amber or
-// red, as WHOOP colours it) and their weight.
+// red, as WHOOP colours it) from the wearable, the weight from the scale only,
+// and the FTP from the riding account.
 export function HealthTile() {
   const people = usePeople();
   if (!people.length) return null;
   return (
     <GlanceTile
       icon="heart"
-      label="Health · recovery and weight"
+      label="Health · recovery, weight and FTP"
       page="health"
       span={2}
       color="var(--danger)"
