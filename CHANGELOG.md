@@ -1,3 +1,10 @@
+## [1.50.1](https://github.com/Kanna727/ha-dashboard/compare/v1.50.0...v1.50.1) (2026-10-30)
+
+
+### Bug Fixes
+
+* **css:** level fills no longer tile into the card's border ([#68](https://github.com/Kanna727/ha-dashboard/issues/68)) ([0694dc8](https://github.com/Kanna727/ha-dashboard/commit/0694dc87790fd7bc6d018eb19694e8273eb4555c))
+
 # [1.50.0](https://github.com/Kanna727/ha-dashboard/compare/v1.49.0...v1.50.0) (2026-10-30)
 
 
