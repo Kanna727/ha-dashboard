@@ -1,3 +1,10 @@
+# [1.55.0](https://github.com/Kanna727/ha-dashboard/compare/v1.54.0...v1.55.0) (2026-11-02)
+
+
+### Features
+
+* **money:** Money page in the "Wallet" design, from money-app helpers ([#74](https://github.com/Kanna727/ha-dashboard/issues/74)) ([fc673a2](https://github.com/Kanna727/ha-dashboard/commit/fc673a2c5effe7fed6c74a3ea30eb9a0faec96de))
+
 # [1.54.0](https://github.com/Kanna727/ha-dashboard/compare/v1.53.0...v1.54.0) (2026-11-02)
 
 
