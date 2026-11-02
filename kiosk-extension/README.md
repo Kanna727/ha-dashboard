@@ -10,8 +10,8 @@ so the dashboard decides and this extension does it with Chrome's `power` API:
 
 The dashboard's `SCREEN_POWER` setting picks when: on by day, off at night
 (default 23:00–06:00) and while vacation mode is on, once nobody has been seen
-in the chosen rooms for a few minutes. Someone being seen there wakes it at once.
-A touch always wakes it too.
+in the chosen rooms for a few minutes. Someone being seen there wakes it at once,
+straight to the dashboard. A touch always wakes it too.
 
 Once the screen may go off, the dashboard shows its dim night screen after a
 minute without a touch and stops all its animations: ChromeOS keeps a display on
