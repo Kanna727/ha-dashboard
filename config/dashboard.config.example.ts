@@ -143,7 +143,7 @@ const config: DashboardConfig = {
     // Smart plugs are discovered, not listed: any power sensor (W/kW, state_class
     // measurement) on a device that also has a switch.* entity. sensor.home_power
     // in HA uses the same rule, so a new plug shows up in both on its own.
-    // New plugs take their name from HA (minus " Power") and an icon/colour
+    // New plugs take their name from HA (minus " Power" or " Current consumption") and an icon/colour
     // guessed from it (PLUG_GUESSES in components/useHomePower.ts). This map only
     // gives known plugs shorter names and fixed colours.
     plugs: {

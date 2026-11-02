@@ -37,6 +37,12 @@ describe('smart plug discovery', () => {
     expect(look('TV Unit Power').icon).toBe('avUnit');
     expect(look('TV Power').icon).toBe('tv');
     expect(look('TV Unit Power').color).not.toBe(look('TV Power').color);
+    expect(look('Woofer & Dashboard Power')).toMatchObject({ name: 'Woofer & Dashboard', icon: 'speaker' });
+    // A speaker's plug that also charges something is still the speakers.
+    expect(look('Rear speakers & charger Power').icon).toBe('speaker');
+    expect(look('Phone charger Power').icon).toBe('charging');
+    // TP-Link plugs call the power sensor "Current consumption".
+    expect(look('Vacuum Cleaner Plug Current consumption')).toMatchObject({ name: 'Vacuum Cleaner Plug', icon: 'vacuum' });
     expect(look('Mystery Gadget Power').icon).toBe('flash');
   });
 });
