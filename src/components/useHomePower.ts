@@ -23,7 +23,10 @@ const PLUG_GUESSES: [RegExp, IconName, string][] = [
   [/fridge|refrigerator|freezer/i, 'fridge', '#38bdf8'],
   [/\btv (unit|stand|cabinet)|entertainment|media|router|network|set.?top|soundbar/i, 'avUnit', '#c084fc'],
   [/\btv\b|television/i, 'tv', '#60a5fa'],
+  [/speaker|woofer|stereo|amplifier/i, 'speaker', '#818cf8'],
   [/\bpc\b|computer|desktop|laptop|monitor/i, 'pc', '#f472b6'],
+  [/vacuum|robo/i, 'vacuum', '#e2e8f0'],
+  [/charger|charging/i, 'charging', '#4ade80'],
   [/geyser|heater|boiler|kettle/i, 'geyser', '#fb923c'],
   [/dish/i, 'dishwasher', '#2dd4bf'],
   [/wash|dryer/i, 'washer', '#34d399'],
@@ -38,7 +41,8 @@ const SPARE_COLORS = ['#a78bfa', '#fb7185', '#4ade80', '#e879f9', '#fcd34d', '#9
 export function plugLook(entity: string, state: HassEntity | undefined) {
   const o = ENERGY.plugs[entity] ?? {};
   const friendly = String(state?.attributes.friendly_name ?? entity.replace(/^sensor\.|_power$/g, '').replace(/_/g, ' '));
-  const name = o.name ?? (friendly.replace(/\s*power$/i, '').trim() || friendly);
+  // WiZ names the sensor "X Power", TP-Link "X Current consumption".
+  const name = o.name ?? (friendly.replace(/\s*(power|current consumption)$/i, '').trim() || friendly);
   const guess = PLUG_GUESSES.find(([re]) => re.test(name));
   const hash = [...entity].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 0);
   return {
