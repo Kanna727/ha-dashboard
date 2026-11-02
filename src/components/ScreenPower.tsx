@@ -8,11 +8,10 @@ import { inQuietHours, screenOn, sinceSeenMs } from '../lib/screenPower';
 // ?screenTest=1: quiet hours all day and a 15 s hold, for checking it on the tablet.
 const TEST = new URLSearchParams(window.location.search).has('screenTest');
 
-// Tells the ChromeOS extension (kiosk-extension/) whether the wall screen should
-// stay on (rules in lib/screenPower.ts). Sent as a window message on every
-// change and once a minute, since the extension's worker may have restarted.
-// Without the extension nobody listens and nothing happens. Renders nothing.
-export function ScreenPower() {
+// Whether the wall screen should stay on (rules in lib/screenPower.ts). Also
+// read by NightMode, which comes up when it may go off so the page stops
+// repainting (ChromeOS won't turn off a display that looks like it plays video).
+export function useScreenOn() {
   const ids = useMemo(
     () => ROOMS.filter((r) => !SCREEN_POWER.rooms || SCREEN_POWER.rooms.includes(r.id)).flatMap((r) => r.presence),
     [],
@@ -21,14 +20,23 @@ export function ScreenPower() {
   const vacation = useEntity(VACATION_MODE || undefined);
   const now = useNow(TEST ? 1000 : 15_000);
 
-  const on =
+  return (
     !SCREEN_POWER.enabled ||
     screenOn({
       quiet: TEST || inQuietHours(now, SCREEN_POWER.quiet),
       vacation: SCREEN_POWER.vacation && isOn(vacation),
       sinceSeenMs: sinceSeenMs(sensors, now.getTime()),
       holdMinutes: TEST ? 0.25 : SCREEN_POWER.holdMinutes,
-    });
+    })
+  );
+}
+
+// Tells the ChromeOS extension (kiosk-extension/) whether the wall screen should
+// stay on. Sent as a window message on every change and once a minute, since
+// the extension's worker may have restarted. Without the extension nobody
+// listens and nothing happens. Renders nothing.
+export function ScreenPower() {
+  const on = useScreenOn();
 
   useEffect(() => {
     document.documentElement.dataset.screen = on ? 'on' : 'off';

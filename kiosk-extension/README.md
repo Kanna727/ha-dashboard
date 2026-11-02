@@ -13,6 +13,13 @@ The dashboard's `SCREEN_POWER` setting picks when: on by day, off at night
 in the chosen rooms for a few minutes. Someone being seen there wakes it at once.
 A touch always wakes it too.
 
+Once the screen may go off, the dashboard shows its dim night screen after a
+minute without a touch and stops all its animations: ChromeOS keeps a display on
+while anything large on it keeps moving, as it would for a video. The display
+then goes dark after ChromeOS's own idle delay, which takes several minutes.
+This needs the dashboard's tablet layout (`?layout=tablet`), where the night
+screen is on.
+
 ## Install
 
 1. Copy this folder onto the tablet, for example into *My files → Downloads*.
