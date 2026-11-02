@@ -1,3 +1,10 @@
+# [1.54.0](https://github.com/Kanna727/ha-dashboard/compare/v1.53.0...v1.54.0) (2026-11-02)
+
+
+### Features
+
+* **energy:** name and style speaker, charger and vacuum plugs, and TP-Link's power sensors ([#73](https://github.com/Kanna727/ha-dashboard/issues/73)) ([4b1c918](https://github.com/Kanna727/ha-dashboard/commit/4b1c918aaa94fcb267148fc73506ecacb2eda5c8))
+
 # [1.53.0](https://github.com/Kanna727/ha-dashboard/compare/v1.52.1...v1.53.0) (2026-11-02)
 
 
