@@ -70,7 +70,6 @@ const list: HassEntity[] = [
   e('sensor.forecast_home_heat_index', '30.4', { unit_of_measurement: '°C', device_class: 'temperature' }),
   e('sensor.forecast_home_wind_chill', '27.9', { unit_of_measurement: '°C', device_class: 'temperature' }),
   e('sensor.outdoor_temperature', '27.9'),
-  e('person.alex', 'home', { friendly_name: 'Alex' }),
   // Placeholder coordinates only; never real locations in fixtures.
   e('zone.home', '1', { latitude: 10.0, longitude: 10.0 }),
   e('binary_sensor.router_wan_status', 'on'),

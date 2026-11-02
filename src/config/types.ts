@@ -61,7 +61,6 @@ export interface DashboardConfig {
   // Optional: an input_boolean toggled from the status bar, beside the leaving-home button.
   VACATION_MODE?: string;
   SUN: string;
-  PEOPLE: string[];
   HOME_ZONE: string;
   CLIMATE: { entity: string; power: string; energyToday: string; pm25: string };
   ENERGY: {

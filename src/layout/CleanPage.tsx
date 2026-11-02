@@ -2,18 +2,20 @@ import { useSyncExternalStore } from 'react';
 import { APPLIANCES } from '../config/entities';
 import { DishwasherDetail } from '../components/DishwasherModal';
 import { GlanceBar, GlanceTile } from '../components/GlanceTile';
-import { Icon } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
+import { PurifierPage, purifierTabStatus } from '../components/PurifierPage';
+import { usePurifier } from '../components/usePurifier';
 import { isUnavailable, num } from '../ha/format';
 import { useEntity } from '../ha/store';
 import { vacuumStatus } from '../lib/vacuum';
 import { useVacuumId } from '../vacuum/useVacuum';
 import { VacuumPage } from '../vacuum/VacuumPage';
 
-// The Clean page (#clean): the robot vacuum and the dishwasher, each full size,
-// with a switch at the top that shows both of their states. The vacuum's page
-// was its own page before the tabs; it opens on the vacuum when the robot
-// starts a run (vacuum/useAutoOpen.ts) or its chip or pill is tapped.
-type View = 'vacuum' | 'dishwasher';
+// The Clean page (#clean): the robot vacuum, the dishwasher and the water
+// purifier, each full size, with a switch at the top that shows their states.
+// The vacuum's page was its own page before the tabs; it opens on the vacuum
+// when the robot starts a run (vacuum/useAutoOpen.ts) or its chip is tapped.
+type View = 'vacuum' | 'dishwasher' | 'water';
 
 let view: View = 'vacuum';
 const listeners = new Set<() => void>();
@@ -30,7 +32,8 @@ const subscribe = (l: () => void) => {
 // Whether the page has anything to show (the tab is left out otherwise).
 export function useHasClean(): boolean {
   const dw = useEntity(APPLIANCES.dishwasher.state || undefined);
-  return !!useVacuumId() || !!dw;
+  const water = useEntity(APPLIANCES.purifier?.tankTds);
+  return !!useVacuumId() || !!dw || !!water;
 }
 
 export function CleanPage() {
@@ -38,23 +41,28 @@ export function CleanPage() {
   const vac = useEntity(vacId || undefined);
   const dwState = useEntity(APPLIANCES.dishwasher.state || undefined);
   const dwProgress = useEntity(APPLIANCES.dishwasher.progress || undefined);
+  const purifier = usePurifier();
   const current = useSyncExternalStore(subscribe, () => view);
-  const both = !!vacId && !!dwState;
-  const shown: View = !vacId ? 'dishwasher' : !dwState ? 'vacuum' : current;
+  const has: Record<View, boolean> = { vacuum: !!vacId, dishwasher: !!dwState, water: !!purifier.tank };
+  const shown: View = has[current] ? current : (['vacuum', 'dishwasher', 'water'] as View[]).find((t) => has[t]) ?? 'vacuum';
 
   const v = vacuumStatus(vac?.state, vac?.attributes);
   const pct = num(dwProgress);
   const dwRunning = pct !== undefined && pct > 0 && pct < 100;
   const dwText = dwRunning ? `Running · ${Math.round(pct!)}%` : isUnavailable(dwState) ? 'Asleep' : 'Idle';
 
-  const tabs: { id: View; label: string; icon: 'vacuum' | 'dishwasher'; status: string; tone: string }[] = [
-    { id: 'vacuum', label: 'Vacuum', icon: 'vacuum', status: v.label, tone: v.tone },
-    { id: 'dishwasher', label: 'Dishwasher', icon: 'dishwasher', status: dwText, tone: dwRunning ? 'active' : 'idle' },
-  ];
+  const water = purifierTabStatus(purifier);
+  const tabs = (
+    [
+      { id: 'vacuum', label: 'Vacuum', icon: 'vacuum', status: v.label, tone: v.tone },
+      { id: 'dishwasher', label: 'Dishwasher', icon: 'dishwasher', status: dwText, tone: dwRunning ? 'active' : 'idle' },
+      { id: 'water', label: 'Water', icon: 'water', status: water.text, tone: water.tone },
+    ] as { id: View; label: string; icon: IconName; status: string; tone: string }[]
+  ).filter((t) => has[t.id]);
 
   return (
     <div className="clean-page">
-      {both && (
+      {tabs.length > 1 && (
         <div className="clean-switch" role="tablist" aria-label="Clean">
           {tabs.map((t) => (
             <button key={t.id} role="tab" aria-selected={shown === t.id} className={`clean-tab tone-${t.tone} ${shown === t.id ? 'active' : ''}`} onClick={() => showOnClean(t.id)}>
@@ -69,6 +77,8 @@ export function CleanPage() {
       )}
       {shown === 'vacuum' ? (
         <VacuumPage />
+      ) : shown === 'water' ? (
+        <PurifierPage />
       ) : (
         <section className="panel clean-dw">
           <DishwasherDetail />
