@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Dashboard screen power",
+  "version": "1.0.0",
+  "description": "Lets the wall dashboard keep a ChromeOS screen on, let it turn off, and wake it.",
+  "minimum_chrome_version": "113",
+  "permissions": ["power"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["*://*/local/dashboard/*"],
+      "js": ["content.js"],
+      "all_frames": true,
+      "run_at": "document_start"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { SheetProvider } from './components/Sheet';
 import { ToastProvider } from './components/Toasts';
 import { Alerts } from './components/Alerts';
 import { NightMode } from './components/NightMode';
+import { ScreenPower } from './components/ScreenPower';
 import { IdleHome } from './layout/IdleHome';
 import { SkyBackdrop } from './components/SkyBackdrop';
 import { DesktopLayout, PhoneLayout, TabletLayout } from './layout/Layouts';
@@ -41,6 +42,7 @@ export function App() {
           <Alerts />
           <NightMode layout={layout} />
           <IdleHome layout={layout} />
+          <ScreenPower />
           {layout === 'phone' ? <PhoneLayout /> : layout === 'tablet' ? <TabletLayout /> : <DesktopLayout />}
         </ToastProvider>
       </ModalProvider>
