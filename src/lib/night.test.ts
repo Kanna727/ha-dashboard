@@ -19,6 +19,14 @@ describe('night mode', () => {
     expect(nightActive({ ...base, layoutAllowed: false })).toBe(false);
   });
 
+  it('comes up after a minute at any time of day once the wall screen may turn off', () => {
+    const day = { ...base, sunDown: false, idleMs: 70_000 };
+    expect(nightActive(day)).toBe(false);
+    expect(nightActive({ ...day, screenOff: true })).toBe(true);
+    expect(nightActive({ ...day, screenOff: true, idleMs: 30_000 })).toBe(false);
+    expect(nightActive({ ...day, screenOff: true, layoutAllowed: false })).toBe(false);
+  });
+
   it('drifts within range, the same for a given minute, differently across minutes', () => {
     const a = driftAt(100);
     expect(driftAt(100)).toEqual(a);

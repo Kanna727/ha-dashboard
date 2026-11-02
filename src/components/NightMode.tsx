@@ -4,6 +4,7 @@ import { useEntity } from '../ha/store';
 import { useNow } from '../hooks/useNow';
 import { driftAt, nightActive } from '../lib/night';
 import { useIssues } from '../panels/useIssues';
+import { useScreenExtension, useScreenOn } from './ScreenPower';
 import { useWeatherNow } from './useWeather';
 import { SkyArc } from './SkyArc';
 import { WeatherIcon } from './WeatherIcon';
@@ -16,8 +17,13 @@ const TEST = new URLSearchParams(window.location.search).has('nightTest');
 // with a big clock, the weather, the moon arc and any issues. The block drifts a
 // little each minute against burn-in. A touch wakes it; that touch is swallowed
 // so it can't press something underneath. Other animations pause meanwhile.
+// While the wall screen may turn off (ScreenPower) it comes up after a minute at
+// any time of day, and what's under it is hidden so nothing repaints. On the
+// wall screen (the extension answered) that holds on any layout.
 export function NightMode({ layout }: { layout: string }) {
   const sun = useEntity(SUN);
+  const screenOn = useScreenOn();
+  const wallScreen = useScreenExtension();
   const lastInput = useRef(Date.now());
   const [on, setOn] = useState(false);
   const now = useNow(on ? 1000 : 15_000);
@@ -33,11 +39,12 @@ export function NightMode({ layout }: { layout: string }) {
 
   const shouldBeOn = nightActive({
     enabled: NIGHT_MODE.enabled,
-    layoutAllowed: TEST || NIGHT_MODE.layouts.includes(layout),
+    layoutAllowed: TEST || NIGHT_MODE.layouts.includes(layout) || (wallScreen && !screenOn),
     idleMs: now.getTime() - lastInput.current,
     idleMinutes: TEST ? 5 / 60 : NIGHT_MODE.idleMinutes,
     nightOnly: TEST ? false : NIGHT_MODE.nightOnly,
     sunDown: sun?.state === 'below_horizon',
+    screenOff: !screenOn,
   });
   useEffect(() => {
     if (shouldBeOn && !on) setOn(true);

@@ -1450,8 +1450,15 @@ button.sky-test-chip { width: auto; display: block; padding: 10px 14px; font-siz
 .night-issues { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; text-align: center; font-size: 17px; }
 .night-issues .warn { color: #fdba74; }
 .night-issues .info { color: #93c5fd; }
-/* Pause every other animation while the night screen is up. */
-html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toasts *):not(.alert-screen):not(.alert-screen *) { animation-play-state: paused !important; }
+/* Pause every other animation while the night screen is up, and hide what's
+   under it so nothing repaints: transitions (the moon glides on 60 s ones) and
+   script animations don't pause, and ChromeOS reads a large area that keeps
+   repainting as video and then never turns the display off. The sky goes
+   entirely (display: none stops its transitions); the page only goes invisible
+   so it keeps its scroll positions. */
+html.night body *:not(.night-screen):not(.night-screen *):not(.toasts):not(.toasts *):not(.alert-screen):not(.alert-screen *) { animation-play-state: paused !important; visibility: hidden; }
+html.night .night-screen, html.night .toasts, html.night .alert-screen { visibility: visible; }
+html.night .sky { display: none; }
 
 /* ---------- toasts (components/Toasts.tsx) ---------- */
 .toasts { position: fixed; top: 16px; right: 16px; z-index: 90; display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); pointer-events: none; }

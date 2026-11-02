@@ -7,10 +7,16 @@ export interface NightInput {
   idleMinutes: number;
   nightOnly: boolean;
   sunDown: boolean;
+  // The wall screen may turn off (lib/screenPower.ts): any time of day, and
+  // after at most a minute, so the page under it stops repainting.
+  screenOff?: boolean;
 }
 
 export const nightActive = (n: NightInput) =>
-  n.enabled && n.layoutAllowed && n.idleMs >= n.idleMinutes * 60_000 && (!n.nightOnly || n.sunDown);
+  n.enabled &&
+  n.layoutAllowed &&
+  n.idleMs >= (n.screenOff ? Math.min(1, n.idleMinutes) : n.idleMinutes) * 60_000 &&
+  (!n.nightOnly || n.sunDown || !!n.screenOff);
 
 // Burn-in protection: a small offset that changes every minute, the same for a
 // given minute (deterministic), within ±range px.
