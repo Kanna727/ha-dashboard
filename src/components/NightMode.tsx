@@ -19,7 +19,8 @@ const TEST = new URLSearchParams(window.location.search).has('nightTest');
 // so it can't press something underneath. Other animations pause meanwhile.
 // While the wall screen may turn off (ScreenPower) it comes up after a minute at
 // any time of day, and what's under it is hidden so nothing repaints. On the
-// wall screen (the extension answered) that holds on any layout.
+// wall screen (the extension answered) that holds on any layout, and the screen
+// going back on (someone walked in) closes it.
 export function NightMode({ layout }: { layout: string }) {
   const sun = useEntity(SUN);
   const screenOn = useScreenOn();
@@ -46,6 +47,19 @@ export function NightMode({ layout }: { layout: string }) {
     sunDown: sun?.state === 'below_horizon',
     screenOff: !screenOn,
   });
+
+  // On the wall screen, someone walking in (the screen goes back on) opens the
+  // dashboard straight away, as a touch would. Before the effect below, so its
+  // stale shouldBeOn can't bring the night screen straight back.
+  const wasScreenOn = useRef(screenOn);
+  useEffect(() => {
+    if (wallScreen && screenOn && !wasScreenOn.current) {
+      lastInput.current = Date.now();
+      setOn(false);
+    }
+    wasScreenOn.current = screenOn;
+  }, [wallScreen, screenOn]);
+
   useEffect(() => {
     if (shouldBeOn && !on) setOn(true);
   }, [shouldBeOn, on]);
