@@ -207,12 +207,14 @@ export interface DashboardConfig {
   // `store`: the hidden dashboard the sync writes chart data into (default
   // 'dashboard-money'). `skipCategories`: spending categories the charts leave
   // out (default ['Credit Bill']: card bill payments, already counted as card spends).
+  // `hideAccounts`: bank account or card entity IDs to leave off the page.
   FINANCE?: {
     prefix?: string;
     hide?: ('tablet' | 'phone' | 'desktop')[];
     cardColors?: Record<string, [string, string]>;
     store?: string;
     skipCategories?: string[];
+    hideAccounts?: string[];
   };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };

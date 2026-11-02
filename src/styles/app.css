@@ -2781,18 +2781,21 @@ html.night .sky { display: none; }
 @container (max-width: 680px) { .wallet-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 @container (max-width: 540px) { .wallet-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @container (max-width: 400px) { .wallet-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
-/* Small cards: no room for the chip under the name. */
-@container (max-width: 540px) { .wcard-chip { display: none; } }
 .wcard {
   position: relative; overflow: hidden; aspect-ratio: 1.586; display: flex; flex-direction: column; padding: 11px 12px; border-radius: 14px; color: #fff;
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
 .wcard::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255, 255, 255, 0.16), transparent 42%); }
+/* No line may shrink: a squeezed product name was clipped to half its height. */
+.wcard > * { flex-shrink: 0; }
+.wcard-bank, .wcard-prod { padding-right: 34px; }
 .wcard-bank { font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.92; }
 .wcard-prod { font-size: 12px; font-weight: 600; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wcard-chip { width: 26px; height: 19px; margin-top: 6px; border-radius: 4px; background: linear-gradient(135deg, #f6d77b, #b98a2c); opacity: 0.9; }
+.wcard-chip { position: absolute; top: 11px; right: 12px; width: 26px; height: 19px; border-radius: 4px; background: linear-gradient(135deg, #f6d77b, #b98a2c); opacity: 0.9; }
 .wcard-owed { margin-top: auto; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35); white-space: nowrap; }
 .wcard-num { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; opacity: 0.85; }
+.wcard.due .wcard-bank { padding-right: 76px; }
+.wcard.due .wcard-prod { padding-right: 0; }
 .wcard-due { position: absolute; top: 9px; right: 9px; z-index: 1; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; color: #fdba74; background: rgba(0, 0, 0, 0.45); }
 .wcard.paid { filter: saturate(0.35) brightness(0.75); }
 .wcard.paid .wcard-owed { font-size: 15px; }

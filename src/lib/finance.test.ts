@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
-import { bankColor, categoryColor, daysUntil, dueLabel, findFinance, fmtInr, fmtShort, isBillCard, monthSpend, netWorthRange, parseAmount, parseBill, parseMoneyHistory, parseTransaction, parseWhen, scoreBand } from './finance';
+import { bankColor, daysUntil, rowColors, dueLabel, findFinance, fmtInr, fmtShort, isBillCard, monthSpend, netWorthRange, parseAmount, parseBill, parseMoneyHistory, parseTransaction, parseWhen, scoreBand } from './finance';
 
 const e = (entity_id: string, state: string, friendly_name?: string): HassEntity => ({
   entity_id,
@@ -25,6 +25,7 @@ describe('parseBill / parseTransaction / parseWhen', () => {
   it('splits the next bill into card, last digits and amount', () => {
     expect(parseBill('Kotak ••4410 · ₹1,250.00 due 05 Nov')).toEqual({ card: 'Kotak ••4410', last4: '4410', amount: 1250 });
     expect(parseBill('unknown')).toBeUndefined();
+    expect(parseBill('No unpaid bills')).toBeUndefined();
   });
   it('splits the last transaction', () => {
     expect(parseTransaction('−₹80.00 · Corner Cafe · Food & Drinks · Kotak ••4410')).toEqual({
@@ -90,6 +91,19 @@ describe('findFinance', () => {
     expect(isBillCard(f.cards[0], f.bill)).toBe(true);
     expect(isBillCard(f.cards[1], f.bill)).toBe(false);
   });
+  it('has no bill once the bills are paid, whatever the old due date says', () => {
+    const paid = (text: string, unpaid: string) =>
+      findFinance(
+        states(
+          e('input_text.fold_next_cc_bill', text),
+          e('input_datetime.fold_next_cc_due_date', '2026-11-05'),
+          e('input_number.fold_cc_bills_unpaid', unpaid),
+        ),
+      )!.bill;
+    expect(paid('No unpaid bills', '0')).toBeUndefined();
+    expect(paid('Kotak ••4410 · ₹150.00 due 05 Nov', '0')).toBeUndefined();
+    expect(paid('Kotak ••4410 · ₹150.00 due 05 Nov', '150')?.due).toBe('2026-11-05');
+  });
   it('falls back to the object id without a friendly name', () => {
     const g = findFinance(states(e('sensor.money_bank_hdfc_1234', '10')), 'money')!;
     expect(g.banks[0]).toMatchObject({ bank: 'hdfc', last4: '1234' });
@@ -147,8 +161,9 @@ describe('chart data', () => {
     expect(r.points.length).toBe(2);
     expect([r.change, r.low?.v, r.high?.v]).toEqual([20, 100, 120]);
   });
-  it('keeps a category in one colour', () => {
-    expect(categoryColor('Food')).toBe(categoryColor('food'));
-    expect(categoryColor('Untagged')).toBe('#64748b');
+  it('gives each category row its own colour, Untagged and Other grey', () => {
+    const c = rowColors(['Untagged', 'Food', 'Fuel', 'Bill', 'Other']);
+    expect(new Set(c.slice(1, 4)).size).toBe(3);
+    expect([c[0], c[4]]).toEqual(['#64748b', '#64748b']);
   });
 });
