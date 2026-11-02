@@ -1,3 +1,10 @@
+# [1.51.0](https://github.com/Kanna727/ha-dashboard/compare/v1.50.1...v1.51.0) (2026-11-02)
+
+
+### Features
+
+* **clean:** water purifier tab; drop the vacuum and avatar pills from the top bar ([#69](https://github.com/Kanna727/ha-dashboard/issues/69)) ([ea1e7fa](https://github.com/Kanna727/ha-dashboard/commit/ea1e7fadf7424a6cedaa67d970a0133dedb3b0c6))
+
 ## [1.50.1](https://github.com/Kanna727/ha-dashboard/compare/v1.50.0...v1.50.1) (2026-10-30)
 
 
