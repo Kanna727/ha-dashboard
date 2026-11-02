@@ -1,3 +1,10 @@
+# [1.52.0](https://github.com/Kanna727/ha-dashboard/compare/v1.51.0...v1.52.0) (2026-11-02)
+
+
+### Features
+
+* **screen:** turn the ChromeOS wall tablet's screen off at night and on vacation ([#70](https://github.com/Kanna727/ha-dashboard/issues/70)) ([9486985](https://github.com/Kanna727/ha-dashboard/commit/9486985bd79d3129cd6d6ea84daeff9e0d39cb38))
+
 # [1.51.0](https://github.com/Kanna727/ha-dashboard/compare/v1.50.1...v1.51.0) (2026-11-02)
 
 
