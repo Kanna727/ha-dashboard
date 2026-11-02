@@ -1,3 +1,10 @@
+## [1.52.1](https://github.com/Kanna727/ha-dashboard/compare/v1.52.0...v1.52.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **screen:** stop repainting under the night screen so ChromeOS can turn the display off ([#71](https://github.com/Kanna727/ha-dashboard/issues/71)) ([eee2568](https://github.com/Kanna727/ha-dashboard/commit/eee25683b1b2e5bfc4658b9d8b5b488a4f1084cb))
+
 # [1.52.0](https://github.com/Kanna727/ha-dashboard/compare/v1.51.0...v1.52.0) (2026-11-02)
 
 
