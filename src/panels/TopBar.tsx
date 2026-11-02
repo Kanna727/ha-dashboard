@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { MUSIC_PLAYERS, PEOPLE, ROOMS } from '../config/entities';
+import { MUSIC_PLAYERS, ROOMS } from '../config/entities';
 import { useHass, useHassStatus } from '../ha/api';
 import { useEntities } from '../ha/store';
 import { isOn } from '../ha/format';
@@ -12,27 +12,9 @@ import { cycle, useSwipe } from '../hooks/useSwipe';
 import { StatusDialog } from './StatusDialog';
 import { ArrangeButton } from '../layout/Canvas';
 import { usePage } from '../layout/pages';
-import { VacuumPill } from '../vacuum/VacuumPill';
 import { VacationButton } from '../components/VacationMode';
 
 const greeting = (h: number) => (h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening');
-
-function People() {
-  const people = useEntities(PEOPLE);
-  return (
-    <div className="pill avatars">
-      {people.map((p, i) => {
-        const name = (p?.attributes.friendly_name as string | undefined) ?? PEOPLE[i];
-        const home = p?.state === 'home';
-        return (
-          <span key={PEOPLE[i]} className={`avatar ${home ? 'home' : 'away'}`} title={`${name}: ${home ? 'home' : 'away'}`}>
-            {name.charAt(0).toUpperCase()}
-          </span>
-        );
-      })}
-    </div>
-  );
-}
 
 // Shows the first media player that is playing (else the first paused one), and nothing when all are idle.
 function NowPlayingPill() {
@@ -176,13 +158,11 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         <div className="muted">{now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}</div>
       </div>
       <div className="topbar-pills">
-        {!compact && <People />}
         <SyncIndicator />
         <NowPlayingPill />
         <StatusPill />
         <LeaveHomeButton />
         <VacationButton />
-        {!compact && <VacuumPill />}
         {page !== 'clean' && <ArrangeButton />}
       </div>
       <div className="big-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>

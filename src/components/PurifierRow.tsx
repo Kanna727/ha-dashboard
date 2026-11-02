@@ -1,17 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { useHass, type HistoryPoint } from '../ha/api';
-import { useEntity } from '../ha/store';
 import { isUnavailable, relTime } from '../ha/format';
 import { useNow } from '../hooks/useNow';
 import { Icon } from './Icon';
 import { Sparkline } from './Sparkline';
-import { usePurifier } from './usePurifier';
-import { chartStart } from '../lib/purifier';
-
-const HOURS = 24 * 7;
+import { PURIFIER_HOURS as HOURS, usePurifierControls } from './usePurifier';
 
 // "1:05 AM" today, else "Mon 1:05 AM".
-function sinceLabel(t: number) {
+export function sinceLabel(t: number) {
   const d = new Date(t);
   const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   return d.toDateString() === new Date().toDateString() ? time : `${d.toLocaleDateString([], { weekday: 'short' })} ${time}`;
@@ -21,66 +15,13 @@ function sinceLabel(t: number) {
 // tank, faults, a 7-day TDS chart, the purification mode (changed with two
 // taps, so a stray tap can't switch it to Vacation) and a cloud refresh.
 export function PurifierRow({ showName = true }: { showName?: boolean }) {
-  const hass = useHass();
-  const p = usePurifier();
-  const cfg = p.cfg;
-  const tankFull = useEntity(cfg?.tankFull);
-  const fallback = useEntity(cfg?.fallbackMode);
-  const refreshBtn = useEntity(cfg?.refresh);
-  const last = useEntity(cfg?.lastReported);
+  const p = usePurifierControls();
+  const { cfg, tankFull, fallback, last, history, since, offline, options, armed, pickMode, refreshing, refresh } = p;
   useNow(60_000); // keeps "Updated Xm ago" current
 
-  const [history, setHistory] = useState<HistoryPoint[]>();
-  useEffect(() => {
-    if (!cfg) return;
-    let live = true;
-    hass
-      .fetchHistory([cfg.tankTds], HOURS)
-      .then((h) => live && setHistory(h[cfg.tankTds] ?? []))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, [hass, cfg]);
-
-  // Mode change: the first tap arms an option, a second tap within 4 s sends it.
-  const [armed, setArmed] = useState<string>();
-  useEffect(() => {
-    if (!armed) return;
-    const t = window.setTimeout(() => setArmed(undefined), 4000);
-    return () => window.clearTimeout(t);
-  }, [armed]);
-  const pickMode = (option: string) => {
-    if (!cfg?.mode || option === p.mode?.state) return;
-    if (armed !== option) return setArmed(option);
-    setArmed(undefined);
-    hass.callService('select', 'select_option', { option }, { entity_id: cfg.mode });
-  };
-
-  // Refresh: busy until "last reported" changes, or 60 s.
-  const [refreshing, setRefreshing] = useState(false);
-  const pressedAt = useRef<string | undefined>(undefined);
-  useEffect(() => {
-    if (refreshing && last?.state !== pressedAt.current) setRefreshing(false);
-  }, [last?.state, refreshing]);
-  useEffect(() => {
-    if (!refreshing) return;
-    const t = window.setTimeout(() => setRefreshing(false), 60_000);
-    return () => window.clearTimeout(t);
-  }, [refreshing]);
-  const refresh = () => {
-    if (!cfg?.refresh) return;
-    pressedAt.current = last?.state;
-    setRefreshing(true);
-    hass.callService('button', 'press', {}, { entity_id: cfg.refresh });
-  };
-
   if (!cfg) return null;
-  const offline = isUnavailable(p.tank);
-  const options = (p.mode?.attributes.options as string[] | undefined) ?? [];
   const tankText = tankFull?.state === 'on' ? 'Tank full' : tankFull?.state === 'off' ? 'Tank not full' : '';
   const ago = relTime(last?.state);
-  const since = history ? chartStart(history, HOURS, Date.now()) : undefined;
   const sinceText = since === undefined ? '' : sinceLabel(since);
   const rangeChip =
     p.inRange && p.target ? (
@@ -157,7 +98,7 @@ export function PurifierRow({ showName = true }: { showName?: boolean }) {
         {cfg.refresh && (
           <button
             className={`chip-btn small ${refreshing ? 'active' : ''}`}
-            disabled={refreshing || (isUnavailable(refreshBtn) && refreshBtn?.state !== 'unknown')}
+            disabled={!p.canRefresh}
             onClick={refresh}
           >
             <Icon name="refresh" size={14} />

@@ -128,7 +128,6 @@ const config: DashboardConfig = {
   WEATHER: 'weather.forecast_home',
   OUTDOOR_TEMP: 'sensor.outdoor_temperature',
   SUN: 'sun.sun',
-  PEOPLE: ['person.alex'],
   CLIMATE: {
     entity: 'climate.ac',
     power: 'switch.ac_power',
