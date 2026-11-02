@@ -343,7 +343,7 @@ const config: DashboardConfig = {
   // Money page: helpers named fold_* (input_number.fold_net_worth, ...; accounts,
   // cards and scores are found by name). Amounts start blurred on the tablet;
   // a card's colours by its name.
-  FINANCE: { prefix: 'fold', hide: ['tablet'], cardColors: { 'SBI Cashback': ['#0f766e', '#134e4a'] } },
+  FINANCE: { prefix: 'fold', hide: ['tablet'], cardColors: { 'SBI Cashback': ['#0f766e', '#134e4a'] }, hideAccounts: [] },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {

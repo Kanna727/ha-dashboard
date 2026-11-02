@@ -2,7 +2,7 @@ import { useId, useState, type PointerEvent } from 'react';
 import { FINANCE } from '../config/entities';
 import { BarChart, type Bar } from '../components/BarChart';
 import { useNow } from '../hooks/useNow';
-import { categoryColor, daysUntil, fmtInr, fmtShort, monthSpend, netWorthRange, type MoneyHistory } from '../lib/finance';
+import { daysUntil, rowColors, fmtInr, fmtShort, monthSpend, netWorthRange, type MoneyHistory } from '../lib/finance';
 import { Amt } from './Amt';
 import { useFinance } from './useFinance';
 import { useMoneyHistory } from './useMoneyHistory';
@@ -169,10 +169,8 @@ export function SpendingCharts() {
     label: `${monthLabel(m.month, 'long')}: ${fmtInr(total)}`,
   }));
   const byMonth = new Map(months.map((x) => [x.m.month, x]));
-  // By category: this month once it's past the middle, before that the last
-  // whole month (a few days against a whole month would only mislead).
-  const lastMonth = thisMonth(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-  const shownMonth = (now.getDate() >= 15 && byMonth.get(cur)) || byMonth.get(lastMonth) || months[months.length - 1];
+  // By category: this month (the owner asked for the current month only), with a tick at last month.
+  const shownMonth = byMonth.get(cur) ?? months[months.length - 1];
   const prevKey = thisMonth(new Date(Number(shownMonth.m.month.slice(0, 4)), Number(shownMonth.m.month.slice(5)) - 2, 1));
   const prev = byMonth.get(prevKey);
   const top = shownMonth.categories.slice(0, 6);
@@ -181,6 +179,7 @@ export function SpendingCharts() {
   const prevOf = (name: string) =>
     name === 'Other' ? prev?.categories.filter(([k]) => !top.some(([t]) => t === k)).reduce((s, [, v]) => s + v, 0) : prev?.categories.find(([k]) => k === name)?.[1];
   const max = Math.max(1, ...rows.map(([k, v]) => Math.max(v, prevOf(k) ?? 0)));
+  const colors = rowColors(rows.map(([k]) => k));
   const skip = FINANCE.skipCategories.map((s) => s.toLowerCase());
   const skipped = !skip.length ? '' : skip.length === 1 && skip[0] === 'credit bill' ? ' · card bill payments left out' : ` · ${skip.join(', ')} left out`;
   return (
@@ -221,9 +220,9 @@ export function SpendingCharts() {
             )}
           </span>
           <ul className="cat-bars">
-            {rows.map(([name, v]) => {
+            {rows.map(([name, v], i) => {
               const p = prevOf(name);
-              const color = name === 'Other' ? '#94a3b8' : categoryColor(name);
+              const color = colors[i];
               return (
                 <li key={name}>
                   <span className="cat-name">

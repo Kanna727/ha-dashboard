@@ -79,6 +79,7 @@ export const FINANCE = {
   cardColors: {} as Record<string, [string, string]>,
   store: 'dashboard-money',
   skipCategories: ['Credit Bill'],
+  hideAccounts: [] as string[],
   ...cfg.FINANCE,
 };
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };

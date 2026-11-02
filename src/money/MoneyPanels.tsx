@@ -91,11 +91,11 @@ function cardBackground(c: Account) {
 function WalletCard({ card, bill }: { card: Account; bill: Finance['bill'] }) {
   const due = bill?.due && isBillCard(card, bill) ? dueDay(bill.due) : undefined;
   return (
-    <div className={`wcard ${card.balance === 0 ? 'paid' : ''}`} style={{ background: cardBackground(card) }}>
+    <div className={`wcard ${card.balance === 0 ? 'paid' : ''} ${due ? 'due' : ''}`} style={{ background: cardBackground(card) }}>
       {due && <span className="wcard-due">Due {due.getDate()} {MONTH(due)}</span>}
       <span className="wcard-bank">{card.bank}</span>
       <span className="wcard-prod">{card.product || ' '}</span>
-      <span className="wcard-chip" aria-hidden />
+      {!due && <span className="wcard-chip" aria-hidden />}
       <span className="wcard-owed">
         {card.balance === 0 ? 'Nothing owed' : card.balance < 0 ? <Amt>{fmtInr(-card.balance)} credit</Amt> : <Amt>{fmtInr(card.balance)}</Amt>}
       </span>
@@ -106,7 +106,8 @@ function WalletCard({ card, bill }: { card: Account; bill: Finance['bill'] }) {
 
 export function CardsPanel() {
   const f = useFinance();
-  if (!f?.cards.length) return null;
+  const cards = f?.cards.filter((c) => !FINANCE.hideAccounts.includes(c.id)) ?? [];
+  if (!f || !cards.length) return null;
   const owed = f.cardsOutstanding ?? f.cards.reduce((s, c) => s + Math.max(0, c.balance), 0);
   return (
     <section className="panel money-cards">
@@ -125,7 +126,7 @@ export function CardsPanel() {
         }
       />
       <div className="wallet-cards">
-        {f.cards.map((c) => (
+        {cards.map((c) => (
           <WalletCard key={c.id} card={c} bill={f.bill} />
         ))}
       </div>
@@ -135,21 +136,23 @@ export function CardsPanel() {
 
 export function PassbookPanel() {
   const f = useFinance();
-  if (!f?.banks.length) return null;
-  const total = f.bankTotal ?? f.banks.reduce((s, b) => s + b.balance, 0);
-  const max = Math.max(1, ...f.banks.map((b) => Math.abs(b.balance)));
+  const banks = f?.banks.filter((b) => !FINANCE.hideAccounts.includes(b.id)) ?? [];
+  if (!banks.length) return null;
+  // With accounts hidden, the total is of the ones shown.
+  const total = banks.length === f!.banks.length && f!.bankTotal !== undefined ? f!.bankTotal : banks.reduce((s, b) => s + b.balance, 0);
+  const max = Math.max(1, ...banks.map((b) => Math.abs(b.balance)));
   return (
     <section className="panel money-passbook">
       <Head
         label="Passbook"
         summary={
           <>
-            <Amt>{fmtInr(total)}</Amt> across {f.banks.length}
+            <Amt>{fmtInr(total)}</Amt> across {banks.length}
           </>
         }
       />
       <ul className="passbook">
-        {f.banks.map((b) => (
+        {banks.map((b) => (
           <li key={b.id} className={`pass-row ${b.balance === 0 ? 'zero' : ''}`}>
             <span className="pass-dot" style={{ background: bankColor(b.bank) }} />
             <span className="pass-name">

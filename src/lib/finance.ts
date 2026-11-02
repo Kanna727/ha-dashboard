@@ -102,11 +102,14 @@ function bureauName(e: HassEntity, key: string): string {
 }
 
 // "Kotak ••4410 · ₹1,250.00 due 05 Nov" → card, its last digits and the amount.
+// Anything without an amount ("No unpaid bills") is no bill.
 export function parseBill(text: string | undefined) {
   if (!text || text === 'unknown' || text === 'unavailable') return undefined;
   const [card, rest = ''] = text.split(' · ');
+  const amount = parseAmount(rest.split(/\s+due\s+/i)[0]);
+  if (amount === undefined) return undefined;
   const last4 = card.match(/(\d{3,6})\s*$/)?.[1];
-  return { card: card.trim(), last4, amount: parseAmount(rest.split(/\s+due\s+/i)[0]) };
+  return { card: card.trim(), last4, amount };
 }
 
 // "−₹80.00 · Corner Cafe · Food & Drinks · Kotak ••4410".
@@ -165,7 +168,9 @@ export function findFinance(states: HassEntities, prefix = 'fold'): Finance | un
   f.scores.sort((a, b) => a.bureau.localeCompare(b.bureau));
   const bill = parseBill(byKey.get('next_cc_bill')?.state);
   const due = byKey.get('next_cc_due_date')?.state;
-  if (bill || (due && /^\d{4}-\d\d-\d\d/.test(due))) f.bill = { card: '', ...bill, due: due && /^\d{4}-\d\d-\d\d/.test(due) ? due.slice(0, 10) : undefined };
+  // The sync leaves the due date as it was when the last bill is paid, so a
+  // date alone is no bill; nor is one when nothing is unpaid.
+  if (bill && f.cardsUnpaid !== 0) f.bill = { ...bill, due: due && /^\d{4}-\d\d-\d\d/.test(due) ? due.slice(0, 10) : undefined };
   f.lastTransaction = parseTransaction(byKey.get('last_transaction')?.state);
   f.asOf = parseWhen(byKey.get('data_as_of')?.state);
   return f;
@@ -336,10 +341,10 @@ export function netWorthRange(points: { t: number; v: number }[], days: number, 
   return { points: pts, change: pts[pts.length - 1].v - pts[0].v, low, high };
 }
 
-// A steady colour per spending category, so a category keeps its colour across months.
-const CATEGORY_COLORS = ['#fbbf24', '#38bdf8', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#60a5fa', '#2dd4bf', '#f87171', '#a3e635'];
-export function categoryColor(name: string): string {
-  if (/^untagged$/i.test(name)) return '#64748b';
-  const h = [...name.toLowerCase()].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 11);
-  return CATEGORY_COLORS[h % CATEGORY_COLORS.length];
+// The category rows' colours: each its own (a colour by name hash put three
+// rows in one yellow), Untagged and Other grey.
+const CATEGORY_COLORS = ['#fbbf24', '#38bdf8', '#34d399', '#a78bfa', '#f472b6', '#fb923c', '#2dd4bf', '#f87171', '#a3e635', '#60a5fa'];
+export function rowColors(names: string[]): string[] {
+  let i = 0;
+  return names.map((n) => (/^(untagged|other)$/i.test(n) ? '#64748b' : CATEGORY_COLORS[i++ % CATEGORY_COLORS.length]));
 }
