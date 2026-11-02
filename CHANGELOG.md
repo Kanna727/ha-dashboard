@@ -1,3 +1,10 @@
+## [1.55.1](https://github.com/Kanna727/ha-dashboard/compare/v1.55.0...v1.55.1) (2026-11-02)
+
+
+### Bug Fixes
+
+* **money:** no bill once paid, full card names, this month by category, hide accounts ([#75](https://github.com/Kanna727/ha-dashboard/issues/75)) ([12759fc](https://github.com/Kanna727/ha-dashboard/commit/12759fce4452cb2d3f910400c4e05028c6d39b4d))
+
 # [1.55.0](https://github.com/Kanna727/ha-dashboard/compare/v1.54.0...v1.55.0) (2026-11-02)
 
 
