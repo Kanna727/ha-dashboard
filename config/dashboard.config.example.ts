@@ -318,6 +318,10 @@ const config: DashboardConfig = {
   NIGHT_MODE: { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] },
   // Back to the Home page after 2 minutes left alone (tablet only); 0 = off.
   HOME_IDLE: { minutes: 2, layouts: ['tablet'] },
+  // Wall-screen power for a ChromeOS tablet with kiosk-extension/ installed:
+  // off at night and on vacation once nobody has been seen in these rooms for
+  // holdMinutes; someone being seen there wakes it.
+  SCREEN_POWER: { quiet: ['23:00', '06:00'], vacation: true, rooms: ['living_room', 'kitchen'], holdMinutes: 5 },
   // Robot vacuum page (optional: without it the first vacuum.* entity is used).
   // It opens by itself while the robot runs; `autoOpen: false` turns that off.
   VACUUM: { entity: 'vacuum.robot', map: 'camera.robot_map' },

@@ -204,6 +204,14 @@ export interface DashboardConfig {
   // Back to the Home page (the glance page) after this many minutes without a
   // touch, closing a popup left open. 0 turns it off. Default 2, tablet only.
   HOME_IDLE?: { minutes?: number; layouts?: ('tablet' | 'phone' | 'desktop')[] };
+  // Wall-screen power, for a ChromeOS tablet with the extension in
+  // kiosk-extension/ (anywhere else it does nothing). The screen is kept on,
+  // except in the `quiet` hours ['HH:MM', 'HH:MM'] (default 23:00–06:00) and,
+  // with `vacation` (default true), while VACATION_MODE is on: then ChromeOS may
+  // turn it off once the presence sensors of `rooms` (room ids; default every
+  // room) have seen nobody for `holdMinutes` (default 5), and someone being seen
+  // wakes it. `enabled: false` keeps the screen on always.
+  SCREEN_POWER?: { enabled?: boolean; quiet?: [string, string]; vacation?: boolean; rooms?: string[]; holdMinutes?: number };
 }
 
 declare global {
