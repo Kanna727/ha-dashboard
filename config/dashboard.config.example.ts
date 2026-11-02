@@ -340,6 +340,10 @@ const config: DashboardConfig = {
   // Batteries panel (every battery is found by itself): low below 20 %, and
   // anything to leave out.
   BATTERIES: { low: 20, hide: [] },
+  // Money page: helpers named fold_* (input_number.fold_net_worth, ...; accounts,
+  // cards and scores are found by name). Amounts start blurred on the tablet;
+  // a card's colours by its name.
+  FINANCE: { prefix: 'fold', hide: ['tablet'], cardColors: { 'SBI Cashback': ['#0f766e', '#134e4a'] } },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {

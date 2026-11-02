@@ -13,16 +13,21 @@ import { NetworkDevicesPanel, NetworkPanel } from '../panels/NetworkPanel';
 import { RoomsPanel } from '../panels/RoomsPanel';
 import { TopBar } from '../panels/TopBar';
 import { WeatherPanel } from '../panels/WeatherPanel';
+import { BillPanel, CardsPanel, InvestmentsPanel, MoneySummary, PassbookPanel, ScoresPanel, SpendPanel } from '../money/MoneyPanels';
+import { useHasMoney } from '../money/useFinance';
+import { NetWorthPanel } from '../money/MoneyCharts';
 import { CleanPage, useHasClean } from './CleanPage';
 import { PAGES, usePage, type Page } from './pages';
 import { Pager } from './Pager';
 import { TabBar } from './TabBar';
 
 // The pages every layout swipes between and shows in the tab bar (pages.ts).
-// Clean is left out when the home has neither a robot vacuum nor a dishwasher.
+// Clean is left out when the home has neither a robot vacuum nor a dishwasher,
+// Money when there are no finance helpers (lib/finance.ts).
 function usePages() {
   const clean = useHasClean();
-  return PAGES.filter((p) => p.id !== 'clean' || clean);
+  const money = useHasMoney();
+  return PAGES.filter((p) => (p.id !== 'clean' || clean) && (p.id !== 'money' || money));
 }
 
 // Each page's cards, in columns, for tablet and desktop. Weather shows a week on desktop.
@@ -53,6 +58,14 @@ function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { classNam
       };
     case 'health':
       return { className: 'cols cols-2', columns: [[card('health', <HealthPanel full />)], [card('meals', <MealsPanel full />)]] };
+    case 'money':
+      return {
+        className: 'cols cols-money',
+        columns: [
+          [card('moneySummary', <MoneySummary />), card('networth', <NetWorthPanel />), card('cards', <CardsPanel />), card('passbook', <PassbookPanel />)],
+          [card('bill', <BillPanel />), card('scores', <ScoresPanel />), card('investments', <InvestmentsPanel />), card('spend', <SpendPanel />)],
+        ],
+      };
   }
 }
 
@@ -97,6 +110,14 @@ const LABELS: Record<string, string> = {
   driving: 'Driving',
   glance: 'At a glance',
   attention: 'Needs attention',
+  moneySummary: 'Money',
+  networth: 'Net worth',
+  cards: 'Credit cards',
+  passbook: 'Passbook',
+  bill: 'Next card bill',
+  scores: 'Credit score',
+  investments: 'Investments',
+  spend: 'Spending',
 };
 const card = (id: keyof typeof LABELS, node: ReactNode): CardDef => ({ id, label: LABELS[id], node });
 
@@ -129,6 +150,18 @@ function PhoneTab({ page }: { page: Page }) {
         <>
           <HealthPanel />
           <MealsPanel />
+        </>
+      )}
+      {page === 'money' && (
+        <>
+          <MoneySummary />
+          <BillPanel />
+          <NetWorthPanel />
+          <CardsPanel />
+          <SpendPanel />
+          <PassbookPanel />
+          <InvestmentsPanel />
+          <ScoresPanel />
         </>
       )}
       {page === 'clean' && <CleanPage />}

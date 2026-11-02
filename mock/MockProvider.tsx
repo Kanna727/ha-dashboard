@@ -5,6 +5,7 @@ import { HassContext, HassStatusContext, type HassApi, type HistoryPoint } from 
 import { store } from '../src/ha/store';
 import { hsToRgb, kelvinToRgb } from '../src/lib/lightColor';
 import { bucketStart } from '../src/lib/driveHistory';
+import { mockMoneyHistory } from './finance';
 import { CAR_TEST, CarTestPanel } from './CarTestPanel';
 import { installMockCommute, MOCK_COMMUTE_CARD } from './commute';
 import { CommuteTestPanel } from './CommuteTestPanel';
@@ -338,7 +339,9 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       // Other hidden-dashboard documents (client names): localStorage per url_path, followed across tabs.
       async fetchStore(urlPath) {
         try {
-          return JSON.parse(localStorage.getItem(`mockStore:${urlPath}`) ?? 'null');
+          const saved = JSON.parse(localStorage.getItem(`mockStore:${urlPath}`) ?? 'null');
+          // The money charts' data, as the sync would write it (mock/finance.ts).
+          return saved ?? (urlPath === 'dashboard-money' ? mockMoneyHistory() : null);
         } catch {
           return null;
         }

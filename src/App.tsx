@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { ModalProvider } from './components/Modal';
 import { SheetProvider } from './components/Sheet';
 import { ToastProvider } from './components/Toasts';
@@ -10,6 +10,7 @@ import { SkyBackdrop } from './components/SkyBackdrop';
 import { DesktopLayout, PhoneLayout, TabletLayout } from './layout/Layouts';
 import { useSelfUpdate } from './update/useSelfUpdate';
 import { useVacuumAutoOpen } from './vacuum/useAutoOpen';
+import { setMoneyLayout } from './money/privacy';
 
 type LayoutName = 'tablet' | 'phone' | 'desktop';
 
@@ -27,6 +28,8 @@ export function App() {
   const [layout, setLayout] = useState<LayoutName>(detectLayout);
   useSelfUpdate();
   useVacuumAutoOpen();
+  // Before paint, so amounts on the Money page start blurred or not without a flash.
+  useLayoutEffect(() => setMoneyLayout(layout), [layout]);
 
   useEffect(() => {
     const onResize = () => setLayout(detectLayout());

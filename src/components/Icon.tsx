@@ -1,4 +1,8 @@
 import {
+  mdiWallet,
+  mdiEyeOffOutline,
+  mdiCreditCardOutline,
+  mdiBank,
   mdiContentCopy,
   mdiAccessPointNetwork,
   mdiWeb,
@@ -357,6 +361,10 @@ export const ICONS = {
   copy: mdiContentCopy,
   accessPoint: mdiAccessPointNetwork,
   internet: mdiWeb,
+  wallet: mdiWallet,
+  eyeOff: mdiEyeOffOutline,
+  creditCard: mdiCreditCardOutline,
+  bank: mdiBank,
 } as const;
 
 export type IconName = keyof typeof ICONS;

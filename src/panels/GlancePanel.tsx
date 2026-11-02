@@ -8,6 +8,7 @@ import { HealthTile } from './HealthPanel';
 import { MealTile } from './MealsPanel';
 import { NetworkTile } from './NetworkPanel';
 import { WeatherTile } from './WeatherPanel';
+import { MoneyTile } from '../money/MoneyPanels';
 
 // The Home page's "At a glance" panel (the owner asked on 2026-10-26 for Home
 // to be the wall tablet's glance page, showing as much as it usefully can):
@@ -27,6 +28,7 @@ export function GlancePanel() {
         <MealTile />
         <CleanTile />
         <HealthTile />
+        <MoneyTile />
       </div>
     </section>
   );

@@ -199,6 +199,21 @@ export interface DashboardConfig {
   // Batteries panel: every battery is found by itself. `low`: the % at or below
   // which one counts as low (default 20). `hide`: entity IDs to leave out.
   BATTERIES?: { low?: number; hide?: string[] };
+  // Money page: personal finance from helpers a money-app sync keeps up to date,
+  // named `<prefix>_<role>` (default 'fold'; see lib/finance.ts). Accounts, cards
+  // and scores are found by name. `hide`: layouts where amounts start blurred
+  // (default ['tablet'], the wall screens; tap to show them for 5 min).
+  // `cardColors`: a card's colours by its name ("Kotak League"), [from, to].
+  // `store`: the hidden dashboard the sync writes chart data into (default
+  // 'dashboard-money'). `skipCategories`: spending categories the charts leave
+  // out (default ['Credit Bill']: card bill payments, already counted as card spends).
+  FINANCE?: {
+    prefix?: string;
+    hide?: ('tablet' | 'phone' | 'desktop')[];
+    cardColors?: Record<string, [string, string]>;
+    store?: string;
+    skipCategories?: string[];
+  };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
   // Back to the Home page (the glance page) after this many minutes without a
