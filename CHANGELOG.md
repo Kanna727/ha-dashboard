@@ -1,3 +1,10 @@
+# [1.53.0](https://github.com/Kanna727/ha-dashboard/compare/v1.52.1...v1.53.0) (2026-11-02)
+
+
+### Features
+
+* **screen:** someone walking in wakes the wall screen straight to the dashboard ([#72](https://github.com/Kanna727/ha-dashboard/issues/72)) ([8db74ab](https://github.com/Kanna727/ha-dashboard/commit/8db74abbb481433c009e2d497fa65a02a6a1a2ca))
+
 ## [1.52.1](https://github.com/Kanna727/ha-dashboard/compare/v1.52.0...v1.52.1) (2026-11-02)
 
 
