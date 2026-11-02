@@ -1785,9 +1785,10 @@ html.night .sky { display: none; }
 .tabbar .tab.active { gap: 10px; padding: 0 22px 0 18px; color: var(--text); background: rgba(255, 255, 255, 0.18); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
 .tab-label { max-width: 0; opacity: 0; overflow: hidden; white-space: nowrap; font-size: 15px; font-weight: 700; transition: max-width 0.3s ease, opacity 0.2s; }
 .tab.active .tab-label { max-width: 110px; opacity: 1; }
+/* Six pages fit a 375 px phone with the current one's name showing. */
 @media (max-width: 420px) {
-  .tabbar .tab { min-width: 48px; padding: 0 13px; height: 48px; }
-  .tabbar .tab.active { padding: 0 16px 0 14px; gap: 8px; }
+  .tabbar .tab { min-width: 44px; padding: 0 10px; height: 48px; }
+  .tabbar .tab.active { padding: 0 13px 0 11px; gap: 6px; }
   .tab-label { font-size: 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .tabbar .tab, .tab-label { transition: none; } }
@@ -2657,7 +2658,8 @@ html.night .sky { display: none; }
    Read from 5–6 ft on an 11" tablet: big numbers, fills from the left (like
    the room chips), rings, strips and colour carry the meaning; the small
    label and line are for up close. Three across (two on the phone); the meal
-   takes a row and health two columns, so 9 tiles fill 4 rows exactly. */
+   takes a row and health two columns, so 9 tiles fill 4 rows exactly; the
+   money tile takes a row too. */
 .glance-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-flow: row dense; gap: 10px; }
 .phone-body .glance-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .phone-body .glance-tile.clean-tile { grid-column: 1 / -1; }
@@ -2755,3 +2757,110 @@ html.night .sky { display: none; }
 .wx-outlook.air svg { color: var(--air); }
 /* The weather tile's air bar: a little shorter than the cleaning bars. */
 .glance-foot .glance-bar { height: 36px; font-size: 16px; }
+
+/* ---------- Money page (money/MoneyPanels.tsx, "Wallet") ---------- */
+.cols-money { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); }
+.amt { transition: filter 0.25s; }
+.amt.hidden { filter: blur(8px); cursor: pointer; }
+.money-summary .neg, .money-passbook .neg, .money-invest .neg, .money-tile-side .neg { color: var(--danger); }
+.money-invest .pos, .money-tx-amt.pos { color: var(--ok); }
+.money-eye { margin-left: 4px; }
+.money-stats { display: flex; flex-wrap: wrap; gap: 14px 28px; justify-content: space-between; }
+.money-stat { display: grid; gap: 4px; min-width: 0; }
+.money-stat .label { font-size: 11.5px; letter-spacing: 0.1em; }
+.money-stat-v { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.money-chip { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; vertical-align: 2px; }
+.money-chip.bad { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+.money-well { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; margin: 14px 0 0; padding: 12px 14px; border-radius: 18px; background: var(--tile); border: 1px solid var(--border); font-size: 14px; }
+.money-well dt { color: var(--muted); }
+.money-well dd { margin: 0; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Credit cards drawn as cards, in their bank's colours (FINANCE.cardColors overrides). */
+.money-cards { container-type: inline-size; }
+.wallet-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; }
+@container (max-width: 680px) { .wallet-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@container (max-width: 540px) { .wallet-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container (max-width: 400px) { .wallet-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+/* Small cards: no room for the chip under the name. */
+@container (max-width: 540px) { .wcard-chip { display: none; } }
+.wcard {
+  position: relative; overflow: hidden; aspect-ratio: 1.586; display: flex; flex-direction: column; padding: 11px 12px; border-radius: 14px; color: #fff;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+.wcard::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(115deg, rgba(255, 255, 255, 0.16), transparent 42%); }
+.wcard-bank { font-size: 11.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.92; }
+.wcard-prod { font-size: 12px; font-weight: 600; opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wcard-chip { width: 26px; height: 19px; margin-top: 6px; border-radius: 4px; background: linear-gradient(135deg, #f6d77b, #b98a2c); opacity: 0.9; }
+.wcard-owed { margin-top: auto; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35); white-space: nowrap; }
+.wcard-num { font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; opacity: 0.85; }
+.wcard-due { position: absolute; top: 9px; right: 9px; z-index: 1; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; color: #fdba74; background: rgba(0, 0, 0, 0.45); }
+.wcard.paid { filter: saturate(0.35) brightness(0.75); }
+.wcard.paid .wcard-owed { font-size: 15px; }
+
+/* Passbook: the bank accounts, two columns. */
+.money-passbook { container-type: inline-size; }
+.passbook { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 22px; }
+@container (max-width: 520px) { .passbook { grid-template-columns: minmax(0, 1fr); } }
+.pass-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 9px 4px 8px; border-bottom: 1px dashed rgba(255, 255, 255, 0.07); }
+.pass-row.zero { opacity: 0.45; }
+.pass-dot { width: 10px; height: 10px; border-radius: 3px; }
+.pass-name { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pass-name small { margin-left: 5px; color: var(--muted); font-weight: 600; }
+.pass-v { font-size: 14.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.pass-bar { grid-column: 2 / 4; height: 5px; border-radius: 3px; overflow: hidden; background: rgba(255, 255, 255, 0.05); }
+.pass-bar i { display: block; height: 100%; border-radius: 3px; }
+
+/* Next card bill. */
+.money-bill.warn { border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+.money-bill.bad { border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+.bill-main { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.bill-what { display: grid; gap: 2px; min-width: 0; font-weight: 600; }
+.bill-amount { font-size: 28px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.bill-days { display: grid; justify-items: center; flex-shrink: 0; }
+.bill-days span { font-size: 40px; font-weight: 800; line-height: 1; }
+.bill-days small { font-size: 12.5px; color: var(--muted); }
+.bill-days.warn span { color: var(--warn); }
+.bill-days.bad span { color: var(--danger); }
+
+/* Credit-score dials and the investments donut. */
+.score-dials { display: flex; justify-content: space-around; gap: 12px; flex-wrap: wrap; }
+.score-dial, .invest-donut { position: relative; display: grid; justify-items: center; width: 132px; }
+.score-dial svg, .invest-donut svg { width: 100%; height: auto; }
+.dial-track { fill: none; stroke: rgba(255, 255, 255, 0.08); stroke-width: 10; stroke-linecap: round; }
+.dial-arc { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dasharray 0.6s ease; }
+.donut-part { fill: none; stroke-width: 14; }
+.invest-donut .dial-track { stroke-width: 14; }
+.dial-text { position: absolute; top: 0; left: 0; right: 0; height: 132px; display: grid; place-content: center; justify-items: center; gap: 2px; text-align: center; }
+.dial-text b { font-size: 32px; font-weight: 800; line-height: 1; }
+.invest-donut .dial-text b { font-size: 17px; }
+.dial-text small { font-size: 12px; font-weight: 700; }
+.dial-name { margin-top: -10px; font-size: 13px; font-weight: 700; }
+.invest-body { display: flex; align-items: center; gap: 16px; }
+.invest-donut { width: 120px; flex-shrink: 0; }
+.invest-donut .dial-text { height: 120px; }
+.invest-rows { flex: 1; display: grid; gap: 8px; margin: 0; font-size: 14px; min-width: 0; }
+.invest-rows > div { display: flex; justify-content: space-between; gap: 10px; }
+.invest-rows dt { color: var(--muted); display: flex; align-items: center; gap: 7px; }
+.invest-rows dt i { width: 10px; height: 10px; border-radius: 3px; }
+.invest-rows dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* This month's spending and the last transaction. */
+.spend-big { font-size: 46px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.spend-rate { margin-top: 4px; font-weight: 600; }
+.spend-month { height: 8px; margin-top: 14px; border-radius: 4px; overflow: hidden; background: rgba(255, 255, 255, 0.06); }
+.spend-month i { display: block; height: 100%; border-radius: 4px; background: var(--accent-light); }
+.money-tx { margin-top: 14px; padding: 12px 14px; border-radius: 18px; background: var(--tile); border: 1px solid var(--border); }
+.money-tx .label { font-size: 11.5px; }
+.money-tx-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; }
+.money-tx-who { display: grid; min-width: 0; }
+.money-tx-who b { font-size: 16px; }
+.money-tx-who small { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.money-tx-amt { font-size: 18px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Home's money tile (a whole row): net worth and spending beside the big number. */
+.money-tile-side { display: flex; gap: 22px; text-align: right; }
+.money-tile-side > span { display: grid; gap: 2px; }
+.money-tile-side small { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--label); }
+.money-tile-side b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.phone-body .money-tile-side { gap: 14px; }
+.phone-body .money-tile-side b { font-size: 18px; }

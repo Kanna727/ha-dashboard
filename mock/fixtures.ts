@@ -2,6 +2,7 @@ import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
 import { VACUUM_DEVICE, vacuumEntities } from './vacuum';
 import { DESK_DEVICE, deskEntities, isDeskEntity } from './desk';
 import { EXTRA_DEVICES, EXTRA_REGISTRY, extraEntities } from './extras';
+import { financeEntities } from './finance';
 
 // States for the fictional home in config/dashboard.config.example.ts, tuned so
 // every card has something to show (car online, dishwasher mid-cycle).
@@ -323,6 +324,8 @@ const list: HassEntity[] = [
   ...deskEntities(),
   // Health devices, router, gateway and batteries (mock/extras.ts).
   ...extraEntities(),
+  // Money helpers for the Money page (mock/finance.ts).
+  ...financeEntities(),
 ];
 
 export const FIXTURES: HassEntities = Object.fromEntries(list.map((x) => [x.entity_id, x]));

@@ -8,6 +8,8 @@ import { usePage, type Page } from '../layout/pages';
 import { showOnClean } from '../layout/CleanPage';
 import { isNight, washerDone } from '../lib/attention';
 import { useIssues } from './useIssues';
+import { daysUntil } from '../lib/finance';
+import { useFinance } from '../money/useFinance';
 
 interface Item {
   id: string;
@@ -34,12 +36,19 @@ function useAttention(): Item[] {
   const issues = useIssues();
   const dw = APPLIANCES.dishwasher;
   const [running, door, dwState, lock] = useEntities([APPLIANCES.washer.running, APPLIANCES.washer.door, dw.state, CAR.lock]);
+  const bill = useFinance()?.bill;
   const items: Item[] = issues
     .filter((i) => i.id !== 'offline')
     .map((i) => ({ id: i.id, icon: iconOf(i.id), text: i.text, tone: i.severity, page: i.id === 'rain' ? ('commute' as const) : undefined }));
   if (lock?.state === 'unlocked' && isNight(now)) items.push({ id: 'car', icon: 'unlock', text: `${CAR.name} is unlocked`, tone: 'warn', page: 'commute' });
   const s = dwState && !isUnavailable(dwState) ? dwState.state.replace(/^.*\./, '').toLowerCase() : '';
   if (s === 'actionrequired' || s === 'error') items.push({ id: 'dw', icon: 'dishwasher', text: 'Dishwasher needs attention', tone: 'warn', page: 'clean' });
+  // A card bill due within 3 days (no amount: the wall screen is seen by anyone in the room).
+  const billDays = bill?.due ? daysUntil(bill.due, now) : undefined;
+  if (billDays !== undefined && billDays <= 3) {
+    const when = billDays < 0 ? 'was due' : billDays === 0 ? 'due today' : billDays === 1 ? 'due tomorrow' : `due in ${billDays} days`;
+    items.push({ id: 'bill', icon: 'creditCard', text: `${bill!.card ? `${bill!.card} bill` : 'Card bill'} ${when}`, tone: 'warn', page: 'money' });
+  }
   const washed = washerDone(running, door, now.getTime());
   if (washed !== null) items.push({ id: 'washer', icon: 'washer', text: `Washer done ${ago(washed, now.getTime())}`, tone: 'done' });
   if (s === 'finished') items.push({ id: 'dw', icon: 'dishwasher', text: 'Dishwasher finished', tone: 'done', page: 'clean' });
