@@ -66,3 +66,53 @@ export function financeEntities(): HassEntity[] {
     e('input_datetime.fold_data_as_of', `${ymd(asOf)} ${pad(asOf.getHours())}:${pad(asOf.getMinutes())}:00`, 'Fold Data As Of', false),
   ];
 }
+
+// The chart data the sync writes into the hidden 'dashboard-money' dashboard
+// (lib/finance.ts, parseMoneyHistory): a year of daily net worth (salary in on
+// the 1st, card bills and rent out, ending at today's figure), twelve months of
+// spending by category, and the recurring payments coming up.
+export function mockMoneyHistory() {
+  let seed = 7;
+  const rand = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days: [string, number][] = [];
+  let v = banks + investments - debt - 210000;
+  for (let i = 365; i >= 1; i--) {
+    const d = new Date(today.getTime() - i * 86_400_000);
+    if (d.getDate() === 1) v += 98000;
+    if (d.getDate() === 3) v -= 40000;
+    if (d.getDate() === 12) v -= 26000 + rand() * 12000;
+    v += (rand() - 0.47) * 2600;
+    days.push([ymd(d), Math.round(v)]);
+  }
+  const shift = banks + investments - debt - days[days.length - 1][1];
+  const net_worth = days.map(([d, x], i) => [d, Math.round(x + (shift * i) / days.length)]);
+  const spending = Array.from({ length: 12 }, (_, i) => {
+    const m = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
+    const part = i === 11 ? now.getDate() / 30 : 1;
+    const c = (base: number, spread = 0.35) => Math.round(base * part * (1 - spread / 2 + rand() * spread));
+    const categories = {
+      'Credit Bill': c(42000),
+      'Food & Drinks': c(14500),
+      Groceries: c(9800),
+      Transport: c(5200, 0.6),
+      Bill: c(i === 11 ? 3000 : 46500, 0.05),
+      Shopping: c(7000, 1.2),
+      Subscription: c(1900, 0.1),
+      Fitness: c(i % 6 === 2 ? 18000 : 1200, 0.2),
+      Untagged: c(4200, 0.8),
+    };
+    const total = Object.values(categories).reduce((s, x) => s + x, 0);
+    return { month: `${m.getFullYear()}-${pad(m.getMonth() + 1)}`, total, categories };
+  });
+  const next = (day: number) => ymd(new Date(now.getFullYear(), now.getMonth() + (now.getDate() >= day ? 1 : 0), day));
+  const upcoming = [
+    { date: next(1), name: 'Rent', amount: 40000, category: 'Bill' },
+    { date: next(10), name: 'Mutual fund SIP', amount: 10000, category: 'Investment' },
+    { date: next(18), name: 'Streaming', amount: 649, category: 'Subscription' },
+  ];
+  return { version: 1, updated: iso, net_worth, spending, upcoming };
+}

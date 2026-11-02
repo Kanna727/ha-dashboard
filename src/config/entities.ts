@@ -73,7 +73,14 @@ export const VACUUM: NonNullable<DashboardConfig['VACUUM']> = { ...cfg.VACUUM };
 export const DESK: NonNullable<DashboardConfig['DESK']> = { ...cfg.DESK };
 export const HEALTH = { people: [] as NonNullable<NonNullable<DashboardConfig['HEALTH']>['people']>, ...cfg.HEALTH };
 export const BATTERIES = { low: 20, hide: [] as string[], ...cfg.BATTERIES };
-export const FINANCE = { prefix: 'fold', hide: ['tablet'] as string[], cardColors: {} as Record<string, [string, string]>, ...cfg.FINANCE };
+export const FINANCE = {
+  prefix: 'fold',
+  hide: ['tablet'] as string[],
+  cardColors: {} as Record<string, [string, string]>,
+  store: 'dashboard-money',
+  skipCategories: ['Credit Bill'],
+  ...cfg.FINANCE,
+};
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };
 export const HOME_IDLE = { minutes: 2, layouts: ['tablet'] as string[], ...cfg.HOME_IDLE };
 export const SCREEN_POWER = {

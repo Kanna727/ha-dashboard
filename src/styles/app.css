@@ -2864,3 +2864,50 @@ html.night .sky { display: none; }
 .money-tile-side b { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .phone-body .money-tile-side { gap: 14px; }
 .phone-body .money-tile-side b { font-size: 18px; }
+
+/* Money charts (money/MoneyCharts.tsx). */
+.nw-ranges { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--tile); border: 1px solid var(--border); }
+.nw-ranges button { padding: 5px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.nw-ranges button.on { background: rgba(255, 255, 255, 0.14); color: var(--text); }
+.nw-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; }
+.nw-value { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.nw-sub { font-size: 14px; font-weight: 700; }
+.money-networth .neg { color: var(--danger); }
+.money-networth .pos { color: var(--ok); }
+.nw-chart { position: relative; margin-top: 12px; padding-bottom: 22px; touch-action: pan-y; cursor: crosshair; }
+.nw-chart svg { display: block; width: 100%; height: 170px; overflow: visible; }
+.nw-zero { stroke: rgba(255, 255, 255, 0.28); stroke-dasharray: 4 5; }
+.nw-cursor { stroke: rgba(255, 255, 255, 0.35); }
+.nw-dot { position: absolute; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%; border: 2px solid #0b0f17; pointer-events: none; }
+.nw-ticks { position: absolute; left: 0; right: 0; bottom: 0; height: 16px; }
+.nw-ticks span { position: absolute; transform: translateX(-50%); font-size: 11.5px; font-weight: 700; color: var(--label); white-space: nowrap; }
+.nw-range-line { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 4px; font-size: 13px; font-weight: 600; }
+
+.spend-charts { display: grid; gap: 16px; margin-top: 16px; }
+.spend-sec { display: grid; gap: 8px; min-width: 0; }
+.spend-sec > .label { font-size: 11.5px; }
+.spend-caption { font-size: 13.5px; font-weight: 600; }
+.cat-bars { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.cat-bars li { display: grid; grid-template-columns: minmax(0, 9em) minmax(0, 1fr) auto; align-items: center; gap: 10px; font-size: 13.5px; }
+.cat-name { display: flex; align-items: center; gap: 7px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-name i { flex-shrink: 0; width: 9px; height: 9px; border-radius: 3px; }
+.cat-track { position: relative; height: 9px; border-radius: 5px; background: rgba(255, 255, 255, 0.05); }
+.cat-track > i { display: block; height: 100%; border-radius: 5px; opacity: 0.9; }
+.cat-prev { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--text); opacity: 0.7; }
+.cat-head { display: flex; justify-content: space-between; gap: 10px; }
+.cat-key { display: inline-flex; align-items: center; gap: 6px; }
+.cat-key b { width: 2px; height: 12px; border-radius: 1px; background: var(--text); opacity: 0.7; }
+.cat-v { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+
+.coming-up { margin-top: 16px; display: grid; gap: 8px; }
+.coming-up > .label { font-size: 11.5px; }
+.coming-up ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.coming-up li { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 7px 10px 7px 7px; border-radius: 14px; background: var(--tile); border: 1px solid var(--border); }
+.coming-up li.soon { border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.cu-date { display: grid; justify-items: center; line-height: 1.05; padding: 4px 0; border-radius: 10px; background: rgba(255, 255, 255, 0.06); }
+.cu-date b { font-size: 17px; }
+.cu-date small { font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+.coming-up li.soon .cu-date b { color: var(--warn); }
+.cu-name { display: grid; min-width: 0; font-weight: 700; font-size: 14px; }
+.cu-name small { font-size: 12px; font-weight: 600; }
+.cu-amt { font-weight: 800; font-variant-numeric: tabular-nums; }

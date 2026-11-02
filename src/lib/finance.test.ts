@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
-import { bankColor, daysUntil, dueLabel, findFinance, fmtInr, fmtShort, isBillCard, parseAmount, parseBill, parseTransaction, parseWhen, scoreBand } from './finance';
+import { bankColor, categoryColor, daysUntil, dueLabel, findFinance, fmtInr, fmtShort, isBillCard, monthSpend, netWorthRange, parseAmount, parseBill, parseMoneyHistory, parseTransaction, parseWhen, scoreBand } from './finance';
 
 const e = (entity_id: string, state: string, friendly_name?: string): HassEntity => ({
   entity_id,
@@ -116,5 +116,39 @@ describe('dates and formatting', () => {
     expect([scoreBand(804).label, scoreBand(782).label, scoreBand(720).tone, scoreBand(600).tone]).toEqual(['Excellent', 'Very good', 'fair', 'bad']);
     expect(bankColor('HDFC')).toBe('#3b82f6');
     expect(bankColor('Some New Bank')).toBe(bankColor('Some New Bank'));
+  });
+});
+
+describe('chart data', () => {
+  const h = parseMoneyHistory({
+    version: 1,
+    updated: '2026-11-03T07:28:00+05:30',
+    net_worth: [['2026-11-02', 120], ['2026-11-01', '100'], ['bad', 5], ['2026-10-01', 90]],
+    spending: [
+      { month: '2026-11', total: 500, categories: { 'Credit Bill': 300, Food: 150, Fuel: 50, Zero: 0 } },
+      { month: '2026-10', categories: { Food: 80, Rent: 120 } },
+      { month: 'oops', total: 1 },
+    ],
+    upcoming: [{ date: '2026-12-01', name: 'Rent', amount: 400 }, { date: '2026-11-20', name: 'Gym', amount: '30', category: 'Fitness' }, { name: 'x' }],
+  });
+  it('parses series, sorted, dropping what is malformed', () => {
+    expect(h.netWorth.map((p) => p.v)).toEqual([90, 100, 120]);
+    expect(h.months.map((m) => [m.month, m.total])).toEqual([['2026-10', 200], ['2026-11', 500]]);
+    expect(h.months[1].categories[0]).toEqual(['Credit Bill', 300]);
+    expect(h.upcoming.map((u) => u.name)).toEqual(['Gym', 'Rent']);
+    expect(h.updated).toBe(Date.parse('2026-11-03T07:28:00+05:30'));
+    expect(parseMoneyHistory(null)).toEqual({ updated: undefined, netWorth: [], months: [], upcoming: [] });
+  });
+  it('leaves card bill payments out of a month', () => {
+    expect(monthSpend(h.months[1], ['credit bill'])).toEqual({ total: 200, categories: [['Food', 150], ['Fuel', 50]] });
+  });
+  it('gives the change, low and high over a range', () => {
+    const r = netWorthRange(h.netWorth, 7, new Date(2026, 10, 3).getTime());
+    expect(r.points.length).toBe(2);
+    expect([r.change, r.low?.v, r.high?.v]).toEqual([20, 100, 120]);
+  });
+  it('keeps a category in one colour', () => {
+    expect(categoryColor('Food')).toBe(categoryColor('food'));
+    expect(categoryColor('Untagged')).toBe('#64748b');
   });
 });

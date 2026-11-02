@@ -254,3 +254,92 @@ export function bankColor(bank: string): string {
   const h = [...bank.toLowerCase()].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   return SPARE[h % SPARE.length];
 }
+
+// ---- Chart data ----
+// A sync writes longer series than HA keeps for helpers into a hidden storage
+// dashboard (FINANCE.store, default 'dashboard-money'), once a day:
+//   { version: 1, updated: ISO,
+//     net_worth: [["YYYY-MM-DD", value], ...]          daily, up to a year
+//     spending: [{ month: "YYYY-MM", total, categories: { name: amount } }, ...]
+//     upcoming: [{ date: "YYYY-MM-DD", name, amount, category? }, ...] }
+export interface MonthSpend {
+  month: string;
+  total: number;
+  categories: [string, number][];
+}
+export interface Upcoming {
+  date: string;
+  name: string;
+  amount: number;
+  category?: string;
+}
+export interface MoneyHistory {
+  updated?: number;
+  netWorth: { t: number; v: number }[];
+  months: MonthSpend[];
+  upcoming: Upcoming[];
+}
+
+const isDay = (s: unknown): s is string => typeof s === 'string' && /^\d{4}-\d\d-\d\d/.test(s);
+const dayMs = (s: string) => {
+  const [y, m, d] = s.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, d).getTime();
+};
+const fin = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && Number.isFinite(parseFloat(v)) ? parseFloat(v) : undefined);
+
+// Anything malformed is dropped rather than failing the page.
+export function parseMoneyHistory(doc: unknown): MoneyHistory {
+  const d = (doc && typeof doc === 'object' ? doc : {}) as Record<string, unknown>;
+  const netWorth = (Array.isArray(d.net_worth) ? d.net_worth : [])
+    .map((p) => (Array.isArray(p) && isDay(p[0]) && fin(p[1]) !== undefined ? { t: dayMs(p[0]), v: fin(p[1])! } : undefined))
+    .filter((p): p is { t: number; v: number } => !!p)
+    .sort((a, b) => a.t - b.t);
+  const months = (Array.isArray(d.spending) ? d.spending : [])
+    .map((m) => {
+      const r = (m && typeof m === 'object' ? m : {}) as Record<string, unknown>;
+      if (typeof r.month !== 'string' || !/^\d{4}-\d\d$/.test(r.month)) return undefined;
+      const cats = r.categories && typeof r.categories === 'object' ? Object.entries(r.categories as Record<string, unknown>) : [];
+      const categories = cats.map(([k, v]) => [k, fin(v) ?? 0] as [string, number]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+      return { month: r.month, total: fin(r.total) ?? categories.reduce((s, [, v]) => s + v, 0), categories };
+    })
+    .filter((m): m is MonthSpend => !!m)
+    .sort((a, b) => a.month.localeCompare(b.month));
+  const upcoming = (Array.isArray(d.upcoming) ? d.upcoming : [])
+    .map((u): Upcoming | undefined => {
+      const r = (u && typeof u === 'object' ? u : {}) as Record<string, unknown>;
+      const amount = fin(r.amount);
+      if (!isDay(r.date) || typeof r.name !== 'string' || amount === undefined) return undefined;
+      return { date: r.date.slice(0, 10), name: r.name, amount, category: typeof r.category === 'string' ? r.category : undefined };
+    })
+    .filter((u): u is Upcoming => !!u)
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const updated = typeof d.updated === 'string' ? parseWhen(d.updated) : undefined;
+  return { updated, netWorth, months, upcoming };
+}
+
+// A month's spending without the skipped categories (card bill payments are
+// money moving to your own cards, already counted when the card was used).
+export function monthSpend(m: MonthSpend, skip: string[]): { total: number; categories: [string, number][] } {
+  const drop = new Set(skip.map((s) => s.toLowerCase()));
+  const categories = m.categories.filter(([k]) => !drop.has(k.toLowerCase()));
+  const skipped = m.categories.filter(([k]) => drop.has(k.toLowerCase())).reduce((s, [, v]) => s + v, 0);
+  return { total: Math.max(0, m.total - skipped), categories };
+}
+
+// The net-worth points of the last `days` days, and the change over them.
+export function netWorthRange(points: { t: number; v: number }[], days: number, now: number) {
+  const from = now - days * 86_400_000;
+  const pts = points.filter((p) => p.t >= from);
+  if (pts.length < 2) return { points: pts, change: 0, low: pts[0], high: pts[0] };
+  const low = pts.reduce((a, b) => (b.v < a.v ? b : a));
+  const high = pts.reduce((a, b) => (b.v > a.v ? b : a));
+  return { points: pts, change: pts[pts.length - 1].v - pts[0].v, low, high };
+}
+
+// A steady colour per spending category, so a category keeps its colour across months.
+const CATEGORY_COLORS = ['#fbbf24', '#38bdf8', '#a78bfa', '#34d399', '#f472b6', '#fb923c', '#60a5fa', '#2dd4bf', '#f87171', '#a3e635'];
+export function categoryColor(name: string): string {
+  if (/^untagged$/i.test(name)) return '#64748b';
+  const h = [...name.toLowerCase()].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 11);
+  return CATEGORY_COLORS[h % CATEGORY_COLORS.length];
+}

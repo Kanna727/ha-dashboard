@@ -4,6 +4,8 @@ import { GlanceTile } from '../components/GlanceTile';
 import { Icon } from '../components/Icon';
 import { useNow } from '../hooks/useNow';
 import { bankColor, daysUntil, dueLabel, fmtInr, fmtShort, isBillCard, scoreBand, type Account, type Finance } from '../lib/finance';
+import { Amt } from './Amt';
+import { ComingUp, SpendingCharts } from './MoneyCharts';
 import { toggleAmounts, useAmountsHidden } from './privacy';
 import { useFinance } from './useFinance';
 
@@ -12,26 +14,6 @@ import { useFinance } from './useFinance';
 // credit card drawn as a card, the bank accounts as a passbook, and beside them
 // the next bill, credit scores, investments and this month's spending.
 // Data: lib/finance.ts (found by name); amounts blur on the wall screens (privacy.ts).
-
-// An amount that blurs while amounts are hidden; a tap on a blurred one shows them.
-export function Amt({ children, peek = true }: { children: ReactNode; peek?: boolean }) {
-  const hidden = useAmountsHidden();
-  return (
-    <span
-      className={`amt ${hidden ? 'hidden' : ''}`}
-      onClick={
-        hidden && peek
-          ? (e) => {
-              e.stopPropagation();
-              toggleAmounts();
-            }
-          : undefined
-      }
-    >
-      {children}
-    </span>
-  );
-}
 
 // Under a lakh in full (₹84,250), above that short (₹4.13 L).
 const fmtAuto = (n: number) => (Math.abs(n) < 1e5 ? fmtInr(n) : fmtShort(n));
@@ -235,6 +217,7 @@ export function BillPanel() {
           )}
         </dl>
       )}
+      <ComingUp />
     </section>
   );
 }
@@ -375,6 +358,7 @@ export function SpendPanel() {
           </div>
         </>
       )}
+      <SpendingCharts />
       {tx && (
         <div className="money-tx">
           <span className="label">Last transaction</span>

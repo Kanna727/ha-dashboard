@@ -15,6 +15,7 @@ import { TopBar } from '../panels/TopBar';
 import { WeatherPanel } from '../panels/WeatherPanel';
 import { BillPanel, CardsPanel, InvestmentsPanel, MoneySummary, PassbookPanel, ScoresPanel, SpendPanel } from '../money/MoneyPanels';
 import { useHasMoney } from '../money/useFinance';
+import { NetWorthPanel } from '../money/MoneyCharts';
 import { CleanPage, useHasClean } from './CleanPage';
 import { PAGES, usePage, type Page } from './pages';
 import { Pager } from './Pager';
@@ -61,7 +62,7 @@ function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { classNam
       return {
         className: 'cols cols-money',
         columns: [
-          [card('moneySummary', <MoneySummary />), card('cards', <CardsPanel />), card('passbook', <PassbookPanel />)],
+          [card('moneySummary', <MoneySummary />), card('networth', <NetWorthPanel />), card('cards', <CardsPanel />), card('passbook', <PassbookPanel />)],
           [card('bill', <BillPanel />), card('scores', <ScoresPanel />), card('investments', <InvestmentsPanel />), card('spend', <SpendPanel />)],
         ],
       };
@@ -110,6 +111,7 @@ const LABELS: Record<string, string> = {
   glance: 'At a glance',
   attention: 'Needs attention',
   moneySummary: 'Money',
+  networth: 'Net worth',
   cards: 'Credit cards',
   passbook: 'Passbook',
   bill: 'Next card bill',
@@ -154,6 +156,7 @@ function PhoneTab({ page }: { page: Page }) {
         <>
           <MoneySummary />
           <BillPanel />
+          <NetWorthPanel />
           <CardsPanel />
           <SpendPanel />
           <PassbookPanel />
