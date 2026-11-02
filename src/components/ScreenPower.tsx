@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { ROOMS, SCREEN_POWER, VACATION_MODE } from '../config/entities';
 import { isOn } from '../ha/format';
 import { useEntities, useEntity } from '../ha/store';
@@ -31,6 +31,18 @@ export function useScreenOn() {
   );
 }
 
+// Whether the extension has answered: this device is the wall screen, whatever
+// its layout (NightMode then comes up on any layout when the screen may go off).
+let extension = false;
+const extensionListeners = new Set<() => void>();
+const subscribeExtension = (l: () => void) => {
+  extensionListeners.add(l);
+  return () => {
+    extensionListeners.delete(l);
+  };
+};
+export const useScreenExtension = () => useSyncExternalStore(subscribeExtension, () => extension);
+
 // Tells the ChromeOS extension (kiosk-extension/) whether the wall screen should
 // stay on. Sent as a window message on every change and once a minute, since
 // the extension's worker may have restarted. Without the extension nobody
@@ -52,6 +64,8 @@ export function ScreenPower() {
       if (e.source !== window || e.data?.source !== 'ha-dashboard-screen') return;
       window.removeEventListener('message', onReply);
       console.info(`Screen power extension connected (wake ${e.data.canWake ? 'supported' : 'not supported'}).`);
+      extension = true;
+      extensionListeners.forEach((l) => l());
     };
     window.addEventListener('message', onReply);
     return () => window.removeEventListener('message', onReply);

@@ -17,8 +17,7 @@ Once the screen may go off, the dashboard shows its dim night screen after a
 minute without a touch and stops all its animations: ChromeOS keeps a display on
 while anything large on it keeps moving, as it would for a video. The display
 then goes dark after ChromeOS's own idle delay, which takes several minutes.
-This needs the dashboard's tablet layout (`?layout=tablet`), where the night
-screen is on.
+This works in any dashboard layout.
 
 ## Install
 
