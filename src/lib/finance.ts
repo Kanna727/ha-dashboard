@@ -45,7 +45,12 @@ export interface Finance {
   // The next card bill: which card, how much, when (YYYY-MM-DD).
   bill?: { card: string; last4?: string; amount?: number; due?: string };
   lastTransaction?: { amount?: number; merchant: string; category?: string; account?: string };
+  // When the money app last fetched the bank balances (its own "as of"; banks
+  // share them only a few times a day, so this lags hours behind the sync).
   asOf?: number;
+  // When any of the numbers last changed in HA: the sync writes only what
+  // changed, so this is when the data last moved (cards, spends, transactions).
+  changedAt?: number;
 }
 
 const TOTALS = {
@@ -173,7 +178,29 @@ export function findFinance(states: HassEntities, prefix = 'fold'): Finance | un
   if (bill && f.cardsUnpaid !== 0) f.bill = { ...bill, due: due && /^\d{4}-\d\d-\d\d/.test(due) ? due.slice(0, 10) : undefined };
   f.lastTransaction = parseTransaction(byKey.get('last_transaction')?.state);
   f.asOf = parseWhen(byKey.get('data_as_of')?.state);
+  const changed = [...byKey.values()].map((e) => Date.parse(e.last_changed)).filter(Number.isFinite);
+  if (changed.length) f.changedAt = Math.max(...changed);
   return f;
+}
+
+// "12 min ago", "3h ago", "2d ago".
+export function fmtAgo(t: number, now: number): string {
+  const m = Math.max(0, Math.round((now - t) / 60_000));
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60);
+  return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
+}
+
+// A time of day today ("10:26 am"), "yesterday 10:17 am", or a date ("2 Nov").
+export function fmtWhen(t: number, now: Date): string {
+  const d = new Date(t);
+  const day = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const time = d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+  const diff = Math.round((day(now) - day(d)) / 86_400_000);
+  if (diff === 0) return time;
+  if (diff === 1) return `yesterday ${time}`;
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
 // Whole days from today to a YYYY-MM-DD date (local), negative once it has passed.

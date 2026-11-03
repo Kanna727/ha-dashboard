@@ -3,7 +3,7 @@ import { FINANCE } from '../config/entities';
 import { GlanceTile } from '../components/GlanceTile';
 import { Icon } from '../components/Icon';
 import { useNow } from '../hooks/useNow';
-import { bankColor, daysUntil, dueLabel, fmtInr, fmtShort, isBillCard, scoreBand, type Account, type Finance } from '../lib/finance';
+import { bankColor, daysUntil, dueLabel, fmtAgo, fmtInr, fmtWhen, fmtShort, isBillCard, scoreBand, type Account, type Finance } from '../lib/finance';
 import { Amt } from './Amt';
 import { ComingUp, SpendingCharts } from './MoneyCharts';
 import { toggleAmounts, useAmountsHidden } from './privacy';
@@ -23,11 +23,13 @@ const dueDay = (date: string) => {
   return new Date(y, m - 1, d);
 };
 
-function updated(asOf: number | undefined, now: number): { text: string; stale: boolean } | undefined {
-  if (asOf === undefined) return undefined;
-  const h = Math.max(0, (now - asOf) / 3_600_000);
-  const text = h < 1 ? 'Updated just now' : h < 24 ? `Updated ${Math.round(h)}h ago` : `Updated ${Math.round(h / 24)}d ago`;
-  return { text, stale: h >= 24 };
+// "Updated" is when any number last changed (the sync writes only changes);
+// orange once nothing has moved for a day. The money app's own "as of" is only
+// when it last fetched the bank balances, hours behind (the owner found
+// "Updated 11h ago" misleading while the sync ran every hour).
+function updated(at: number | undefined, now: number): { text: string; stale: boolean } | undefined {
+  if (at === undefined) return undefined;
+  return { text: `Updated ${fmtAgo(at, now)}`, stale: now - at >= 86_400_000 };
 }
 
 function Head({ label, summary, warn, children }: { label: string; summary?: ReactNode; warn?: boolean; children?: ReactNode }) {
@@ -53,7 +55,7 @@ export function MoneySummary() {
   const f = useFinance();
   const now = useNow(60_000);
   if (!f) return null;
-  const up = updated(f.asOf, now.getTime());
+  const up = updated(f.changedAt ?? f.asOf, now.getTime());
   const cash = f.liquid ?? f.bankTotal;
   const stats: [string, number | undefined][] = [
     ['Net worth', f.netWorth],
@@ -79,6 +81,7 @@ export function MoneySummary() {
             </div>
           ))}
       </div>
+      {f.asOf !== undefined && f.changedAt !== undefined && <p className="money-asof">Bank balances as of {fmtWhen(f.asOf, now)}</p>}
     </section>
   );
 }
