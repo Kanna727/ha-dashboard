@@ -1,3 +1,10 @@
+## [1.55.2](https://github.com/Kanna727/ha-dashboard/compare/v1.55.1...v1.55.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **money:** "Updated" says when the numbers last changed, with the bank balances' time below ([#76](https://github.com/Kanna727/ha-dashboard/issues/76)) ([7770a82](https://github.com/Kanna727/ha-dashboard/commit/7770a82675d875acfa1913a6703cbf51260cbd6a))
+
 ## [1.55.1](https://github.com/Kanna727/ha-dashboard/compare/v1.55.0...v1.55.1) (2026-11-02)
 
 
