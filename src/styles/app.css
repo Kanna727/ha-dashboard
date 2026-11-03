@@ -2766,6 +2766,7 @@ html.night .sky { display: none; }
 .money-invest .pos, .money-tx-amt.pos { color: var(--ok); }
 .money-eye { margin-left: 4px; }
 .money-stats { display: flex; flex-wrap: wrap; gap: 14px 28px; justify-content: space-between; }
+.money-asof { margin: 12px 0 0; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .money-stat { display: grid; gap: 4px; min-width: 0; }
 .money-stat .label { font-size: 11.5px; letter-spacing: 0.1em; }
 .money-stat-v { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }

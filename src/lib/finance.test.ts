@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { HassEntities, HassEntity } from 'home-assistant-js-websocket';
-import { bankColor, daysUntil, rowColors, dueLabel, findFinance, fmtInr, fmtShort, isBillCard, monthSpend, netWorthRange, parseAmount, parseBill, parseMoneyHistory, parseTransaction, parseWhen, scoreBand } from './finance';
+import { bankColor, daysUntil, fmtAgo, fmtWhen, rowColors, dueLabel, findFinance, fmtInr, fmtShort, isBillCard, monthSpend, netWorthRange, parseAmount, parseBill, parseMoneyHistory, parseTransaction, parseWhen, scoreBand } from './finance';
 
-const e = (entity_id: string, state: string, friendly_name?: string): HassEntity => ({
+const e = (entity_id: string, state: string, friendly_name?: string, last_changed = ''): HassEntity => ({
   entity_id,
   state,
   attributes: friendly_name ? { friendly_name } : {},
-  last_changed: '',
+  last_changed,
   last_updated: '',
   context: { id: '', parent_id: null, user_id: null },
 });
@@ -104,6 +104,18 @@ describe('findFinance', () => {
     expect(paid('Kotak ••4410 · ₹150.00 due 05 Nov', '0')).toBeUndefined();
     expect(paid('Kotak ••4410 · ₹150.00 due 05 Nov', '150')?.due).toBe('2026-11-05');
   });
+  it('knows when any number last changed, apart from when the banks were fetched', () => {
+    const g = findFinance(
+      states(
+        e('input_number.fold_net_worth', '1', undefined, '2026-11-03T10:00:00Z'),
+        e('input_text.fold_last_transaction', '−₹1.00 · A · B · C', undefined, '2026-11-03T15:30:00Z'),
+        e('input_text.fold_sync_cursor', 'x', undefined, '2026-11-03T16:00:00Z'),
+        e('input_datetime.fold_data_as_of', '2026-11-03 10:26:16', undefined, '2026-11-03T05:00:00Z'),
+      ),
+    )!;
+    expect(g.changedAt).toBe(Date.parse('2026-11-03T15:30:00Z'));
+    expect(g.asOf).toBe(new Date(2026, 10, 3, 10, 26, 16).getTime());
+  });
   it('falls back to the object id without a friendly name', () => {
     const g = findFinance(states(e('sensor.money_bank_hdfc_1234', '10')), 'money')!;
     expect(g.banks[0]).toMatchObject({ bank: 'hdfc', last4: '1234' });
@@ -120,6 +132,14 @@ describe('dates and formatting', () => {
     expect(daysUntil('2026-11-03', now)).toBe(0);
     expect(daysUntil('2026-11-01', now)).toBe(-2);
     expect([dueLabel(2), dueLabel(1), dueLabel(0), dueLabel(-1)]).toEqual(['Due in 2 days', 'Due tomorrow', 'Due today', '1 day overdue']);
+  });
+  it('says how long ago and when', () => {
+    const now = new Date(2026, 10, 3, 21, 0);
+    const at = (h: number, m = 0, d = 3) => new Date(2026, 10, d, h, m).getTime();
+    expect([fmtAgo(at(21), now.getTime()), fmtAgo(at(20, 48), now.getTime()), fmtAgo(at(10, 26), now.getTime()), fmtAgo(at(9, 0, 1), now.getTime())]).toEqual(['just now', '12 min ago', '11h ago', '3d ago']);
+    expect(fmtWhen(at(10, 26), now)).toMatch(/^10:26\s?am$/);
+    expect(fmtWhen(at(10, 17, 2), now)).toMatch(/^yesterday 10:17\s?am$/);
+    expect(fmtWhen(at(10, 0, 1), now)).toBe('1 Nov');
   });
   it('formats rupees', () => {
     expect(fmtInr(412500.6)).toBe('₹4,12,501');
