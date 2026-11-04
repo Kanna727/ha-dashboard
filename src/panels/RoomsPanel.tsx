@@ -1,5 +1,6 @@
 import { useMemo, useSyncExternalStore, type ReactNode } from 'react';
-import { APPLIANCES, FAN_MANUAL_OFF, ROOMS, type RoomDef } from '../config/entities';
+import { APPLIANCES, FAN_MANUAL_OFF, type RoomDef } from '../config/entities';
+import { useRooms } from './useRooms';
 import { useHass } from '../ha/api';
 import { store, useAllEntities, useEntities, useEntity } from '../ha/store';
 import { useGates } from '../ha/automations';
@@ -448,13 +449,14 @@ function RoomRow({ room, gates }: { room: RoomDef; gates: Gate[] }) {
 export function RoomsPanel() {
   const all = useAllEntities();
   const gates = useGates();
-  const litTotal = ROOMS.filter((r) => roomLit(r, all)).length;
+  const rooms = useRooms();
+  const litTotal = rooms.filter((r) => roomLit(r, all)).length;
 
   return (
     <section className="panel rooms-panel">
       <PanelHead label="Rooms" summary={litTotal ? `${litTotal} room${litTotal > 1 ? 's' : ''} lit` : 'All dark'} />
       <div className="room-rows">
-        {ROOMS.map((r) => <RoomRow key={r.id} room={r} gates={gates} />)}
+        {rooms.map((r) => <RoomRow key={r.id} room={r} gates={gates} />)}
       </div>
     </section>
   );

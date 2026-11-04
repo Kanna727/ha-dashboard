@@ -125,6 +125,7 @@ const list: HassEntity[] = [
   e('binary_sensor.common_bathroom_common_bathroom_presence_sensor_occupancy', 'off'),
   e('binary_sensor.common_bathroom_common_bathroom_door_sensor_door', 'unavailable'),
   e('light.common_bathroom_common_bathroom_light', 'off', rgbw),
+  e('light.common_bathroom_common_area_light', 'off', rgbw), // not in the config: discovered from its area
   e('switch.common_bathroom_common_bathroom_geyser', 'off'),
   e('binary_sensor.master_bathroom_master_bathroom_presence_sensor_occupancy', 'off'),
   e('binary_sensor.master_bathroom_master_bathroom_door_sensor_door', 'on'),
@@ -354,6 +355,8 @@ export const REGISTRY = {
     { id: 'dev_kitchen_light', name: 'Kitchen Light', areaId: 'kitchen', model: 'SHTW', disabled: false },
     { id: 'dev_pc', name: 'DESKTOP-PC', areaId: 'workroom', model: 'Windows', disabled: false },
     { id: 'dev_cb_door', name: 'Common Bath Door Sensor', areaId: 'common_bathroom', model: 'Door sensor', disabled: false },
+    { id: 'dev_cb_area_light', name: 'Common Area Light', areaId: 'common_bathroom', model: 'A60', disabled: false },
+    { id: 'dev_bedroom_fan', name: 'Bedroom Fan', areaId: 'bedroom', model: 'Ceiling fan', disabled: false },
     { id: 'dev_dot_bed', name: 'Bedroom Dot', areaId: 'bedroom', model: 'Echo Dot', disabled: false },
     { id: 'dev_weather', name: 'Forecast Home', areaId: null, model: null, disabled: false },
     { id: 'dev_car', name: 'MY CAR', areaId: null, model: 'Sport (2024)', disabled: false },
@@ -388,6 +391,8 @@ export const REGISTRY = {
     { entityId: 'light.kitchen_kitchen_t_light', deviceId: 'dev_kitchen_light', platform: 'wiz' },
     { entityId: 'media_player.desktop_pc', deviceId: 'dev_pc', platform: 'hass_agent' },
     { entityId: 'binary_sensor.common_bathroom_common_bathroom_door_sensor_door', deviceId: 'dev_cb_door', platform: 'matter' },
+    { entityId: 'light.common_bathroom_common_area_light', deviceId: 'dev_cb_area_light', platform: 'matter' },
+    { entityId: 'light.bedroom_fan_led', deviceId: 'dev_bedroom_fan', platform: 'atomberg', name: 'LED' }, // part of the fan: never a room light
     { entityId: 'media_player.bedroom_dot', deviceId: 'dev_dot_bed', platform: 'alexa_devices' },
     { entityId: 'weather.forecast_home', deviceId: 'dev_weather', platform: 'weather_mock' },
     { entityId: 'sensor.forecast_home_weather_condition', deviceId: 'dev_weather', platform: 'weather_mock', translationKey: 'weather_condition' },
