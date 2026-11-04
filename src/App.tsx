@@ -3,6 +3,7 @@ import { ModalProvider } from './components/Modal';
 import { SheetProvider } from './components/Sheet';
 import { ToastProvider } from './components/Toasts';
 import { Alerts } from './components/Alerts';
+import { Doorbell } from './components/Doorbell';
 import { NightMode } from './components/NightMode';
 import { ScreenPower } from './components/ScreenPower';
 import { IdleHome } from './layout/IdleHome';
@@ -43,6 +44,7 @@ export function App() {
         <ToastProvider>
           <SkyBackdrop />
           <Alerts />
+          <Doorbell />
           <NightMode layout={layout} />
           <IdleHome layout={layout} />
           <ScreenPower />

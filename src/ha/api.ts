@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { CameraState } from './cameraStream';
 
 // connecting:   no connection yet (possibly showing the cached snapshot)
 // live:         connected and the first live state dump has arrived
@@ -143,6 +144,9 @@ export interface HassApi {
   // the call_service event, which only admin users may subscribe to. `ready`
   // says once whether the subscription was accepted.
   subscribeNotifyCalls(cb: (service: string, data: Record<string, unknown>) => void, ready: (ok: boolean) => void): () => void;
+  // Plays a camera's live view in a muted <video> (WebRTC, else HLS) and reports
+  // whether it's playing. Returns a function that stops it.
+  playCamera(entityId: string, video: HTMLVideoElement, onState: (s: CameraState) => void): () => void;
   logout(): void;
 }
 

@@ -12,3 +12,8 @@ declare module 'virtual:dashboard-config' {
   const local: import('./config/load').StoredConfig | null;
   export default local;
 }
+
+// hls.js ships no types for its light build; it has the same API.
+declare module 'hls.js/light' {
+  export { default } from 'hls.js';
+}

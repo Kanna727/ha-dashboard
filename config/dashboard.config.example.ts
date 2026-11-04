@@ -322,6 +322,9 @@ const config: DashboardConfig = {
   // off at night and on vacation once nobody has been seen in these rooms for
   // holdMinutes; someone being seen there wakes it.
   SCREEN_POWER: { quiet: ['23:00', '06:00'], vacation: true, rooms: ['living_room', 'kitchen'], holdMinutes: 5 },
+  // Doorbell (optional: without it the camera and the press sensor are found by
+  // name). A press shows the camera's live view full screen for `seconds`.
+  DOORBELL: { camera: 'camera.front_door', press: 'binary_sensor.doorbell_pressed', seconds: 60 },
   // Robot vacuum page (optional: without it the first vacuum.* entity is used).
   // It opens by itself while the robot runs; `autoOpen: false` turns that off.
   VACUUM: { entity: 'vacuum.robot', map: 'camera.robot_map' },

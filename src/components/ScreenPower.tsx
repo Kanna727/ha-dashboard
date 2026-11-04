@@ -4,6 +4,7 @@ import { isOn } from '../ha/format';
 import { useEntities, useEntity } from '../ha/store';
 import { useNow } from '../hooks/useNow';
 import { inQuietHours, screenOn, sinceSeenMs } from '../lib/screenPower';
+import { useDoorbellRinging } from './Doorbell';
 
 // ?screenTest=1: quiet hours all day and a 15 s hold, for checking it on the tablet.
 const TEST = new URLSearchParams(window.location.search).has('screenTest');
@@ -19,9 +20,11 @@ export function useScreenOn() {
   const sensors = useEntities(ids);
   const vacation = useEntity(VACATION_MODE || undefined);
   const now = useNow(TEST ? 1000 : 15_000);
+  const ringing = useDoorbellRinging();
 
   return (
     !SCREEN_POWER.enabled ||
+    ringing ||
     screenOn({
       quiet: TEST || inQuietHours(now, SCREEN_POWER.quiet),
       vacation: SCREEN_POWER.vacation && isOn(vacation),

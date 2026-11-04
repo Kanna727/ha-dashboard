@@ -22,6 +22,7 @@ import {
   type TodoItem,
 } from './api';
 import { LAYOUT_DASHBOARD } from '../config/load';
+import { playCamera } from './cameraStream';
 import { loadSnapshot, persistSnapshots } from './snapshot';
 import { store } from './store';
 
@@ -325,6 +326,9 @@ export const haApi: HassApi = {
       cancelled = true;
       unsub.then((u) => u?.()).catch(() => undefined);
     };
+  },
+  playCamera(entityId, video, onState) {
+    return playCamera(getConnection(), HASS_URL, entityId, video, onState);
   },
   logout() {
     saveTokens(null);
