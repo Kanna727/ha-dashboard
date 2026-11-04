@@ -1,3 +1,10 @@
+# [1.57.0](https://github.com/Kanna727/ha-dashboard/compare/v1.56.0...v1.57.0) (2026-11-04)
+
+
+### Features
+
+* **doorbell:** a press shows the door camera live, full screen ([#78](https://github.com/Kanna727/ha-dashboard/issues/78)) ([21d9685](https://github.com/Kanna727/ha-dashboard/commit/21d96859a857ab13a30e2b245ca2d58d828a2db6)), closes [home-assistant/core#186806](https://github.com/home-assistant/core/issues/186806)
+
 # [1.56.0](https://github.com/Kanna727/ha-dashboard/compare/v1.55.2...v1.56.0) (2026-11-04)
 
 
