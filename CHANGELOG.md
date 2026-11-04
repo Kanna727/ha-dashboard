@@ -1,3 +1,10 @@
+# [1.56.0](https://github.com/Kanna727/ha-dashboard/compare/v1.55.2...v1.56.0) (2026-11-04)
+
+
+### Features
+
+* **rooms:** bulbs in a room's HA area show up by themselves ([#77](https://github.com/Kanna727/ha-dashboard/issues/77)) ([0e6f8d6](https://github.com/Kanna727/ha-dashboard/commit/0e6f8d61917d10f57b7b9f27668a49ef15b3b98f))
+
 ## [1.55.2](https://github.com/Kanna727/ha-dashboard/compare/v1.55.1...v1.55.2) (2026-11-03)
 
 
