@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
-import { MUSIC_PLAYERS, ROOMS } from '../config/entities';
+import { useEffect, useMemo, useState } from 'react';
+import { MUSIC_PLAYERS } from '../config/entities';
+import { useRooms } from './useRooms';
 import { useHass, useHassStatus } from '../ha/api';
 import { useEntities } from '../ha/store';
 import { isOn } from '../ha/format';
@@ -75,20 +76,24 @@ function SyncIndicator() {
   );
 }
 
-// Lights and fans of each room, for the leaving-home button.
-const LEAVE_ROOMS = ROOMS.map((r) => ({
-  name: r.name,
-  presence: r.presence,
-  devices: r.controls.filter((c) => !c.readOnly && /^(light|fan)\./.test(c.entity)).map((c) => c.entity),
-}));
-const LEAVE_IDS = [...new Set(LEAVE_ROOMS.flatMap((r) => [...r.presence, ...r.devices]))];
-
 // Leaving home: turns off the lights and fans that are on in rooms nobody is in
 // (no presence sensor on; Utility has none, so it always counts as empty).
 // Two taps, since it switches things off across the house.
 function LeaveHomeButton() {
   const hass = useHass();
-  const states = useEntities(LEAVE_IDS);
+  const allRooms = useRooms();
+  // Lights and fans of each room.
+  const leaveRooms = useMemo(
+    () =>
+      allRooms.map((r) => ({
+        name: r.name,
+        presence: r.presence,
+        devices: r.controls.filter((c) => !c.readOnly && /^(light|fan)\./.test(c.entity)).map((c) => c.entity),
+      })),
+    [allRooms],
+  );
+  const ids = useMemo(() => [...new Set(leaveRooms.flatMap((r) => [...r.presence, ...r.devices]))], [leaveRooms]);
+  const states = useEntities(ids);
   const [phase, setPhase] = useState<'idle' | 'confirm' | 'done' | 'nothing'>('idle');
   useEffect(() => {
     if (phase === 'idle') return;
@@ -96,8 +101,8 @@ function LeaveHomeButton() {
     return () => window.clearTimeout(id);
   }, [phase]);
 
-  const byId = (id: string) => states[LEAVE_IDS.indexOf(id)];
-  const empty = LEAVE_ROOMS.filter((r) => !r.presence.some((p) => byId(p)?.state === 'on'));
+  const byId = (id: string) => states[ids.indexOf(id)];
+  const empty = leaveRooms.filter((r) => !r.presence.some((p) => byId(p)?.state === 'on'));
   const targets = empty.flatMap((r) => r.devices.filter((d) => isOn(byId(d))));
   const rooms = empty.filter((r) => r.devices.some((d) => targets.includes(d))).map((r) => r.name);
 

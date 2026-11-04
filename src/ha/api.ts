@@ -65,6 +65,9 @@ export interface RegistryEntity {
   platform: string;
   category?: string; // 'config' | 'diagnostic'
   translationKey?: string;
+  areaId?: string; // the entity's own area, when it isn't the device's
+  hidden?: boolean; // hidden in HA
+  name?: string; // the entity's own name; a device's main entity has none
 }
 
 export interface RegistrySnapshot {

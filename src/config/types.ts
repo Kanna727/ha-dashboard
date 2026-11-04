@@ -14,7 +14,9 @@ export interface ControlDef {
 }
 
 export interface RoomDef {
+  // Also the HA area whose bulbs show up here by themselves, unless `area` names another.
   id: string;
+  area?: string;
   name: string;
   icon: string;
   temperature?: string;

@@ -243,7 +243,7 @@ export const haApi: HassApi = {
       identifiers?: [string, string][];
       serial_number?: string | null;
     };
-    type Ents = { entity_categories: Record<string, string>; entities: { ei: string; di?: string; pl: string; ec?: number; tk?: string }[] };
+    type Ents = { entity_categories: Record<string, string>; entities: { ei: string; di?: string; pl: string; ec?: number; tk?: string; ai?: string; hb?: boolean; en?: string }[] };
     const [devices, ents] = await Promise.all([
       conn.sendMessagePromise<Dev[]>({ type: 'config/device_registry/list' }),
       conn.sendMessagePromise<Ents>({ type: 'config/entity_registry/list_for_display' }),
@@ -267,6 +267,9 @@ export const haApi: HassApi = {
           platform: e.pl,
           category: e.ec !== undefined ? ents.entity_categories[e.ec] : undefined,
           translationKey: e.tk,
+          areaId: e.ai,
+          hidden: e.hb,
+          name: e.en,
         })),
     };
   },
