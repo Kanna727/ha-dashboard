@@ -182,6 +182,10 @@ export interface DashboardConfig {
   // `alarms`: words that make a mirrored notification an alarm (red, a siren, up
   // until tapped) when its title or message contains one, e.g. ['shoe rack'].
   ALERTS?: { chime?: boolean; doorOpenMinutes?: number; notify?: string[]; seconds?: number; alarms?: string[] };
+  // Doorbell: a press shows the camera's live view full screen for `seconds`
+  // (default 60). Optional: without it the first camera with "doorbell" in its ID or
+  // name is used, and the first binary sensor named as a doorbell press.
+  DOORBELL?: { camera?: string; press?: string; seconds?: number };
   // Robot vacuum page. Optional: without it the first vacuum.* entity is used,
   // and its map camera and settings are found from the vacuum's entity names.
   // `look` colours the 3D robot on the page: shell, laser band, and whether to draw its dock.

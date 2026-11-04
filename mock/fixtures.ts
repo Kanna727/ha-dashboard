@@ -74,6 +74,9 @@ const list: HassEntity[] = [
   // Placeholder coordinates only; never real locations in fixtures.
   e('zone.home', '1', { latitude: 10.0, longitude: 10.0 }),
   e('binary_sensor.router_wan_status', 'on'),
+  // Doorbell: __mockPatch('binary_sensor.doorbell_pressed', { state: 'on' }) rings it (back to off first to ring again).
+  e('binary_sensor.doorbell_pressed', 'off', { friendly_name: 'Doorbell pressed', device_class: 'occupancy' }),
+  e('camera.front_door', 'idle', { friendly_name: 'Front door', supported_features: 2 }),
   e('input_text.dashboard_build', 'dev'),
 
   // Living room

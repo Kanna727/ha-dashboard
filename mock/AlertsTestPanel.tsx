@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { HassEntity } from 'home-assistant-js-websocket';
-import { ALERTS, APPLIANCES, ROOMS } from '../src/config/entities';
+import { ALERTS, APPLIANCES, DOORBELL, ROOMS } from '../src/config/entities';
 import { mockNotify } from './notify';
 
 // Alerts test panel (preview builds, like the car test panel; open at once with
@@ -42,6 +42,12 @@ export function AlertsTestPanel({ patch }: { patch: Patch }) {
   const washerDone = () => {
     patch(APPLIANCES.washer.running, { state: 'on' });
     window.setTimeout(() => patch(APPLIANCES.washer.running, { state: 'off' }), 300);
+  };
+  // A real press is a one-second pulse.
+  const doorbell = () => {
+    if (!DOORBELL.press) return;
+    patch(DOORBELL.press, { state: 'on' });
+    window.setTimeout(() => patch(DOORBELL.press!, { state: 'off' }), 1_000);
   };
   // The overlay covers this panel, so the door closes by itself to show the
   // alert taking itself down (dismissWhen).
@@ -100,6 +106,9 @@ export function AlertsTestPanel({ patch }: { patch: Patch }) {
             </button>
             <button className="chip-btn small" onClick={doorLeftOpen}>
               Door left open (closes in 6 s)
+            </button>
+            <button className="chip-btn small" onClick={doorbell}>
+              Doorbell
             </button>
           </div>
         </div>

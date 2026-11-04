@@ -14,6 +14,7 @@ import { vacuumService } from './vacuum';
 import { dishwasherService } from './dishwasher';
 import { deskHistory, deskService, isDeskEntity, startDeskMock } from './desk';
 import { mockNotify, notifyListeners } from './notify';
+import { mockPlayCamera } from './camera';
 import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
 import { extraHistory, extraStatChanges, extraStatistics, MOCK_MACS, SPEEDTEST_IDS, speedTestResult } from './extras';
 import { ENERGY } from '../src/config/entities';
@@ -367,6 +368,9 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         if (denied) return () => undefined;
         notifyListeners.add(cb);
         return () => notifyListeners.delete(cb);
+      },
+      playCamera(_entityId, video, onState) {
+        return mockPlayCamera(video, onState);
       },
       logout() {
         console.info('[mock] logout');
