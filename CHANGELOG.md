@@ -1,3 +1,10 @@
+# [1.58.0](https://github.com/Kanna727/ha-dashboard/compare/v1.57.0...v1.58.0) (2026-11-05)
+
+
+### Features
+
+* **live-updates:** phone apps' Live Updates float above the tab bar ([#79](https://github.com/Kanna727/ha-dashboard/issues/79)) ([63a1d18](https://github.com/Kanna727/ha-dashboard/commit/63a1d185b9dfd9615eb39f91c3c77ae1282a765e))
+
 # [1.57.0](https://github.com/Kanna727/ha-dashboard/compare/v1.56.0...v1.57.0) (2026-11-04)
 
 
