@@ -64,6 +64,9 @@ const list: HassEntity[] = [
     attribution: 'Mock weather',
   }),
   // Readings a weather integration adds as sensors on its device (found via the registry).
+  // An Android phone's companion app sensors (the alerts test panel fills them in).
+  e('sensor.phone_last_notification', 'unknown'),
+  e('sensor.phone_last_removed_notification', 'unknown'),
   e('sensor.forecast_home_weather_condition', 'Partly cloudy'),
   e('sensor.forecast_home_precipitation_probability', '20', { unit_of_measurement: '%' }),
   e('sensor.forecast_home_precipitation_intensity', '0.0', { unit_of_measurement: 'mm/h', device_class: 'precipitation_intensity' }),

@@ -187,6 +187,28 @@ button.wide { width: 100%; }
 .hello .muted { font-size: 17px; margin-top: 4px; font-weight: 500; }
 .topbar-pills { display: flex; gap: 12px; align-items: center; }
 .big-clock { font-size: 54px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; margin-left: 8px; }
+/* Live Updates from apps on the phones, floating above the tab bar (components/LiveUpdates.tsx). */
+.live-islands { position: fixed; z-index: 39; left: 50%; bottom: calc(max(16px, env(safe-area-inset-bottom)) + 76px); transform: translateX(-50%); display: grid; gap: 8px; width: min(720px, calc(100vw - 32px)); pointer-events: none; }
+.live-island { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 20px 8px 10px; border-radius: 999px; color: var(--text); background: color-mix(in srgb, #05070b 78%, transparent); backdrop-filter: blur(18px) saturate(1.6); -webkit-backdrop-filter: blur(18px) saturate(1.6); border: 1px solid rgba(255, 255, 255, 0.16); box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1); animation: pop 0.2s ease-out; }
+.live-logo { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; font-size: 20px; font-weight: 800; color: #fff; }
+.live-logo img { width: 100%; height: 100%; object-fit: cover; }
+.live-island-text { flex: 0 1 46%; min-width: 0; display: grid; }
+.live-island-text strong, .live-island-text span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.live-island-text strong { font-size: 17px; font-weight: 700; }
+.live-island-text span { font-size: 14px; color: rgba(242, 244, 248, 0.7); }
+.live-route { position: relative; flex: 1; min-width: 80px; height: 6px; margin: 0 22px 0 12px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); }
+.live-route-done { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--ok); transition: width 0.6s ease; }
+.live-route-rider { position: absolute; top: 50%; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: var(--on-text); background: var(--ok); transform: translate(-50%, -50%); transition: left 0.6s ease; }
+.live-route-rider.plain { width: 14px; height: 14px; }
+.live-route-home { position: absolute; top: 50%; right: -22px; display: grid; color: rgba(242, 244, 248, 0.7); transform: translateY(-50%); }
+.live-update-percent { flex: none; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.layout.phone .live-island { flex-wrap: wrap; row-gap: 10px; padding: 10px 18px 16px 10px; border-radius: 30px; }
+.layout.phone .live-island-text { flex: 1 1 50%; }
+.layout.phone .live-route { order: 3; flex-basis: 100%; margin: 0 26px 0 12px; }
+/* Room to scroll the end of a page clear of the islands. */
+.layout:has(.live-island) { --tabbar-room: calc(168px + env(safe-area-inset-bottom)); }
+.layout:has(.live-island + .live-island) { --tabbar-room: calc(236px + env(safe-area-inset-bottom)); }
+@media (prefers-reduced-motion: reduce) { .live-route-done, .live-route-rider { transition: none; } .live-island { animation: none; } }
 .issue-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .issue-list li { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 16px; background: var(--card); font-weight: 600; }
 .issue-list li.warn .dot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }

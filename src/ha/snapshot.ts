@@ -20,9 +20,13 @@ export function loadSnapshot(): HassEntities | null {
   }
 }
 
+// A phone's latest notification can be a private message or a one-time code.
+const PRIVATE = /_last(_removed)?_notification$/;
+
 export function saveSnapshotNow() {
-  const states = store.getAll();
-  if (!Object.keys(states).length) return;
+  const all = store.getAll();
+  if (!Object.keys(all).length) return;
+  const states = Object.fromEntries(Object.entries(all).filter(([id]) => !PRIVATE.test(id)));
   try {
     localStorage.setItem(KEY, JSON.stringify({ at: Date.now(), states }));
   } catch {
