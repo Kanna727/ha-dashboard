@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ArrangeProvider, FreeCanvas, type CardDef } from './Canvas';
+import { LiveUpdates } from '../components/LiveUpdates';
 import { BatteriesPanel } from '../panels/BatteriesPanel';
 import { CarDrivingPanel, CarPanel } from '../panels/CarPanel';
 import { CommutePanel } from '../panels/CommutePanel';
@@ -86,6 +87,7 @@ function WideLayout({ kind }: { kind: 'tablet' | 'desktop' }) {
           onChange={(p) => go(p, true)}
           render={(p) => (p === 'clean' ? <CleanPage /> : <FreeCanvas key={p} name={kind} page={p} {...pageColumns(p, kind === 'desktop')} />)}
         />
+        <LiveUpdates />
         <TabBar pages={pages} current={page} onSelect={(p) => go(p)} />
       </div>
     </ArrangeProvider>
@@ -177,6 +179,7 @@ export function PhoneLayout() {
       <TopBar compact />
       {/* `true` on a swipe: the pager lines the page up itself, so don't jump to the top. */}
       <Pager pages={pages.map((p) => p.id)} current={page} onChange={(p) => go(p, true)} render={(p) => <PhoneTab page={p} />} />
+      <LiveUpdates />
       <TabBar pages={pages} current={page} onSelect={(p) => go(p)} />
     </div>
   );

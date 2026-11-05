@@ -104,6 +104,7 @@ mock/AlertsTestPanel.tsx   ?alertsTest panel: fires sample HA notifications and 
 src/lib/fanSpeed.ts        fan percentage snapping / what to send to HA (unit-tested)
 src/lib/dishes.ts          dish dirt by progress, dishwasher finish time and shine window (unit-tested)
 src/lib/lightColor.ts      light capabilities, kelvin/hue maths, colour wheel mapping, "mixed" detection (unit-tested)
+src/components/LiveUpdates.tsx other apps' Live Updates from the phones, floating above the tab bar (see "Live Updates from phone apps"); src/lib/liveUpdates.ts reads them (unit-tested)
 src/components/Doorbell.tsx the doorbell press screen (see "Doorbell camera"); src/ha/cameraStream.ts plays a camera (WebRTC, else HLS)
 src/lib/doorbell.ts        which camera and press sensor are the doorbell, what counts as a press (unit-tested)
 mock/camera.ts             the mock camera: a canvas doorstep as a MediaStream
@@ -448,6 +449,19 @@ The owner asked (2026-11-02) for the ChromeOS wall tablet's screen to really tur
 - **Full-screen alerts** (the owner asked for them to be big and animated for the wall-mounted iPad): `Toast.full` in `components/Toasts.tsx`. One at a time over everything (z-index 95, above the night screen), queued ("1 of 3"), each up for `ALERTS.seconds` (default 30) from when it shows; a tap anywhere or Esc dismisses it and the next comes in. Tinted blurred veil with a slow conic sweep, a glowing orb with three ripples, the emoji or icon bobbing (shaking for warnings), title/text/"Home Assistant · 8:21 PM" rising in, and a bar along the bottom running down the lifetime. Reduced motion: no ripples, sweep or bob. The small corner toasts (15 s, top-right) are still used for action errors (layout not saved, vacuum command failed).
 - `src/lib/chime.ts` plays a soft two-tone chime via Web Audio when `ALERTS.chime` (default true); the audio context is created/resumed on the first touch because iOS blocks audio until then, so the chime is silent before any interaction.
 - **Mock:** the **Alerts test panel** (`mock/AlertsTestPanel.tsx`, a chip in preview builds, open at once with `?alertsTest`) fires sample notify calls (with a title; a shoe-rack alarm sent to two phones, matched by the example config's `alarms`; an alarm sent with `channel: alarm_stream`; a warning; three at once; a `notify.tv` one that must be ignored) and the dashboard's own washer and door alerts. `window.__mockNotify('notify', { message: 'Hi 👋' })` fires one from the console; a `notify.*` `callService` in the mock does too (`mock/notify.ts`). `?mockNotify=denied` behaves like a non-admin login (no mirroring, built-in washer alert back).
+
+## Live Updates from phone apps
+
+The owner asked for the Live Updates other apps post on the phone (a food delivery being tracked) on the dashboard, and only those, not every notification, and picked a floating island laid out like a route (2026-11-05, from five options in the mock). `components/LiveUpdates.tsx` shows one island per app, stacked above the tab bar on every page and layout: the app's logo, title, text, a line with a rider moving towards home, and the percentage. The page doesn't move and taps pass through; `--tabbar-room` grows so the end of a page can scroll clear of them. Decisions are in `src/lib/liveUpdates.ts` (unit-tested).
+
+- **Logos:** the sensor only says `Icon(typ=BITMAP ...)`, never the picture, so `APPS` in `lib/liveUpdates.ts` lists known apps with their site, name and colour, and the logo comes from Google's favicon service at show time (the browser tells Google that domain). Any other app, or a logo that won't load, shows its first letter on a colour steady for that app, and a plain dot instead of the rider and home.
+- **Source:** the Android companion app's `Last notification` and `Last removed notification` sensors, found by name (`sensor.*_last_notification`), so nothing is configured here. Both are off until turned on in the app, with notification access and an allow list of apps. Android only: iOS has no way to read another app's Live Activities.
+- **What counts as live:** `android.requestPromotedOngoing` and `is_ongoing` both true. An app's ordinary notifications (offers) are ignored even when it is on the allow list.
+- **What ends an island:** a newer ordinary notification from the same app, because a real order replaced its Live Update with one and `Last removed notification` never fired; that sensor also ends an island if it reports the Live Update itself; 90 minutes without an update (`LIVE_MAX_MS`), for a phone that went away. A reading with no words (a group summary, whose state is the package name) changes nothing, and a reading older than the island is ignored. An offer from the same app in the middle of tracking takes the island down until the app's next update.
+- **The sensor holds one notification:** the list is built from its changes, and after a reload only what the sensor holds now comes back.
+- **Privacy:** with no allow list the sensors carry every app's text (messages, one-time codes), so `ha/snapshot.ts` leaves them out of the snapshot it keeps in the browser, and only Live Updates are ever shown.
+- **These aren't the Live Updates HA's own automations send to the phones.** Those are `notify.*` calls; the companion app leaves HA's notifications out of the sensor.
+- **Mock:** the alerts test panel's "Live Update on a phone" group fills `sensor.phone_last_notification`: tracking starts, almost there, a second app, a third with no logo, delivered.
 
 ## Doorbell camera
 

@@ -9,6 +9,9 @@ import { mockNotify } from './notify';
 // has 'shoe rack'), plus the dashboard's own washer and door alerts.
 export const ALERTS_TEST = new URLSearchParams(window.location.search).has('alertsTest');
 
+const PHONE_SENSOR = 'sensor.phone_last_notification';
+const LIVE_APPS = ['com.application.zomato', 'in.swiggy.android', 'com.example.ridenow'];
+
 type Patch = (id: string, update: Partial<HassEntity> & { attributes?: Record<string, unknown> }) => void;
 type Call = [service: string, data: Record<string, unknown>];
 
@@ -69,6 +72,14 @@ export function AlertsTestPanel({ patch }: { patch: Patch }) {
     window.setTimeout(() => patch(door, { state: 'off' }), 4_000);
   };
 
+  // What the Android companion app's "Last notification" sensor reports while an
+  // app tracks something, then when the app replaces it with an ordinary notification.
+  const tracking = (pkg: string, title: string, text: string, progress: number) =>
+    patch(PHONE_SENSOR, { state: text, attributes: { package: pkg, post_time: Date.now(), is_ongoing: true, 'android.requestPromotedOngoing': true, 'android.title': title, 'android.text': text, 'android.progress': progress, 'android.progressMax': 100 } });
+  const finished = (pkg: string) =>
+    patch(PHONE_SENSOR, { state: 'Order delivered', attributes: { package: pkg, post_time: Date.now(), is_ongoing: false, 'android.requestPromotedOngoing': false, 'android.title': 'Tip your delivery partner', 'android.text': 'Order delivered' } });
+  const delivered = () => LIVE_APPS.forEach((pkg, i) => window.setTimeout(() => finished(pkg), i * 100));
+
   if (!open) {
     return (
       <button className="car-test car-test-chip alerts-test" onClick={() => setOpen(true)}>
@@ -95,6 +106,26 @@ export function AlertsTestPanel({ patch }: { patch: Patch }) {
             ))}
             <button className="chip-btn small" onClick={doorOpenedAlarm}>
               Door alarm (gone when it closes)
+            </button>
+          </div>
+        </div>
+        <div className="car-test-group">
+          <div className="car-test-title">Live Update on a phone</div>
+          <div className="car-test-chips">
+            <button className="chip-btn small" onClick={() => tracking(LIVE_APPS[0], 'Order is being prepared', 'Your order will arrive in 25 mins', 30)}>
+              Tracking starts
+            </button>
+            <button className="chip-btn small" onClick={() => tracking(LIVE_APPS[0], 'Arriving now', 'Coming to your doorstep', 95)}>
+              Almost there
+            </button>
+            <button className="chip-btn small" onClick={() => tracking(LIVE_APPS[1], 'Out for delivery', 'Rider is 2 km away', 60)}>
+              Second app
+            </button>
+            <button className="chip-btn small" onClick={() => tracking(LIVE_APPS[2], 'Driver is on the way', 'Arriving in 4 mins', 45)}>
+              Third app (no logo)
+            </button>
+            <button className="chip-btn small" onClick={delivered}>
+              Delivered (all go)
             </button>
           </div>
         </div>
