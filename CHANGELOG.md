@@ -1,3 +1,10 @@
+# [1.59.0](https://github.com/Kanna727/ha-dashboard/compare/v1.58.0...v1.59.0) (2026-11-08)
+
+
+### Features
+
+* **money:** every Fold detail, a tiles-first Money page and editable transactions ([#80](https://github.com/Kanna727/ha-dashboard/issues/80)) ([e6334d3](https://github.com/Kanna727/ha-dashboard/commit/e6334d33a67ab7c7611539602f1d7a6c3e3ba9a3))
+
 # [1.58.0](https://github.com/Kanna727/ha-dashboard/compare/v1.57.0...v1.58.0) (2026-11-05)
 
 
