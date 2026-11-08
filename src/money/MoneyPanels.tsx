@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { FINANCE } from '../config/entities';
 import { GlanceTile } from '../components/GlanceTile';
 import { Icon } from '../components/Icon';
@@ -6,8 +5,11 @@ import { useNow } from '../hooks/useNow';
 import { bankColor, daysUntil, dueLabel, fmtAgo, fmtInr, fmtWhen, fmtShort, isBillCard, scoreBand, type Account, type Finance } from '../lib/finance';
 import { Amt } from './Amt';
 import { ComingUp, SpendingCharts } from './MoneyCharts';
+import { CardLimits, RecurringList, ScoreDetails, useBureauRank, useCardUse } from './MoneyDetails';
+import { fmtAuto, Head } from './parts';
 import { toggleAmounts, useAmountsHidden } from './privacy';
 import { useFinance } from './useFinance';
+import { useSpentThisMonth } from './useTxEdits';
 
 // The Money page, "Wallet" design (the owner picked it on 2026-11-03 over a
 // balance sheet, glance tiles and an own-vs-owe chart): a summary strip, every
@@ -15,8 +17,6 @@ import { useFinance } from './useFinance';
 // the next bill, credit scores, investments and this month's spending.
 // Data: lib/finance.ts (found by name); amounts blur on the wall screens (privacy.ts).
 
-// Under a lakh in full (₹84,250), above that short (₹4.13 L).
-const fmtAuto = (n: number) => (Math.abs(n) < 1e5 ? fmtInr(n) : fmtShort(n));
 const MONTH = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short' });
 const dueDay = (date: string) => {
   const [y, m, d] = date.split('-').map(Number);
@@ -27,22 +27,14 @@ const dueDay = (date: string) => {
 // orange once nothing has moved for a day. The money app's own "as of" is only
 // when it last fetched the bank balances, hours behind (the owner found
 // "Updated 11h ago" misleading while the sync ran every hour).
-function updated(at: number | undefined, now: number): { text: string; stale: boolean } | undefined {
+export function updated(at: number | undefined, now: number): { text: string; stale: boolean } | undefined {
   if (at === undefined) return undefined;
   return { text: `Updated ${fmtAgo(at, now)}`, stale: now - at >= 86_400_000 };
 }
 
-function Head({ label, summary, warn, children }: { label: string; summary?: ReactNode; warn?: boolean; children?: ReactNode }) {
-  return (
-    <header className="panel-head">
-      <h2 className="label">{label}</h2>
-      {summary !== undefined && <span className={`panel-summary ${warn ? 'warn' : ''}`}>{summary}</span>}
-      {children}
-    </header>
-  );
-}
-
-function EyeButton() {
+// Shows or hides the amounts (privacy.ts). On the summary card, the tiles and
+// the section strip, so it is always on screen on the Money page.
+export function EyeButton() {
   const hidden = useAmountsHidden();
   return (
     <button className="round small chevron money-eye" onClick={toggleAmounts} aria-label={hidden ? 'Show amounts' : 'Hide amounts'} title={hidden ? 'Show amounts' : 'Hide amounts'}>
@@ -54,6 +46,7 @@ function EyeButton() {
 export function MoneySummary() {
   const f = useFinance();
   const now = useNow(60_000);
+  const spent = useSpentThisMonth();
   if (!f) return null;
   const up = updated(f.changedAt ?? f.asOf, now.getTime());
   const cash = f.liquid ?? f.bankTotal;
@@ -62,7 +55,7 @@ export function MoneySummary() {
     ['Cash', cash],
     ['Invested', f.investments],
     ['Owed', f.debt],
-    [`Spent · ${MONTH(now)}`, f.spentThisMonth],
+    [`Spent · ${MONTH(now)}`, spent],
   ];
   return (
     <section className="panel money-summary">
@@ -81,18 +74,26 @@ export function MoneySummary() {
             </div>
           ))}
       </div>
-      {f.asOf !== undefined && f.changedAt !== undefined && <p className="money-asof">Bank balances as of {fmtWhen(f.asOf, now)}</p>}
+      {((f.asOf !== undefined && f.changedAt !== undefined) || f.snapshotAt !== undefined) && (
+        <p className="money-asof">
+          {[f.asOf !== undefined && f.changedAt !== undefined && `Bank balances as of ${fmtWhen(f.asOf, now)}`, f.snapshotAt !== undefined && `details from ${fmtWhen(f.snapshotAt, now)}`]
+            .filter(Boolean)
+            .join(' · ')
+            .replace(/^d/, 'D')}
+        </p>
+      )}
     </section>
   );
 }
 
-function cardBackground(c: Account) {
+export function cardBackground(c: Account) {
   const [a, b] = FINANCE.cardColors[c.name] ?? [bankColor(c.bank), `color-mix(in srgb, ${bankColor(c.bank)} 38%, #0b0f17)`];
   return `linear-gradient(135deg, ${a}, ${b})`;
 }
 
 function WalletCard({ card, bill }: { card: Account; bill: Finance['bill'] }) {
   const due = bill?.due && isBillCard(card, bill) ? dueDay(bill.due) : undefined;
+  const use = useCardUse(card);
   return (
     <div className={`wcard ${card.balance === 0 ? 'paid' : ''} ${due ? 'due' : ''}`} style={{ background: cardBackground(card) }}>
       {due && <span className="wcard-due">Due {due.getDate()} {MONTH(due)}</span>}
@@ -103,6 +104,11 @@ function WalletCard({ card, bill }: { card: Account; bill: Finance['bill'] }) {
         {card.balance === 0 ? 'Nothing owed' : card.balance < 0 ? <Amt>{fmtInr(-card.balance)} credit</Amt> : <Amt>{fmtInr(card.balance)}</Amt>}
       </span>
       {card.last4 && <span className="wcard-num">•••• {card.last4}</span>}
+      {use !== undefined && (
+        <span className="wcard-use" title={`${use.toFixed(0)}% of the limit used`} aria-hidden>
+          <i style={{ width: `${Math.max(use, 1)}%` }} />
+        </span>
+      )}
     </div>
   );
 }
@@ -133,6 +139,7 @@ export function CardsPanel() {
           <WalletCard key={c.id} card={c} bill={f.bill} />
         ))}
       </div>
+      <CardLimits cards={cards} />
     </section>
   );
 }
@@ -176,11 +183,29 @@ export function PassbookPanel() {
   );
 }
 
+// With no unpaid bill it stays as "Bills": all paid, what's coming up and the
+// recurring payments (it used to vanish, taking Coming up with it).
 export function BillPanel() {
   const f = useFinance();
   const now = useNow(60_000);
   const bill = f?.bill;
-  if (!bill) return null;
+  if (!f) return null;
+  if (!bill)
+    return (
+      <section className="panel money-bill">
+        <Head label="Bills" summary={f.cardsUnpaid === 0 ? 'All card bills paid' : undefined} />
+        {f.cardsOutstanding !== undefined && (
+          <dl className="money-well">
+            <dt>Card balances incl. unbilled</dt>
+            <dd>
+              <Amt>{fmtInr(f.cardsOutstanding)}</Amt>
+            </dd>
+          </dl>
+        )}
+        <ComingUp />
+        <RecurringList />
+      </section>
+    );
   const days = bill.due ? daysUntil(bill.due, now) : undefined;
   const tone = days === undefined ? '' : days < 0 ? 'bad' : days <= 3 ? 'warn' : '';
   const date = bill.due ? dueDay(bill.due).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }) : undefined;
@@ -224,6 +249,7 @@ export function BillPanel() {
         </dl>
       )}
       <ComingUp />
+      <RecurringList />
     </section>
   );
 }
@@ -232,6 +258,7 @@ const TONE_COLOR = { ok: 'var(--ok)', fair: 'var(--accent-light)', warn: 'var(--
 
 function Dial({ score, bureau }: { score: number; bureau: string }) {
   const band = scoreBand(score);
+  const rank = useBureauRank(bureau);
   const color = TONE_COLOR[band.tone];
   const r = 50;
   const len = 2 * Math.PI * r * 0.75; // a 270° arc
@@ -249,6 +276,7 @@ function Dial({ score, bureau }: { score: number; bureau: string }) {
         <small style={{ color }}>{band.label}</small>
       </span>
       <span className="dial-name">{bureau}</span>
+      {rank && <small className="dial-rank muted">{rank}</small>}
     </div>
   );
 }
@@ -264,6 +292,7 @@ export function ScoresPanel() {
           <Dial key={s.id} score={s.score} bureau={s.bureau} />
         ))}
       </div>
+      <ScoreDetails />
     </section>
   );
 }
@@ -271,19 +300,23 @@ export function ScoresPanel() {
 export function InvestmentsPanel() {
   const f = useFinance();
   if (!f || (f.investments === undefined && f.epf === undefined && f.fundsValue === undefined && f.stocks === undefined)) return null;
-  const parts = (
-    [
-      ['EPF', f.epf, '#38bdf8'],
-      ['Mutual funds', f.fundsValue, '#8b7cf6'],
-      ['Stocks', f.stocks, '#34d399'],
-    ] as const
-  ).filter(([, v]) => v !== undefined && v > 0) as [string, number, string][];
+  const all = [
+    ['EPF', f.epf, '#38bdf8'],
+    ['Mutual funds', f.fundsValue, '#8b7cf6'],
+    ['Stocks', f.stocks, '#34d399'],
+    ['Fixed deposits', f.fds, '#fbbf24'],
+    ['PPF', f.ppf, '#f472b6'],
+    ['NPS', f.nps, '#fb923c'],
+  ] as const;
+  const parts = all.filter(([, v]) => v !== undefined && v > 0) as unknown as [string, number, string][];
+  const none = all.filter(([, v]) => v === 0).map(([k]) => k);
   const total = f.investments ?? parts.reduce((s, [, v]) => s + v, 0);
   const sum = parts.reduce((s, [, v]) => s + v, 0) || 1;
   const r = 44;
   const len = 2 * Math.PI * r;
   let at = 0;
-  const gain = f.fundsValue !== undefined && f.fundsInvested ? f.fundsValue - f.fundsInvested : undefined;
+  const gain = f.fundsGain ?? (f.fundsValue !== undefined && f.fundsInvested ? f.fundsValue - f.fundsInvested : undefined);
+  const gainPct = f.fundsGainPct ?? (gain !== undefined && f.fundsInvested ? (gain / f.fundsInvested) * 100 : undefined);
   return (
     <section className="panel money-invest">
       <Head label="Investments" />
@@ -317,12 +350,18 @@ export function InvestmentsPanel() {
               </dd>
             </div>
           ))}
-          {gain !== undefined && (
+          {gainPct !== undefined && (
             <div>
               <dt>Fund return</dt>
-              <dd className={gain < 0 ? 'neg' : 'pos'}>
-                {gain < 0 ? '−' : '+'}
-                {Math.abs((gain / f.fundsInvested!) * 100).toFixed(2)}%
+              <dd className={gainPct < 0 ? 'neg' : 'pos'}>
+                {gainPct < 0 ? '−' : '+'}
+                {Math.abs(gainPct).toFixed(2)}%
+                {gain !== undefined && (
+                  <small>
+                    {' '}
+                    <Amt>{fmtAuto(Math.abs(gain))}</Amt>
+                  </small>
+                )}
               </dd>
             </div>
           )}
@@ -336,6 +375,7 @@ export function InvestmentsPanel() {
           </dd>
         </dl>
       )}
+      {none.length > 0 && <p className="money-note">Nothing in: {none.join(' · ')}</p>}
     </section>
   );
 }
@@ -343,6 +383,7 @@ export function InvestmentsPanel() {
 export function SpendPanel() {
   const f = useFinance();
   const now = useNow(60_000);
+  const spent = useSpentThisMonth();
   if (!f || (f.spentThisMonth === undefined && !f.lastTransaction)) return null;
   const day = now.getDate();
   const days = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -351,13 +392,13 @@ export function SpendPanel() {
   return (
     <section className="panel money-spend">
       <Head label={`Spent in ${month}`} summary={`day ${day} of ${days}`} />
-      {f.spentThisMonth !== undefined && (
+      {spent !== undefined && (
         <>
           <div className="spend-big">
-            <Amt>{fmtInr(f.spentThisMonth)}</Amt>
+            <Amt>{fmtInr(spent)}</Amt>
           </div>
           <div className="muted spend-rate">
-            ≈ <Amt>{fmtShort(f.spentThisMonth / day)}</Amt> a day so far
+            ≈ <Amt>{fmtShort(spent / day)}</Amt> a day so far
           </div>
           <div className="spend-month" aria-hidden>
             <i style={{ width: `${(day / days) * 100}%` }} />
@@ -391,6 +432,7 @@ export function SpendPanel() {
 export function MoneyTile() {
   const f = useFinance();
   const now = useNow(60_000);
+  const spent = useSpentThisMonth();
   if (!f) return null;
   const bill = f.bill;
   const days = bill?.due ? daysUntil(bill.due, now) : undefined;
@@ -406,11 +448,11 @@ export function MoneyTile() {
           </b>
         </span>
       )}
-      {soon && f.spentThisMonth !== undefined && (
+      {soon && spent !== undefined && (
         <span>
           <small>Spent · {MONTH(now)}</small>
           <b>
-            <Amt peek={false}>{fmtShort(f.spentThisMonth)}</Amt>
+            <Amt peek={false}>{fmtShort(spent)}</Amt>
           </b>
         </span>
       )}
@@ -440,12 +482,12 @@ export function MoneyTile() {
         span="all"
       />
     );
-  if (f.spentThisMonth === undefined && f.netWorth === undefined) return null;
+  if (spent === undefined && f.netWorth === undefined) return null;
   return (
     <GlanceTile
       icon="wallet"
       label={`Spent · ${MONTH(now)}`}
-      value={f.spentThisMonth !== undefined ? <Amt peek={false}>{fmtShort(f.spentThisMonth)}</Amt> : undefined}
+      value={spent !== undefined ? <Amt peek={false}>{fmtShort(spent)}</Amt> : undefined}
       sub={bill?.due && days !== undefined ? `Next card bill ${dueLabel(days).toLowerCase()}` : undefined}
       art={side}
       color="var(--accent-light)"

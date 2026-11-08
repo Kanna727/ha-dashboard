@@ -1,37 +1,68 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { FINANCE } from '../config/entities';
 import { useHass } from '../ha/api';
+import { createDocStore, type DocStore } from '../ha/docStore';
 import { readCache, writeCache } from '../ha/useRegistry';
 import { parseMoneyHistory, type MoneyHistory } from '../lib/finance';
+import { parseActivity, parseSnapshot, type Activity, type Snapshot } from '../lib/financeDetail';
 
-// The deployed preview shares the live dashboard's origin, so the mock keeps its own copy.
-const CACHE_KEY = import.meta.env.VITE_MOCK ? 'mockMoneyHistory' : 'dashMoneyHistory';
+// The deployed preview shares the live dashboard's origin, so the mock keeps its own copies.
+const PREFIX = import.meta.env.VITE_MOCK ? 'mock' : 'dash';
 
-// The money charts' data: the hidden FINANCE.store dashboard the sync writes
-// once a day (lib/finance.ts, parseMoneyHistory), followed live, with a local
-// copy so a reload draws the charts at once. Empty until the sync writes it.
-export function useMoneyHistory(): MoneyHistory {
+// Hidden storage dashboards (the money sync's daily documents and the owner's
+// own edits), each loaded once for every reader and followed live
+// (ha/docStore.ts), with a local copy so a reload draws at once. null until
+// there is one (or when the login can't read it: the detail dashboards may be
+// admin-only).
+const stores = new Map<string, DocStore>();
+function storeFor(urlPath: string, cacheKey: string): DocStore {
+  let s = stores.get(urlPath);
+  if (!s) {
+    const key = `${PREFIX}${cacheKey}`;
+    s = createDocStore(urlPath, readCache(key, null), (d) => writeCache(key, d));
+    stores.set(urlPath, s);
+  }
+  return s;
+}
+
+export function useStoreDoc(urlPath: string, cacheKey: string): unknown {
   const hass = useHass();
-  const [doc, setDoc] = useState<unknown>(() => readCache(CACHE_KEY, null));
+  const s = storeFor(urlPath, cacheKey);
+  const subscribe = useCallback((l: () => void) => s.subscribe(hass, l), [s, hass]);
+  return useSyncExternalStore(subscribe, s.get);
+}
 
-  useEffect(() => {
-    let alive = true;
-    const load = () =>
-      hass
-        .fetchStore(FINANCE.store)
-        .then((d) => {
-          if (!alive || d === null) return;
-          setDoc(d);
-          writeCache(CACHE_KEY, d);
-        })
-        .catch(() => undefined);
-    load();
-    const unsub = hass.subscribeStore(FINANCE.store, load);
-    return () => {
-      alive = false;
-      unsub();
-    };
-  }, [hass]);
+// Saves a document the dashboard owns: re-reads the stored one first and
+// applies `change` to it, so two screens editing at once don't undo each other.
+// Needs an admin login (HA's lovelace/config/save).
+export function useSaveStoreDoc(urlPath: string, cacheKey: string, title: string) {
+  const hass = useHass();
+  const s = storeFor(urlPath, cacheKey);
+  return useCallback(
+    async (change: (current: unknown) => object) => {
+      const next = change(await hass.fetchStore(urlPath));
+      await hass.saveStore(urlPath, next, title);
+      s.set(next);
+    },
+    [hass, urlPath, title, s],
+  );
+}
 
+// The charts' data (lib/finance.ts, parseMoneyHistory). Empty until the sync writes it.
+export function useMoneyHistory(): MoneyHistory {
+  const doc = useStoreDoc(FINANCE.store, 'MoneyHistory');
   return useMemo(() => parseMoneyHistory(doc), [doc]);
+}
+
+// Every card's limit and cycle, the score factors, EPF, funds, stocks,
+// insurance, loans, recurring payments, this month by subcategory.
+export function useSnapshot(): Snapshot {
+  const doc = useStoreDoc(FINANCE.snapshotStore, 'MoneySnapshot');
+  return useMemo(() => parseSnapshot(doc), [doc]);
+}
+
+// The last two weeks of transactions and the latest fund, stock and EPF entries.
+export function useActivity(): Activity {
+  const doc = useStoreDoc(FINANCE.activityStore, 'MoneyActivity');
+  return useMemo(() => parseActivity(doc), [doc]);
 }

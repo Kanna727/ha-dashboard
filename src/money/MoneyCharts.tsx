@@ -5,7 +5,11 @@ import { useNow } from '../hooks/useNow';
 import { daysUntil, rowColors, fmtInr, fmtShort, monthSpend, netWorthRange, type MoneyHistory } from '../lib/finance';
 import { Amt } from './Amt';
 import { useFinance } from './useFinance';
-import { useMoneyHistory } from './useMoneyHistory';
+import { useMonthSubs } from './MoneyDetails';
+import { frequencyLabel } from '../lib/financeDetail';
+import { useMoneyHistory, useSnapshot } from './useMoneyHistory';
+import { useTxView } from './useTxEdits';
+import { adjustCategories, monthAdjust } from '../lib/txEdits';
 
 // The Money page's charts, from the sync's daily chart data (useMoneyHistory):
 // net worth over time, spending per month and by category, and what's coming up.
@@ -25,7 +29,7 @@ const monthLabel = (m: string, style: 'short' | 'long' = 'short') => {
 const thisMonth = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 
 // The history's daily points, ending with today's live value from the helper.
-function withToday(h: MoneyHistory, live: number | undefined, now: Date) {
+export function withToday(h: MoneyHistory, live: number | undefined, now: Date) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
   const pts = h.netWorth.filter((p) => p.t < today);
   return live === undefined ? h.netWorth : [...pts, { t: today, v: live }];
@@ -159,9 +163,18 @@ export function NetWorthPanel() {
 export function SpendingCharts() {
   const h = useMoneyHistory();
   const now = useNow(60_000);
-  if (!h.months.length) return null;
+  const [open, setOpen] = useState<string | null>(null);
+  const view = useTxView();
   const cur = thisMonth(now);
-  const months = h.months.slice(-12).map((m) => ({ m, ...monthSpend(m, FINANCE.skipCategories) }));
+  // This month's subcategories, from the daily snapshot (tap a row).
+  const detail = useMonthSubs(h.months.some((m) => m.month === cur) ? cur : (h.months[h.months.length - 1]?.month ?? ''));
+  if (!h.months.length) return null;
+  // The owner's own changes to transactions count too (lib/txEdits.ts).
+  const months = h.months.slice(-12).map((m) => {
+    const base = monthSpend(m, FINANCE.skipCategories);
+    const adj = monthAdjust(view, m.month, FINANCE.skipCategories);
+    return { m, total: Math.max(0, base.total + adj.total), categories: adjustCategories(base.categories, adj.byCategory) };
+  });
   const bars: Bar[] = months.map(({ m, total }) => ({
     key: m.month,
     parts: [total],
@@ -223,8 +236,11 @@ export function SpendingCharts() {
             {rows.map(([name, v], i) => {
               const p = prevOf(name);
               const color = colors[i];
+              const sub = detail?.subs.get(name);
+              const subs = sub?.subs.filter(([k]) => k !== name) ?? [];
+              const canOpen = subs.length > 1 || (subs.length === 1 && subs[0][0] !== 'Other');
               return (
-                <li key={name}>
+                <li key={name} className={canOpen ? 'can-open' : ''} onClick={canOpen ? () => setOpen(open === name ? null : name) : undefined}>
                   <span className="cat-name">
                     <i style={{ background: color }} />
                     {name}
@@ -236,10 +252,35 @@ export function SpendingCharts() {
                   <span className="cat-v">
                     <Amt>{fmtShort(v)}</Amt>
                   </span>
+                  {open === name && (
+                    <ul className="cat-subs">
+                      {subs.map(([k, x]) => (
+                        <li key={k}>
+                          <span>{k}</span>
+                          <span className="cat-sub-track">
+                            <i style={{ width: `${(x / Math.max(1, v)) * 100}%`, background: color }} />
+                          </span>
+                          <Amt>{fmtShort(x)}</Amt>
+                        </li>
+                      ))}
+                      {sub?.count !== undefined && <li className="muted">{sub.count} transaction{sub.count === 1 ? '' : 's'}</li>}
+                    </ul>
+                  )}
                 </li>
               );
             })}
           </ul>
+          {detail && (
+            <p className="money-note">
+              {detail.untagged && detail.untagged.amount > 0 && (
+                <>
+                  <Amt>{fmtShort(detail.untagged.amount)}</Amt> untagged{detail.untagged.count ? ` in ${detail.untagged.count} transactions` : ''}
+                  {' · '}
+                </>
+              )}
+              Tap a category for its breakdown
+            </p>
+          )}
         </div>
       )}
     </div>
@@ -251,6 +292,9 @@ export function ComingUp() {
   const h = useMoneyHistory();
   const f = useFinance();
   const now = useNow(60_000);
+  const snap = useSnapshot();
+  // "monthly" beside a recurring payment (the daily snapshot knows how often).
+  const freq = new Map(snap.recurring.map((r) => [r.name.toLowerCase(), frequencyLabel(r.frequency)]));
   const items: { date: string; name: string; amount?: number; card?: boolean }[] = h.upcoming
     .filter((u) => {
       const d = daysUntil(u.date, now);
@@ -275,7 +319,9 @@ export function ComingUp() {
               </span>
               <span className="cu-name">
                 {it.name}
-                <small className="muted">{d < 0 ? `${-d}d late` : d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`}</small>
+                <small className="muted">
+                  {[freq.get(it.name.toLowerCase()), d < 0 ? `${-d}d late` : d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`].filter(Boolean).join(' · ')}
+                </small>
               </span>
               {it.amount !== undefined && (
                 <span className="cu-amt">

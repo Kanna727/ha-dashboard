@@ -17,6 +17,9 @@ import { WeatherPanel } from '../panels/WeatherPanel';
 import { BillPanel, CardsPanel, InvestmentsPanel, MoneySummary, PassbookPanel, ScoresPanel, SpendPanel } from '../money/MoneyPanels';
 import { useHasMoney } from '../money/useFinance';
 import { NetWorthPanel } from '../money/MoneyCharts';
+import { BalanceSheetPanel, EpfPanel, FundsPanel, InsurancePanel, StocksPanel, TransactionsPanel } from '../money/MoneyDetails';
+import { useMoneySection, type MoneySection } from '../money/sections';
+import { MoneyStrip, MoneyTiles } from '../money/MoneyTiles';
 import { CleanPage, useHasClean } from './CleanPage';
 import { PAGES, usePage, type Page } from './pages';
 import { Pager } from './Pager';
@@ -60,14 +63,93 @@ function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { classNam
     case 'health':
       return { className: 'cols cols-2', columns: [[card('health', <HealthPanel full />)], [card('meals', <MealsPanel full />)]] };
     case 'money':
+      return moneyColumns('overview');
+  }
+}
+
+// The Money page's cards by section (money/sections.tsx), for tablet and desktop.
+function moneyColumns(section: MoneySection): { className: string; columns: CardDef[][] } {
+  switch (section) {
+    case 'overview':
       return {
         className: 'cols cols-money',
         columns: [
-          [card('moneySummary', <MoneySummary />), card('networth', <NetWorthPanel />), card('cards', <CardsPanel />), card('passbook', <PassbookPanel />)],
-          [card('bill', <BillPanel />), card('scores', <ScoresPanel />), card('investments', <InvestmentsPanel />), card('spend', <SpendPanel />)],
+          [card('moneySummary', <MoneySummary />), card('networth', <NetWorthPanel />), card('balance', <BalanceSheetPanel />)],
+          [card('bill', <BillPanel />)],
+        ],
+      };
+    case 'spending':
+      return {
+        className: 'cols cols-2',
+        columns: [[card('spend', <SpendPanel />), card('passbook', <PassbookPanel />)], [card('transactions', <TransactionsPanel />)]],
+      };
+    case 'cards':
+      return { className: 'cols cols-money', columns: [[card('cards', <CardsPanel />)], [card('scores', <ScoresPanel />)]] };
+    case 'insurance':
+      return { className: 'cols cols-insurance', columns: [[card('insurance', <InsurancePanel />)]] };
+    case 'invest':
+      return {
+        className: 'cols cols-2',
+        columns: [
+          [card('investments', <InvestmentsPanel />), card('funds', <FundsPanel />)],
+          [card('epf', <EpfPanel />), card('stocks', <StocksPanel />)],
         ],
       };
   }
+}
+
+// The Money page: the tiles, or a section's cards under the strip of small
+// tiles. Each section is arranged on its own (canvas page `money:<section>`).
+function MoneyWide({ kind }: { kind: 'tablet' | 'desktop' }) {
+  const section = useMoneySection();
+  if (!section) return <MoneyTiles />;
+  const page = `money:${section}`;
+  return (
+    <>
+      <MoneyStrip />
+      <FreeCanvas key={page} name={kind} page={page} {...moneyColumns(section)} />
+    </>
+  );
+}
+
+function MoneyPhone() {
+  const section = useMoneySection();
+  if (!section) return <MoneyTiles />;
+  return (
+    <>
+      <MoneyStrip />
+      {section === 'overview' && (
+        <>
+          <MoneySummary />
+          <BillPanel />
+          <NetWorthPanel />
+          <BalanceSheetPanel />
+        </>
+      )}
+      {section === 'spending' && (
+        <>
+          <SpendPanel />
+          <TransactionsPanel />
+          <PassbookPanel />
+        </>
+      )}
+      {section === 'cards' && (
+        <>
+          <CardsPanel />
+          <ScoresPanel />
+        </>
+      )}
+      {section === 'insurance' && <InsurancePanel />}
+      {section === 'invest' && (
+        <>
+          <InvestmentsPanel />
+          <FundsPanel />
+          <StocksPanel />
+          <EpfPanel />
+        </>
+      )}
+    </>
+  );
 }
 
 // Tablet and desktop: each page's cards start in columns and can be arranged
@@ -85,7 +167,9 @@ function WideLayout({ kind }: { kind: 'tablet' | 'desktop' }) {
           pages={ids}
           current={page}
           onChange={(p) => go(p, true)}
-          render={(p) => (p === 'clean' ? <CleanPage /> : <FreeCanvas key={p} name={kind} page={p} {...pageColumns(p, kind === 'desktop')} />)}
+          render={(p) =>
+            p === 'clean' ? <CleanPage /> : p === 'money' ? <MoneyWide kind={kind} /> : <FreeCanvas key={p} name={kind} page={p} {...pageColumns(p, kind === 'desktop')} />
+          }
         />
         <LiveUpdates />
         <TabBar pages={pages} current={page} onSelect={(p) => go(p)} />
@@ -116,10 +200,16 @@ const LABELS: Record<string, string> = {
   networth: 'Net worth',
   cards: 'Credit cards',
   passbook: 'Passbook',
-  bill: 'Next card bill',
+  bill: 'Bills',
   scores: 'Credit score',
   investments: 'Investments',
   spend: 'Spending',
+  balance: 'Own and owe',
+  transactions: 'Transactions',
+  funds: 'Mutual funds',
+  stocks: 'Stocks',
+  epf: 'EPF',
+  insurance: 'Insurance',
 };
 const card = (id: keyof typeof LABELS, node: ReactNode): CardDef => ({ id, label: LABELS[id], node });
 
@@ -154,18 +244,7 @@ function PhoneTab({ page }: { page: Page }) {
           <MealsPanel />
         </>
       )}
-      {page === 'money' && (
-        <>
-          <MoneySummary />
-          <BillPanel />
-          <NetWorthPanel />
-          <CardsPanel />
-          <SpendPanel />
-          <PassbookPanel />
-          <InvestmentsPanel />
-          <ScoresPanel />
-        </>
-      )}
+      {page === 'money' && <MoneyPhone />}
       {page === 'clean' && <CleanPage />}
     </div>
   );
