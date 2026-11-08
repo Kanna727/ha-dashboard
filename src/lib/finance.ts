@@ -37,6 +37,23 @@ export interface Finance {
   epf?: number;
   spentThisMonth?: number;
   cardsUnpaid?: number;
+  cardsLimit?: number;
+  cardsAvailable?: number;
+  // Percent of the card limits in use.
+  cardsUtilization?: number;
+  fundsGain?: number;
+  fundsGainPct?: number;
+  fds?: number;
+  ppf?: number;
+  nps?: number;
+  cashOnHand?: number;
+  customAssets?: number;
+  customLiabilities?: number;
+  healthCover?: number;
+  // The next insurance premium (YYYY-MM-DD).
+  premiumDue?: string;
+  // When the sync last wrote the full snapshot (the hidden detail dashboards).
+  snapshotAt?: number;
   // Highest balance first (an overdrawn account last).
   banks: Account[];
   // Most owed first.
@@ -67,7 +84,24 @@ const TOTALS = {
   epf_balance: 'epf',
   spend_this_month: 'spentThisMonth',
   cc_bills_unpaid: 'cardsUnpaid',
+  // These three start like a card (cc_…) but have no last digits.
+  cc_credit_limit: 'cardsLimit',
+  cc_available_credit: 'cardsAvailable',
+  cc_utilization: 'cardsUtilization',
+  mutual_funds_gain: 'fundsGain',
+  mutual_funds_gain_percent: 'fundsGainPct',
+  fixed_deposits: 'fds',
+  ppf_balance: 'ppf',
+  nps_value: 'nps',
+  cash_on_hand: 'cashOnHand',
+  custom_assets: 'customAssets',
+  custom_liabilities: 'customLiabilities',
+  health_cover: 'healthCover',
 } as const;
+
+// An account or card helper ends in its last digits; any other bank_/cc_ name
+// is a total this version doesn't know (left out, not drawn as a card).
+const ACCOUNT_END = /_\d{3,6}$/;
 
 const DOMAINS = ['input_number', 'sensor', 'input_text', 'input_datetime'];
 
@@ -157,10 +191,10 @@ export function findFinance(states: HassEntities, prefix = 'fold'): Finance | un
     const total = TOTALS[key as keyof typeof TOTALS];
     if (total) {
       f[total] = num(e);
-    } else if (key.startsWith('bank_')) {
+    } else if (key.startsWith('bank_') && ACCOUNT_END.test(key)) {
       const balance = num(e);
       if (balance !== undefined) f.banks.push({ id: e.entity_id, balance, ...accountName(e, prefix, 'bank') });
-    } else if (key.startsWith('cc_')) {
+    } else if (key.startsWith('cc_') && ACCOUNT_END.test(key)) {
       const balance = num(e);
       if (balance !== undefined) f.cards.push({ id: e.entity_id, balance, ...accountName(e, prefix, 'cc') });
     } else if (key.startsWith('credit_score_')) {
@@ -178,6 +212,9 @@ export function findFinance(states: HassEntities, prefix = 'fold'): Finance | un
   if (bill && f.cardsUnpaid !== 0) f.bill = { ...bill, due: due && /^\d{4}-\d\d-\d\d/.test(due) ? due.slice(0, 10) : undefined };
   f.lastTransaction = parseTransaction(byKey.get('last_transaction')?.state);
   f.asOf = parseWhen(byKey.get('data_as_of')?.state);
+  f.snapshotAt = parseWhen(byKey.get('snapshot_updated')?.state);
+  const premium = byKey.get('next_premium_date')?.state;
+  if (premium && /^\d{4}-\d\d-\d\d/.test(premium)) f.premiumDue = premium.slice(0, 10);
   const changed = [...byKey.values()].map((e) => Date.parse(e.last_changed)).filter(Number.isFinite);
   if (changed.length) f.changedAt = Math.max(...changed);
   return f;

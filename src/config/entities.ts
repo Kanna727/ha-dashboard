@@ -81,6 +81,9 @@ export const FINANCE = {
   store: 'dashboard-money',
   skipCategories: ['Credit Bill'],
   hideAccounts: [] as string[],
+  snapshotStore: 'dashboard-fold-data',
+  activityStore: 'dashboard-fold-activity',
+  editsStore: 'dashboard-money-edits',
   ...cfg.FINANCE,
 };
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };

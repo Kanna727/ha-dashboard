@@ -13,6 +13,7 @@ import { cycle, useSwipe } from '../hooks/useSwipe';
 import { StatusDialog } from './StatusDialog';
 import { ArrangeButton } from '../layout/Canvas';
 import { usePage } from '../layout/pages';
+import { useMoneySection } from '../money/sections';
 import { VacationButton } from '../components/VacationMode';
 
 const greeting = (h: number) => (h < 5 ? 'Good night' : h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening');
@@ -150,6 +151,7 @@ function StatusPill() {
 export function TopBar({ compact = false }: { compact?: boolean }) {
   const { userName } = useHassStatus();
   const [page] = usePage();
+  const moneySection = useMoneySection();
   const now = useNow(1000);
   const first = userName?.split(' ')[0];
 
@@ -168,7 +170,7 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         <StatusPill />
         <LeaveHomeButton />
         <VacationButton />
-        {page !== 'clean' && <ArrangeButton />}
+        {page !== 'clean' && !(page === 'money' && !moneySection) && <ArrangeButton />}
       </div>
       <div className="big-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
     </header>

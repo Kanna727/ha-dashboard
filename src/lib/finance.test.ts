@@ -187,3 +187,26 @@ describe('chart data', () => {
     expect([c[0], c[4]]).toEqual(['#64748b', '#64748b']);
   });
 });
+
+describe('findFinance: totals named like cards', () => {
+  it('reads the card limit, available credit and utilisation as totals, not cards', () => {
+    const f = findFinance(
+      states(
+        e('input_number.fold_cc_credit_limit', '500000', 'Fold CC Credit Limit'),
+        e('input_number.fold_cc_available_credit', '450000', 'Fold CC Available Credit'),
+        e('input_number.fold_cc_utilization', '10', 'Fold CC Utilization'),
+        e('input_number.fold_cc_some_new_total', '1', 'Fold CC Some New Total'),
+        e('input_number.fold_bank_something', '1'),
+        e('input_number.fold_cc_kotak_league_4410', '150', 'Fold CC Kotak League 4410'),
+        e('input_number.fold_mutual_funds_gain_percent', '2.4'),
+        e('input_number.fold_health_cover', '5000000'),
+        e('input_datetime.fold_next_premium_date', '2029-04-28'),
+        e('input_datetime.fold_snapshot_updated', '2026-11-07 07:49:19'),
+      ),
+    )!;
+    expect(f.cards.map((c) => c.name)).toEqual(['Kotak League']);
+    expect(f.banks).toEqual([]);
+    expect(f).toMatchObject({ cardsLimit: 500000, cardsAvailable: 450000, cardsUtilization: 10, fundsGainPct: 2.4, healthCover: 5000000, premiumDue: '2029-04-28' });
+    expect(f.snapshotAt).toBe(new Date(2026, 10, 7, 7, 49, 19).getTime());
+  });
+});

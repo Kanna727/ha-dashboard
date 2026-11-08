@@ -214,6 +214,10 @@ export interface DashboardConfig {
   // 'dashboard-money'). `skipCategories`: spending categories the charts leave
   // out (default ['Credit Bill']: card bill payments, already counted as card spends).
   // `hideAccounts`: bank account or card entity IDs to leave off the page.
+  // `snapshotStore` / `activityStore`: the hidden dashboards the sync writes the
+  // details into (defaults 'dashboard-fold-data', 'dashboard-fold-activity').
+  // `editsStore`: where the dashboard keeps the owner's own changes to the
+  // transactions (default 'dashboard-money-edits'; created on the first save).
   FINANCE?: {
     prefix?: string;
     hide?: ('tablet' | 'phone' | 'desktop')[];
@@ -221,6 +225,9 @@ export interface DashboardConfig {
     store?: string;
     skipCategories?: string[];
     hideAccounts?: string[];
+    snapshotStore?: string;
+    activityStore?: string;
+    editsStore?: string;
   };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
