@@ -1,3 +1,10 @@
+# [1.61.0](https://github.com/Kanna727/ha-dashboard/compare/v1.60.0...v1.61.0) (2026-11-11)
+
+
+### Features
+
+* **screen:** the wall tablet reports its battery level to Home Assistant ([#82](https://github.com/Kanna727/ha-dashboard/issues/82)) ([fcbd244](https://github.com/Kanna727/ha-dashboard/commit/fcbd24450860cce571147fa5db223c7d89baa6ac))
+
 # [1.60.0](https://github.com/Kanna727/ha-dashboard/compare/v1.59.0...v1.60.0) (2026-11-11)
 
 
