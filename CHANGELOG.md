@@ -1,3 +1,10 @@
+## [1.61.1](https://github.com/Kanna727/ha-dashboard/compare/v1.61.0...v1.61.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **alerts:** HA's own Live Updates alert only at 0 % and 100 % ([#83](https://github.com/Kanna727/ha-dashboard/issues/83)) ([d70b1d1](https://github.com/Kanna727/ha-dashboard/commit/d70b1d110462625f93bd4c232736f36d1f9785be))
+
 # [1.61.0](https://github.com/Kanna727/ha-dashboard/compare/v1.60.0...v1.61.0) (2026-11-11)
 
 
