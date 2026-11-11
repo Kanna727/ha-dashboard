@@ -4,7 +4,7 @@ import { useHass } from '../ha/api';
 import { isOn } from '../ha/format';
 import { useEntities, useEntity } from '../ha/store';
 import { useNow } from '../hooks/useNow';
-import { effectiveOn, entityStep, inQuietHours, screenOn, sinceSeenMs, type Override } from '../lib/screenPower';
+import { batteryToWrite, effectiveOn, entityStep, inQuietHours, screenOn, sinceSeenMs, type Override } from '../lib/screenPower';
 import { useDoorbellRinging } from './Doorbell';
 
 // ?screenTest=1: quiet hours all day and a 15 s hold, for checking it on the tablet.
@@ -39,6 +39,7 @@ function useAutoScreenOn() {
 let extension = false;
 let screenOnNow = true;
 let override: Override | null = null;
+let batteryLevel: number | undefined; // 0–1, from the extension's answers
 const listeners = new Set<() => void>();
 const notify = () => listeners.forEach((l) => l());
 const subscribe = (l: () => void) => {
@@ -54,6 +55,7 @@ export const useScreenOn = () => useSyncExternalStore(subscribe, () => screenOnN
 // Turned off by hand: NightMode blanks the screen at once instead of after a minute.
 export const useScreenOffByHand = () => useSyncExternalStore(subscribe, () => !!override && !override.on && !screenOnNow);
 const useOverride = () => useSyncExternalStore(subscribe, () => override);
+const useBatteryLevel = () => useSyncExternalStore(subscribe, () => batteryLevel);
 export function setScreenOverride(o: Override | null) {
   override = o;
   notify();
@@ -78,6 +80,7 @@ export function ScreenPower() {
   }, [auto, hand, on]);
 
   useDisplayEntity(wall, on, auto);
+  useBatteryEntity(wall);
 
   useEffect(() => {
     document.documentElement.dataset.screen = on ? 'on' : 'off';
@@ -87,13 +90,17 @@ export function ScreenPower() {
     return () => window.clearInterval(id);
   }, [on]);
 
-  // The extension answers each message; note once that it's there.
+  // The extension answers each message (with the battery level from v1.1);
+  // note once that it's there.
   useEffect(() => {
     const onReply = (e: MessageEvent) => {
       if (e.source !== window || e.data?.source !== 'ha-dashboard-screen') return;
-      window.removeEventListener('message', onReply);
-      console.info(`Screen power extension connected (wake ${e.data.canWake ? 'supported' : 'not supported'}).`);
+      const level: unknown = e.data.battery?.level;
+      const nextLevel = typeof level === 'number' ? level : batteryLevel;
+      if (extension && nextLevel === batteryLevel) return;
+      if (!extension) console.info(`Screen power extension connected (wake ${e.data.canWake ? 'supported' : 'not supported'}).`);
       extension = true;
+      batteryLevel = nextLevel;
       notify();
     };
     window.addEventListener('message', onReply);
@@ -125,4 +132,25 @@ function useDisplayEntity(wall: boolean, on: boolean, auto: boolean) {
       });
     }
   }, [wall, state, on, auto, hass]);
+}
+
+// Writes the wall screen's battery level into SCREEN_POWER.battery (an
+// input_number), so an automation can switch its charger only when needed.
+// The extension reports it with each answer, at least once a minute.
+function useBatteryEntity(wall: boolean) {
+  const hass = useHass();
+  const level = useBatteryLevel();
+  const entity = useEntity(wall && SCREEN_POWER.battery ? SCREEN_POWER.battery : undefined);
+  const state = entity?.state;
+  const lastWrite = useRef<{ value: number; at: number }>();
+
+  useEffect(() => {
+    if (!wall || !SCREEN_POWER.battery || state === undefined) return;
+    const value = batteryToWrite(level, state, lastWrite.current, Date.now());
+    if (value === undefined) return;
+    lastWrite.current = { value, at: Date.now() };
+    hass.callService('input_number', 'set_value', { value }, { entity_id: SCREEN_POWER.battery }).catch(() => {
+      lastWrite.current = undefined;
+    });
+  }, [wall, level, state, hass]);
 }

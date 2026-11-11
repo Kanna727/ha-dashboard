@@ -95,6 +95,7 @@ export const SCREEN_POWER = {
   rooms: undefined as string[] | undefined,
   holdMinutes: 5,
   entity: '',
+  battery: '',
   ...cfg.SCREEN_POWER,
 };
 

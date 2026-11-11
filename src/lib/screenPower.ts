@@ -78,3 +78,19 @@ export function entityStep(i: EntityInput): 'command' | 'write' | 'none' {
   if (want !== i.on && !recent(i.on)) return 'write';
   return 'none';
 }
+
+// The battery level (0–1, from the extension) to write into SCREEN_POWER.battery,
+// in whole percent, or undefined when the entity already has it or the same
+// value was just written (within 15 s).
+export function batteryToWrite(
+  level: number | undefined,
+  state: string | undefined,
+  lastWrite: { value: number; at: number } | undefined,
+  nowMs: number,
+): number | undefined {
+  if (level === undefined || !Number.isFinite(level)) return undefined;
+  const value = Math.round(Math.min(1, Math.max(0, level)) * 100);
+  if (state !== undefined && Number(state) === value) return undefined;
+  if (lastWrite && lastWrite.value === value && nowMs - lastWrite.at < 15_000) return undefined;
+  return value;
+}
