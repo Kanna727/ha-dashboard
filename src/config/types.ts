@@ -243,8 +243,10 @@ export interface DashboardConfig {
   // wakes it. `enabled: false` keeps the screen on always.
   // `entity`: an input_boolean the wall screen keeps in step with its display
   // (its history shows when it was on or off); toggling it in HA turns the
-  // display on or off until the automatic decision next changes.
-  SCREEN_POWER?: { enabled?: boolean; quiet?: [string, string]; vacation?: boolean; rooms?: string[]; holdMinutes?: number; entity?: string };
+  // display on or off until the automatic decision next changes. `battery`: an
+  // input_number (0–100) the wall screen writes its battery level into, so an
+  // automation can charge it only when needed.
+  SCREEN_POWER?: { enabled?: boolean; quiet?: [string, string]; vacation?: boolean; rooms?: string[]; holdMinutes?: number; entity?: string; battery?: string };
 }
 
 declare global {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { effectiveOn, entityStep, inQuietHours, screenOn, sinceSeenMs } from './screenPower';
+import { batteryToWrite, effectiveOn, entityStep, inQuietHours, screenOn, sinceSeenMs } from './screenPower';
 
 const at = (hh: number, mm = 0) => new Date(2026, 10, 2, hh, mm);
 
@@ -69,5 +69,19 @@ describe('display entity', () => {
     expect(entityStep({ prev: 'off', state: 'off', on: true, lastWrite: { on: true, at: 0 }, nowMs: 3000 })).toBe('none');
     expect(entityStep({ prev: 'off', state: 'off', on: true, lastWrite: { on: true, at: 0 }, nowMs: 20_000 })).toBe('write');
     expect(entityStep({ state: 'unavailable', on: true, nowMs: 0 })).toBe('none');
+  });
+});
+
+describe('wall screen battery', () => {
+  it('writes whole percent when the entity differs', () => {
+    expect(batteryToWrite(0.456, '40.0', undefined, 0)).toBe(46);
+    expect(batteryToWrite(1, 'unknown', undefined, 0)).toBe(100);
+    expect(batteryToWrite(0.8, '80.0', undefined, 0)).toBeUndefined();
+    expect(batteryToWrite(undefined, '80.0', undefined, 0)).toBeUndefined();
+  });
+
+  it('does not repeat a write that is still landing', () => {
+    expect(batteryToWrite(0.5, '49.0', { value: 50, at: 0 }, 5000)).toBeUndefined();
+    expect(batteryToWrite(0.5, '49.0', { value: 50, at: 0 }, 20_000)).toBe(50);
   });
 });

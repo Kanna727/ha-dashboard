@@ -153,6 +153,7 @@ const list: HassEntity[] = [
   // Fan manual-off flags (bedroom is held, like in the real house)
   e('input_boolean.vacation_mode', 'off'),
   e('input_boolean.wall_display', 'on', { friendly_name: 'Wall display', icon: 'mdi:tablet' }),
+  e('input_number.wall_display_battery', '64.0', { friendly_name: 'Wall display battery', min: 0, max: 100, step: 1, unit_of_measurement: '%' }),
   e('input_boolean.sofa_fan_manual_off', 'off'),
   e('input_boolean.tv_fan_manual_off', 'off'),
   e('input_boolean.bedroom_fan_manual_off', 'on'),

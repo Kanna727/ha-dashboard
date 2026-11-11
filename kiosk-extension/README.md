@@ -26,13 +26,21 @@ anywhere. Chrome isn't told when ChromeOS actually cuts the backlight, so "off"
 in that history means the dashboard blanked the screen and let ChromeOS turn it
 off.
 
+Since 1.1 the extension also reads the battery level (an offscreen page does,
+since `navigator.getBattery` isn't available to its service worker or on a plain
+`http://` dashboard) and hands it to the dashboard, which writes it into
+`SCREEN_POWER.battery` (an `input_number`). An automation can then switch the
+tablet's charger only when it is needed, instead of keeping it at 100% all day.
+
 ## Install
 
 1. Copy this folder onto the tablet, for example into *My files → Downloads*.
 2. Open `chrome://extensions`, turn on **Developer mode**, click **Load
    unpacked** and pick the folder.
-3. *Settings → Device → Power → When idle → While charging*: **Turn off
-   display** (not *Sleep*: the dashboard has to keep running to wake it).
+3. *Settings → Device → Power → When idle*: **Turn off display** both *While
+   charging* and *While on battery* (not *Sleep*: the dashboard has to keep
+   running to wake it, and to report the battery when its charger is switched
+   off).
 4. *Settings → Security and privacy → Lock screen*: turn off **Show lock screen
    when waking from sleep**, or every wake shows the lock screen.
 5. Reload the dashboard.
@@ -43,6 +51,6 @@ Opening the dashboard with `?screenTest=1` added to its URL makes it treat
 every hour as night with a 15 s wait, so the screen goes off after ChromeOS's
 idle delay once the rooms are empty, and comes back when someone walks in.
 
-The extension only runs on pages under `/local/dashboard/`, needs Chrome 113 or
-newer (for waking the screen), and has no settings of its own. After updating
-these files, click the reload icon on its card in `chrome://extensions`.
+The extension only runs on pages under `/local/dashboard/`, needs Chrome 116 or
+newer, and has no settings of its own. After updating these files, click the
+reload icon on its card in `chrome://extensions`.
