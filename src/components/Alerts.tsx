@@ -4,7 +4,7 @@ import { useHass, useHassStatus } from '../ha/api';
 import { store, useEntities, useEntity } from '../ha/store';
 import { num } from '../ha/format';
 import { useNow } from '../hooks/useNow';
-import { cycleEnded, mirrorsService, noticeFrom, overdueDoors } from '../lib/alerts';
+import { cycleEnded, liveUpdateShows, mirrorsService, noticeFrom, overdueDoors, type LiveSeen } from '../lib/alerts';
 import { useToasts } from './Toasts';
 
 const DOORS = [...new Set([...ROOMS.flatMap((r) => r.doors), FRIDGE.door])];
@@ -19,6 +19,27 @@ const doorName = (id: string) => {
 // One automation often sends the same message to each phone in turn
 // (notify.mobile_app_a, then _b): show it once.
 const SAME_NOTICE_MS = 10_000;
+
+// Which of HA's Live Updates already alerted at their start or end
+// (`liveUpdateShows`). Kept across reloads (a release reloads the kiosk mid-cycle,
+// and the next refresh mustn't count as a start); entries older than a day go.
+const LIVE_SEEN_KEY = 'liveUpdatesSeen';
+const LIVE_SEEN_MAX_MS = 24 * 3_600_000;
+function loadLiveSeen(): Map<string, LiveSeen> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(LIVE_SEEN_KEY) ?? '{}') as Record<string, LiveSeen>;
+    return new Map(Object.entries(raw).filter(([, v]) => v && (v.stage === 'start' || v.stage === 'end') && Date.now() - v.at < LIVE_SEEN_MAX_MS));
+  } catch {
+    return new Map();
+  }
+}
+function saveLiveSeen(seen: Map<string, LiveSeen>) {
+  try {
+    localStorage.setItem(LIVE_SEEN_KEY, JSON.stringify(Object.fromEntries(seen)));
+  } catch {
+    // private mode / storage full: only reloads mid-cycle are affected
+  }
+}
 
 // Watches for moments worth a full-screen alert: the washer or dishwasher
 // finishing, a door left open longer than ALERTS.doorOpenMinutes, and every
@@ -39,10 +60,14 @@ export function Alerts() {
   useEffect(() => {
     if (!ALERTS.notify.length) return;
     const recent = new Map<string, number>();
+    const liveSeen = loadLiveSeen();
     let n = 0;
     return hass.subscribeNotifyCalls(
       (service, data) => {
         if (!mirrorsService(service, ALERTS.notify)) return;
+        const shows = liveUpdateShows(data, liveSeen);
+        saveLiveSeen(liveSeen); // notify calls are few; no need to diff
+        if (!shows) return;
         const notice = noticeFrom(data, ALERTS.alarms);
         if (!notice) return;
         const key = `${notice.title}|${notice.text ?? ''}`;

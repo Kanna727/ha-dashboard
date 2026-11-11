@@ -1,5 +1,55 @@
 import { describe, expect, it } from 'vitest';
-import { cycleEnded, isResolved, mirrorsService, noticeFrom, overdueDoors } from './alerts';
+import { cycleEnded, isResolved, liveUpdateShows, mirrorsService, noticeFrom, overdueDoors, type LiveSeen } from './alerts';
+
+describe("HA's own Live Updates", () => {
+  const live = (progress: unknown, extra: Record<string, unknown> = {}, tag = 'dishwasher') => ({
+    title: 'Dishwasher',
+    message: 'Eco · ends 7:40 PM',
+    data: { live_update: true, tag, progress, progress_max: 100, ...extra },
+  });
+  const clear = (tag = 'dishwasher') => ({ message: 'clear_notification', data: { tag } });
+
+  it('alerts at 0 % and 100 %, not in between', () => {
+    const seen = new Map<string, LiveSeen>();
+    expect(liveUpdateShows(live(0), seen)).toBe(true);
+    expect(liveUpdateShows(live(0), seen)).toBe(false); // the second phone, or delayed start → run
+    expect(liveUpdateShows(live('5'), seen)).toBe(false);
+    expect(liveUpdateShows(live(95), seen)).toBe(false);
+    expect(liveUpdateShows(live(100), seen)).toBe(true);
+    expect(liveUpdateShows(live('100'), seen)).toBe(false); // the second phone
+  });
+
+  it('counts the first update as the start when there is no progress bar or it began part way', () => {
+    const seen = new Map<string, LiveSeen>();
+    const vac = (p?: number) => live(p, { progress_max: p === undefined ? undefined : 80 }, 'robot_vacuum');
+    expect(liveUpdateShows(vac(), seen)).toBe(true);
+    expect(liveUpdateShows(vac(), seen)).toBe(false); // the 2-min refresh
+    expect(liveUpdateShows(vac(30), seen)).toBe(false);
+    const door = new Map<string, LiveSeen>();
+    expect(liveUpdateShows(live(12, {}, 'washing_machine'), door)).toBe(true);
+    expect(liveUpdateShows(live(undefined, {}, 'door_fridge'), door)).toBe(true); // tags are separate
+  });
+
+  it('starts over after clear_notification, or after an end that was never cleared', () => {
+    const seen = new Map<string, LiveSeen>();
+    liveUpdateShows(live(0), seen);
+    liveUpdateShows(live(100), seen);
+    expect(liveUpdateShows(clear(), seen)).toBe(true);
+    expect(seen.has('dishwasher')).toBe(false);
+    expect(liveUpdateShows(live(0), seen)).toBe(true);
+    liveUpdateShows(live(100), seen);
+    expect(liveUpdateShows(live(undefined, { progress_max: undefined }), seen)).toBe(true); // next cycle, washer-style
+  });
+
+  it('keys an untagged one by its title and leaves other notifications alone', () => {
+    const seen = new Map<string, LiveSeen>();
+    const untagged = (p: number) => ({ title: 'Oven', message: 'Preheating', data: { live_update: 'true', progress: p } });
+    expect(liveUpdateShows(untagged(0), seen)).toBe(true);
+    expect(liveUpdateShows(untagged(50), seen)).toBe(false);
+    expect(liveUpdateShows({ message: 'Laundry is done! 🧺' }, seen)).toBe(true);
+    expect(liveUpdateShows({ message: 'Hi', data: { tag: 'dishwasher', progress: 40 } }, seen)).toBe(true); // not a Live Update
+  });
+});
 
 describe('cycle ended', () => {
   it('fires only on a seen running -> stopped transition', () => {

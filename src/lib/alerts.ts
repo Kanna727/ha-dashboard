@@ -55,6 +55,49 @@ export function isResolved(dw: DismissWhen, states: Record<string, { state: stri
   });
 }
 
+// HA's own Live Updates (`data: { live_update: true }`, a pinned card on the
+// phones that an automation re-sends as it moves: the dishwasher every 5 %,
+// the vacuum every 2 min) alert here only at their start and their end, not
+// at every refresh. Start: progress 0, or the first update of that Live Update
+// (keyed by its `tag`, else its title) when it has no progress bar or it began
+// part way. End: progress at progress_max (default 100). Each stage shows
+// once; `clear_notification` for the tag forgets it, and a start after an end
+// (a new cycle that never got cleared) shows again.
+export type LiveStage = 'start' | 'end';
+export interface LiveSeen {
+  stage: LiveStage;
+  at: number; // epoch ms, so a stale one can be dropped
+}
+
+const isLive = (v: unknown) => v === true || v === 'true';
+const progressOf = (v: unknown): number | undefined => {
+  if (v === undefined || v === null || v === '') return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+// Whether a notify call should be mirrored, as far as Live Updates go (true for
+// anything that isn't one). Records what it lets through in `seen`.
+export function liveUpdateShows(data: Record<string, unknown>, seen: Map<string, LiveSeen>, now = Date.now()): boolean {
+  const d = (data.data && typeof data.data === 'object' ? data.data : {}) as Record<string, unknown>;
+  const tag = typeof d.tag === 'string' && d.tag ? d.tag : undefined;
+  const message = typeof data.message === 'string' ? data.message.trim() : '';
+  if (message === 'clear_notification') {
+    if (tag) seen.delete(tag);
+    return true; // a command: noticeFrom drops it
+  }
+  if (!isLive(d.live_update)) return true;
+  const key = tag ?? `title:${typeof data.title === 'string' ? data.title.trim() : message}`;
+  const last = seen.get(key);
+  const p = progressOf(d.progress);
+  const max = progressOf(d.progress_max) || 100;
+  const stage: LiveStage | undefined =
+    p !== undefined && p >= max ? 'end' : (p !== undefined && p <= 0) || !last || last.stage === 'end' ? 'start' : undefined;
+  if (!stage || last?.stage === stage) return false;
+  seen.set(key, { stage, at: now });
+  return true;
+}
+
 const strings = (v: unknown): string[] => (Array.isArray(v) ? v : [v]).filter((x): x is string => typeof x === 'string' && x !== '');
 
 // `data: { dashboard_dismiss: { entity_id, state } }` in the notify call (each
