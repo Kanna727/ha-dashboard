@@ -1,3 +1,10 @@
+# [1.60.0](https://github.com/Kanna727/ha-dashboard/compare/v1.59.0...v1.60.0) (2026-11-11)
+
+
+### Features
+
+* **screen:** a display switch in Home Assistant, with history ([#81](https://github.com/Kanna727/ha-dashboard/issues/81)) ([f07888b](https://github.com/Kanna727/ha-dashboard/commit/f07888b656e480670a18a9393b299f0c038fa71d))
+
 # [1.59.0](https://github.com/Kanna727/ha-dashboard/compare/v1.58.0...v1.59.0) (2026-11-08)
 
 
