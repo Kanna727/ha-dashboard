@@ -36,7 +36,16 @@ const SAMPLES: { label: string; calls: Call[] }[] = [
     ],
   },
   { label: 'TV only (ignored)', calls: [['tv', { message: '🚪 Main door opened' }]] },
+  // HA's own Live Updates: only the start and the end alert (liveUpdateShows).
+  { label: 'HA Live Update 0%', calls: [['mobile_app_phone', liveDish(0, 'Eco · ends 7:40 PM')]] },
+  { label: 'HA Live Update 45% (not shown)', calls: [['mobile_app_phone', liveDish(45, 'Eco · ends 7:40 PM')]] },
+  { label: 'HA Live Update 100%', calls: [['mobile_app_phone', liveDish(100, 'Cycle complete · ready to unload')]] },
+  { label: 'HA Live Update cleared', calls: [['mobile_app_phone', { message: 'clear_notification', data: { tag: 'mock_dishwasher' } }]] },
 ];
+
+function liveDish(progress: number, message: string): Record<string, unknown> {
+  return { title: 'Dishwasher', message, data: { live_update: true, tag: 'mock_dishwasher', progress, progress_max: 100, critical_text: `${progress}%` } };
+}
 
 export function AlertsTestPanel({ patch }: { patch: Patch }) {
   const [open, setOpen] = useState(ALERTS_TEST);

@@ -4,8 +4,20 @@
     {
       "name": "dashboard-live",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:live"],
+      "runtimeArgs": [
+        "run",
+        "dev:live"
+      ],
       "port": 5173
+    },
+    {
+      "name": "dashboard-mock",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.VITE_MOCK='1';require('child_process').spawn(process.execPath,['node_modules/vite/bin/vite.js','--port','5174','--strictPort'],{stdio:'inherit'})"
+      ],
+      "port": 5174
     }
   ]
 }
