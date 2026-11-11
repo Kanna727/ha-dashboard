@@ -241,7 +241,10 @@ export interface DashboardConfig {
   // turn it off once the presence sensors of `rooms` (room ids; default every
   // room) have seen nobody for `holdMinutes` (default 5), and someone being seen
   // wakes it. `enabled: false` keeps the screen on always.
-  SCREEN_POWER?: { enabled?: boolean; quiet?: [string, string]; vacation?: boolean; rooms?: string[]; holdMinutes?: number };
+  // `entity`: an input_boolean the wall screen keeps in step with its display
+  // (its history shows when it was on or off); toggling it in HA turns the
+  // display on or off until the automatic decision next changes.
+  SCREEN_POWER?: { enabled?: boolean; quiet?: [string, string]; vacation?: boolean; rooms?: string[]; holdMinutes?: number; entity?: string };
 }
 
 declare global {

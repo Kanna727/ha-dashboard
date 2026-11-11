@@ -46,3 +46,35 @@ export interface ScreenInput {
 // Keep the screen on, except at night or on vacation once nobody has been seen
 // for holdMinutes; then ChromeOS may turn it off after its own idle delay.
 export const screenOn = (i: ScreenInput) => (!i.quiet && !i.vacation) || i.sinceSeenMs < i.holdMinutes * 60_000;
+
+// A hand-set state (HA's display entity toggled, or a touch) holds until the
+// automatic decision next changes: turning the screen off by day keeps it off
+// until 23:00 or until it's turned on again.
+export interface Override {
+  on: boolean;
+  auto: boolean; // the automatic decision when it was set
+}
+
+export const effectiveOn = (auto: boolean, o: Override | null) => (o && o.auto === auto ? o.on : auto);
+
+export interface EntityInput {
+  prev?: string; // the entity's state last seen
+  state?: string;
+  on: boolean; // the screen's state now
+  lastWrite?: { on: boolean; at: number };
+  nowMs: number;
+}
+
+// What the display entity's state means. A change to a value the screen isn't
+// in is a command from HA ('command'), unless it is our own write landing late.
+// Otherwise the entity is brought in line with the screen ('write'), at most
+// once per 15 s for the same value.
+export function entityStep(i: EntityInput): 'command' | 'write' | 'none' {
+  if (i.state !== 'on' && i.state !== 'off') return 'none';
+  const want = i.state === 'on';
+  const recent = (v: boolean) => !!i.lastWrite && i.lastWrite.on === v && i.nowMs - i.lastWrite.at < 15_000;
+  const changed = (i.prev === 'on' || i.prev === 'off') && i.prev !== i.state;
+  if (changed && want !== i.on && !recent(want)) return 'command';
+  if (want !== i.on && !recent(i.on)) return 'write';
+  return 'none';
+}

@@ -19,6 +19,13 @@ while anything large on it keeps moving, as it would for a video. The display
 then goes dark after ChromeOS's own idle delay, which takes several minutes.
 This works in any dashboard layout.
 
+With `SCREEN_POWER.entity` set to an `input_boolean` in Home Assistant, the
+wall screen keeps it in step with the display, so its history shows when the
+display was on or off, and toggling it in HA turns the display on or off from
+anywhere. Chrome isn't told when ChromeOS actually cuts the backlight, so "off"
+in that history means the dashboard blanked the screen and let ChromeOS turn it
+off.
+
 ## Install
 
 1. Copy this folder onto the tablet, for example into *My files → Downloads*.

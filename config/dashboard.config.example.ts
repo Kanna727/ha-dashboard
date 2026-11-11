@@ -320,8 +320,9 @@ const config: DashboardConfig = {
   HOME_IDLE: { minutes: 2, layouts: ['tablet'] },
   // Wall-screen power for a ChromeOS tablet with kiosk-extension/ installed:
   // off at night and on vacation once nobody has been seen in these rooms for
-  // holdMinutes; someone being seen there wakes it.
-  SCREEN_POWER: { quiet: ['23:00', '06:00'], vacation: true, rooms: ['living_room', 'kitchen'], holdMinutes: 5 },
+  // holdMinutes; someone being seen there wakes it. `entity` mirrors the display
+  // in HA (with history) and switches it from there.
+  SCREEN_POWER: { quiet: ['23:00', '06:00'], vacation: true, rooms: ['living_room', 'kitchen'], holdMinutes: 5, entity: 'input_boolean.wall_display' },
   // Doorbell (optional: without it the camera and the press sensor are found by
   // name). A press shows the camera's live view full screen for `seconds`.
   DOORBELL: { camera: 'camera.front_door', press: 'binary_sensor.doorbell_pressed', seconds: 60 },
