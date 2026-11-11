@@ -1,18 +1,17 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { ROOMS, SCREEN_POWER, VACATION_MODE } from '../config/entities';
+import { useHass } from '../ha/api';
 import { isOn } from '../ha/format';
 import { useEntities, useEntity } from '../ha/store';
 import { useNow } from '../hooks/useNow';
-import { inQuietHours, screenOn, sinceSeenMs } from '../lib/screenPower';
+import { effectiveOn, entityStep, inQuietHours, screenOn, sinceSeenMs, type Override } from '../lib/screenPower';
 import { useDoorbellRinging } from './Doorbell';
 
 // ?screenTest=1: quiet hours all day and a 15 s hold, for checking it on the tablet.
 const TEST = new URLSearchParams(window.location.search).has('screenTest');
 
-// Whether the wall screen should stay on (rules in lib/screenPower.ts). Also
-// read by NightMode, which comes up when it may go off so the page stops
-// repainting (ChromeOS won't turn off a display that looks like it plays video).
-export function useScreenOn() {
+// Whether the wall screen should stay on by the automatic rules (lib/screenPower.ts).
+function useAutoScreenOn() {
   const ids = useMemo(
     () => ROOMS.filter((r) => !SCREEN_POWER.rooms || SCREEN_POWER.rooms.includes(r.id)).flatMap((r) => r.presence),
     [],
@@ -34,24 +33,51 @@ export function useScreenOn() {
   );
 }
 
-// Whether the extension has answered: this device is the wall screen, whatever
-// its layout (NightMode then comes up on any layout when the screen may go off).
+// Shared with NightMode: whether the extension has answered (this device is
+// the wall screen, whatever its layout), the screen's state (automatic, or
+// hand-set on the wall screen) and the hand-set override itself.
 let extension = false;
-const extensionListeners = new Set<() => void>();
-const subscribeExtension = (l: () => void) => {
-  extensionListeners.add(l);
+let screenOnNow = true;
+let override: Override | null = null;
+const listeners = new Set<() => void>();
+const notify = () => listeners.forEach((l) => l());
+const subscribe = (l: () => void) => {
+  listeners.add(l);
   return () => {
-    extensionListeners.delete(l);
+    listeners.delete(l);
   };
 };
-export const useScreenExtension = () => useSyncExternalStore(subscribeExtension, () => extension);
+export const useScreenExtension = () => useSyncExternalStore(subscribe, () => extension);
+// NightMode comes up when the screen may go off so the page stops repainting
+// (ChromeOS won't turn off a display that looks like it plays video).
+export const useScreenOn = () => useSyncExternalStore(subscribe, () => screenOnNow);
+// Turned off by hand: NightMode blanks the screen at once instead of after a minute.
+export const useScreenOffByHand = () => useSyncExternalStore(subscribe, () => !!override && !override.on && !screenOnNow);
+const useOverride = () => useSyncExternalStore(subscribe, () => override);
+export function setScreenOverride(o: Override | null) {
+  override = o;
+  notify();
+}
 
 // Tells the ChromeOS extension (kiosk-extension/) whether the wall screen should
 // stay on. Sent as a window message on every change and once a minute, since
 // the extension's worker may have restarted. Without the extension nobody
 // listens and nothing happens. Renders nothing.
 export function ScreenPower() {
-  const on = useScreenOn();
+  const auto = useAutoScreenOn();
+  const wall = useScreenExtension();
+  const hand = useOverride();
+  const on = wall ? effectiveOn(auto, hand) : auto;
+
+  useEffect(() => {
+    if (hand && hand.auto !== auto) setScreenOverride(null);
+    if (screenOnNow !== on) {
+      screenOnNow = on;
+      notify();
+    }
+  }, [auto, hand, on]);
+
+  useDisplayEntity(wall, on, auto);
 
   useEffect(() => {
     document.documentElement.dataset.screen = on ? 'on' : 'off';
@@ -68,11 +94,35 @@ export function ScreenPower() {
       window.removeEventListener('message', onReply);
       console.info(`Screen power extension connected (wake ${e.data.canWake ? 'supported' : 'not supported'}).`);
       extension = true;
-      extensionListeners.forEach((l) => l());
+      notify();
     };
     window.addEventListener('message', onReply);
     return () => window.removeEventListener('message', onReply);
   }, []);
 
   return null;
+}
+
+// Keeps SCREEN_POWER.entity (an input_boolean) in step with the wall screen,
+// so HA has its history, and takes a toggle in HA as a command (rules in
+// entityStep). Only on the wall screen: other devices never touch it.
+function useDisplayEntity(wall: boolean, on: boolean, auto: boolean) {
+  const hass = useHass();
+  const entity = useEntity(wall && SCREEN_POWER.entity ? SCREEN_POWER.entity : undefined);
+  const state = entity?.state;
+  const prev = useRef<string>();
+  const lastWrite = useRef<{ on: boolean; at: number }>();
+
+  useEffect(() => {
+    if (!wall || !SCREEN_POWER.entity) return;
+    const step = entityStep({ prev: prev.current, state, on, lastWrite: lastWrite.current, nowMs: Date.now() });
+    prev.current = state;
+    if (step === 'command') setScreenOverride({ on: state === 'on', auto });
+    if (step === 'write') {
+      lastWrite.current = { on, at: Date.now() };
+      hass.callService('input_boolean', on ? 'turn_on' : 'turn_off', {}, { entity_id: SCREEN_POWER.entity }).catch(() => {
+        lastWrite.current = undefined;
+      });
+    }
+  }, [wall, state, on, auto, hass]);
 }

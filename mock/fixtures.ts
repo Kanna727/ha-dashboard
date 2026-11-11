@@ -152,6 +152,7 @@ const list: HassEntity[] = [
   e('automation.workroom_occupied', 'on'),
   // Fan manual-off flags (bedroom is held, like in the real house)
   e('input_boolean.vacation_mode', 'off'),
+  e('input_boolean.wall_display', 'on', { friendly_name: 'Wall display', icon: 'mdi:tablet' }),
   e('input_boolean.sofa_fan_manual_off', 'off'),
   e('input_boolean.tv_fan_manual_off', 'off'),
   e('input_boolean.bedroom_fan_manual_off', 'on'),

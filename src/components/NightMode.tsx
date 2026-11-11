@@ -4,7 +4,7 @@ import { useEntity } from '../ha/store';
 import { useNow } from '../hooks/useNow';
 import { driftAt, nightActive } from '../lib/night';
 import { useIssues } from '../panels/useIssues';
-import { useScreenExtension, useScreenOn } from './ScreenPower';
+import { setScreenOverride, useScreenExtension, useScreenOffByHand, useScreenOn } from './ScreenPower';
 import { useWeatherNow } from './useWeather';
 import { SkyArc } from './SkyArc';
 import { WeatherIcon } from './WeatherIcon';
@@ -19,12 +19,15 @@ const TEST = new URLSearchParams(window.location.search).has('nightTest');
 // so it can't press something underneath. Other animations pause meanwhile.
 // While the wall screen may turn off (ScreenPower) it comes up after a minute at
 // any time of day, and what's under it is hidden so nothing repaints. On the
-// wall screen (the extension answered) that holds on any layout, and the screen
-// going back on (someone walked in) closes it.
+// wall screen (the extension answered) that holds on any layout, the screen
+// going back on (someone walked in, or turned on from HA) closes it, it is
+// plain black while the display may be off, and turning the display off from HA
+// brings it up at once. A touch then turns that hand-set "off" back on.
 export function NightMode({ layout }: { layout: string }) {
   const sun = useEntity(SUN);
   const screenOn = useScreenOn();
   const wallScreen = useScreenExtension();
+  const offByHand = useScreenOffByHand();
   const lastInput = useRef(Date.now());
   const [on, setOn] = useState(false);
   const now = useNow(on ? 1000 : 15_000);
@@ -41,7 +44,7 @@ export function NightMode({ layout }: { layout: string }) {
   const shouldBeOn = nightActive({
     enabled: NIGHT_MODE.enabled,
     layoutAllowed: TEST || NIGHT_MODE.layouts.includes(layout) || (wallScreen && !screenOn),
-    idleMs: now.getTime() - lastInput.current,
+    idleMs: offByHand ? Infinity : now.getTime() - lastInput.current,
     idleMinutes: TEST ? 5 / 60 : NIGHT_MODE.idleMinutes,
     nightOnly: TEST ? false : NIGHT_MODE.nightOnly,
     sunDown: sun?.state === 'below_horizon',
@@ -82,12 +85,13 @@ export function NightMode({ layout }: { layout: string }) {
     window.addEventListener('click', swallow, { capture: true, once: true });
     window.setTimeout(() => window.removeEventListener('click', swallow, { capture: true }), 700);
     lastInput.current = Date.now();
+    if (offByHand) setScreenOverride(null);
     setOn(false);
   };
-  return <NightScreen now={now} onWake={wake} />;
+  return <NightScreen now={now} onWake={wake} blank={wallScreen && !screenOn} />;
 }
 
-function NightScreen({ now, onWake }: { now: Date; onWake: (e: React.PointerEvent) => void }) {
+function NightScreen({ now, onWake, blank }: { now: Date; onWake: (e: React.PointerEvent) => void; blank: boolean }) {
   const weather = useWeatherNow();
   const sun = useEntity(SUN);
   const issues = useIssues();
@@ -96,22 +100,24 @@ function NightScreen({ now, onWake }: { now: Date; onWake: (e: React.PointerEven
 
   return (
     <div className="night-screen" onPointerDown={onWake} onClick={(e) => e.stopPropagation()} role="button" aria-label="Wake the dashboard">
-      <div className="night-block" style={{ transform: `translate(${drift.x}px, ${drift.y}px)` }}>
-        <div className="night-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
-        <div className="night-date">{now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}</div>
-        <div className="night-weather">
-          <WeatherIcon condition={weather.condition} night={sun?.state === 'below_horizon'} size={44} />
-          <span>{temp !== undefined ? `${Math.round(temp)}°` : '–'} · {weather.label}</span>
+      {!blank && (
+        <div className="night-block" style={{ transform: `translate(${drift.x}px, ${drift.y}px)` }}>
+          <div className="night-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</div>
+          <div className="night-date">{now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' })}</div>
+          <div className="night-weather">
+            <WeatherIcon condition={weather.condition} night={sun?.state === 'below_horizon'} size={44} />
+            <span>{temp !== undefined ? `${Math.round(temp)}°` : '–'} · {weather.label}</span>
+          </div>
+          <SkyArc sun={sun} className="night-sky" />
+          {issues.length > 0 && (
+            <ul className="night-issues">
+              {issues.map((i) => (
+                <li key={i.id} className={i.severity}>{i.text}</li>
+              ))}
+            </ul>
+          )}
         </div>
-        <SkyArc sun={sun} className="night-sky" />
-        {issues.length > 0 && (
-          <ul className="night-issues">
-            {issues.map((i) => (
-              <li key={i.id} className={i.severity}>{i.text}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      )}
     </div>
   );
 }

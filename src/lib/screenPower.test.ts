@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inQuietHours, screenOn, sinceSeenMs } from './screenPower';
+import { effectiveOn, entityStep, inQuietHours, screenOn, sinceSeenMs } from './screenPower';
 
 const at = (hh: number, mm = 0) => new Date(2026, 10, 2, hh, mm);
 
@@ -38,5 +38,36 @@ describe('screen power', () => {
     expect(screenOn({ ...base, quiet: true, sinceSeenMs: 0 })).toBe(true);
     expect(screenOn({ ...base, vacation: true, sinceSeenMs: 4 * 60_000 })).toBe(true);
     expect(screenOn({ ...base, quiet: true, sinceSeenMs: 5 * 60_000 })).toBe(false);
+  });
+});
+
+describe('display entity', () => {
+  it('holds a hand-set state until the automatic decision changes', () => {
+    expect(effectiveOn(true, null)).toBe(true);
+    expect(effectiveOn(true, { on: false, auto: true })).toBe(false);
+    expect(effectiveOn(false, { on: false, auto: true })).toBe(false);
+    expect(effectiveOn(false, { on: true, auto: false })).toBe(true);
+    expect(effectiveOn(true, { on: true, auto: false })).toBe(true);
+  });
+
+  it('reads a change from HA to a state the screen is not in as a command', () => {
+    expect(entityStep({ prev: 'on', state: 'off', on: true, nowMs: 0 })).toBe('command');
+    expect(entityStep({ prev: 'off', state: 'on', on: false, nowMs: 0 })).toBe('command');
+  });
+
+  it('brings a stale entity in line on load, and after HA comes back', () => {
+    expect(entityStep({ state: 'off', on: true, nowMs: 0 })).toBe('write');
+    expect(entityStep({ prev: 'unavailable', state: 'off', on: true, nowMs: 0 })).toBe('write');
+    expect(entityStep({ prev: 'on', state: 'on', on: false, nowMs: 0 })).toBe('write');
+  });
+
+  it('leaves its own writes alone, landing or late', () => {
+    expect(entityStep({ prev: 'on', state: 'off', on: false, nowMs: 0 })).toBe('none');
+    // Wrote off, then the screen went back on before it landed: write again.
+    expect(entityStep({ prev: 'on', state: 'off', on: true, lastWrite: { on: false, at: 0 }, nowMs: 3000 })).toBe('write');
+    // Already asked for this value just now: don't repeat it.
+    expect(entityStep({ prev: 'off', state: 'off', on: true, lastWrite: { on: true, at: 0 }, nowMs: 3000 })).toBe('none');
+    expect(entityStep({ prev: 'off', state: 'off', on: true, lastWrite: { on: true, at: 0 }, nowMs: 20_000 })).toBe('write');
+    expect(entityStep({ state: 'unavailable', on: true, nowMs: 0 })).toBe('none');
   });
 });

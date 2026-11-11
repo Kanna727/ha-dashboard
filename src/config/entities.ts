@@ -94,6 +94,7 @@ export const SCREEN_POWER = {
   vacation: true,
   rooms: undefined as string[] | undefined,
   holdMinutes: 5,
+  entity: '',
   ...cfg.SCREEN_POWER,
 };
 
