@@ -1,7 +1,8 @@
 // The mock medicines document (the hidden 'dashboard-medicines' dashboard), as
 // the dashboard would have saved it: fictional medicines for the example's two
 // people, counted an hour ago, so Omega-3 runs out within days, the probiotic
-// has run out and the iron is paused.
+// has run out and the iron is paused. The mock plays HA's template sensor too:
+// sensor.dashboard_medicines takes the dashboard_medicines event (MockProvider.fireEvent).
 import { medicinesDoc, type MedicineDef } from '../src/lib/medicines';
 
 export function mockMedicines() {

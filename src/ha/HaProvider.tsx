@@ -134,6 +134,10 @@ function subscribeDoc(urlPath: string, cb: () => void): () => void {
 
 export const haApi: HassApi = {
   callService: async (domain, service, data, target) => callService(await getConnection(), domain, service, data, target),
+  async fireEvent(eventType, data) {
+    const conn = await getConnection();
+    await conn.sendMessagePromise({ type: 'fire_event', event_type: eventType, event_data: data });
+  },
   async fetchHistory(entityIds, hours) {
     const conn = await getConnection();
     const start = new Date(Date.now() - hours * 3600_000).toISOString();

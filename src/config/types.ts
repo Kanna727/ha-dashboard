@@ -64,6 +64,9 @@ export interface MedicinesConfig {
   // The hidden dashboard holding the medicines, edited on the dashboard itself
   // (default 'dashboard-medicines'; created on the first save).
   store?: string;
+  // HA's template sensor that keeps the medicines summary for its reminder
+  // automations (default: found by itself, see lib/medicines.ts findHaSensor).
+  haSensor?: string;
 }
 
 export interface DashboardConfig {

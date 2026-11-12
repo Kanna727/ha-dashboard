@@ -335,6 +335,9 @@ const list: HassEntity[] = [
   ...extraEntities(),
   // Money helpers for the Money page (mock/finance.ts).
   ...financeEntities(),
+  // HA's copy of the medicines summary (a trigger-based template sensor; the
+  // mock fills it when the dashboard sends its `dashboard_medicines` event).
+  e('sensor.dashboard_medicines', 'unknown', { friendly_name: 'Dashboard medicines', icon: 'mdi:pill' }),
 ];
 
 export const FIXTURES: HassEntities = Object.fromEntries(list.map((x) => [x.entity_id, x]));
