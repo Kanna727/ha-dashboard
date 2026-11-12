@@ -231,6 +231,33 @@ export const haApi: HassApi = {
     const res = await conn.sendMessagePromise<{ items: TodoItem[] }>({ type: 'todo/item/list', entity_id: entityId });
     return res.items;
   },
+  subscribeTodo(entityId, cb) {
+    let cancelled = false;
+    const unsub = getConnection().then((conn) =>
+      cancelled ? undefined : conn.subscribeMessage<{ items: TodoItem[] }>((msg) => cb(msg.items ?? []), { type: 'todo/item/subscribe', entity_id: entityId }),
+    );
+    unsub.catch((e) => console.warn('todo subscribe', entityId, e));
+    return () => {
+      cancelled = true;
+      unsub.then((u) => u?.()).catch(() => undefined);
+    };
+  },
+  async fetchCalendarEvents(entityIds, start, end) {
+    if (!entityIds.length) return [];
+    const conn = await getConnection();
+    type Ev = { summary?: string; start?: string; end?: string; location?: string };
+    const res = await conn.sendMessagePromise<{ response?: Record<string, { events?: Ev[] }> }>({
+      type: 'call_service',
+      domain: 'calendar',
+      service: 'get_events',
+      target: { entity_id: entityIds },
+      service_data: { start_date_time: start.toISOString(), end_date_time: end.toISOString() },
+      return_response: true,
+    });
+    return Object.entries(res.response ?? {}).flatMap(([calendar, r]) =>
+      (r.events ?? []).flatMap((e) => (e.summary && e.start ? [{ calendar, summary: e.summary, start: e.start, end: e.end, location: e.location || undefined }] : [])),
+    );
+  },
   async fetchRegistry() {
     const conn = await getConnection();
     type Dev = {

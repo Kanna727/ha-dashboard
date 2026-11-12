@@ -368,6 +368,11 @@ const config: DashboardConfig = {
     times: { before_breakfast: '07:30', after_breakfast: '09:00', after_lunch: '14:00', before_dinner: '19:00', after_dinner: '20:30' },
     lowDays: 5,
   },
+  // Planner page: the HA to-do lists for todos, reminders and shopping (these
+  // are the defaults: Local To-do lists named "Todos" and "Reminders", and the
+  // Shopping List integration). Habits are added on the dashboard and kept in
+  // HA's hidden 'dashboard-habits' dashboard; every calendar.* shows on the calendar.
+  PLANNER: { todos: 'todo.todos', reminders: 'todo.reminders', shopping: 'todo.shopping_list' },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {

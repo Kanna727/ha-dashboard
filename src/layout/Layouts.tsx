@@ -22,6 +22,10 @@ import { BalanceSheetPanel, EpfPanel, FundsPanel, InsurancePanel, StocksPanel, T
 import { useMoneySection, type MoneySection } from '../money/sections';
 import { MoneyStrip, MoneyTiles } from '../money/MoneyTiles';
 import { CleanPage, useHasClean } from './CleanPage';
+import { CalendarPanel } from '../planner/CalendarPanel';
+import { HabitsPanel } from '../planner/HabitsPanel';
+import { ShoppingPanel } from '../planner/ShoppingPanel';
+import { TodoPanel } from '../planner/TodoPanel';
 import { PAGES, usePage, type Page } from './pages';
 import { Pager } from './Pager';
 import { TabBar } from './TabBar';
@@ -63,6 +67,15 @@ function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { classNam
       };
     case 'health':
       return { className: 'cols cols-2', columns: [[card('health', <HealthPanel full />)], [card('medicines', <MedicinesPanel full />), card('meals', <MealsPanel full />)]] };
+    case 'planner':
+      return {
+        className: 'cols cols-planner',
+        columns: [
+          [card('calendar', <CalendarPanel />)],
+          [card('habits', <HabitsPanel />), card('shopping', <ShoppingPanel />)],
+          [card('todos', <TodoPanel kind="todos" />), card('reminders', <TodoPanel kind="reminders" />)],
+        ],
+      };
     case 'money':
       return moneyColumns('overview');
   }
@@ -212,6 +225,11 @@ const LABELS: Record<string, string> = {
   stocks: 'Stocks',
   epf: 'EPF',
   insurance: 'Insurance',
+  calendar: 'Calendar',
+  habits: 'Habits',
+  todos: 'Todos',
+  reminders: 'Reminders',
+  shopping: 'Shopping',
 };
 const card = (id: keyof typeof LABELS, node: ReactNode): CardDef => ({ id, label: LABELS[id], node });
 
@@ -245,6 +263,15 @@ function PhoneTab({ page }: { page: Page }) {
           <HealthPanel />
           <MedicinesPanel />
           <MealsPanel />
+        </>
+      )}
+      {page === 'planner' && (
+        <>
+          <CalendarPanel />
+          <HabitsPanel />
+          <TodoPanel kind="todos" />
+          <TodoPanel kind="reminders" />
+          <ShoppingPanel />
         </>
       )}
       {page === 'money' && <MoneyPhone />}

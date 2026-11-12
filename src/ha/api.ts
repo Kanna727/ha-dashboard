@@ -38,6 +38,19 @@ export interface TodoItem {
   uid: string;
   summary: string;
   status: 'needs_action' | 'completed';
+  due?: string | null; // 'YYYY-MM-DD' or an ISO date-time
+  description?: string | null;
+  completed?: string | null;
+}
+
+// One event from a calendar.* entity (calendar.get_events): start/end are
+// 'YYYY-MM-DD' for all-day events (end exclusive), else ISO date-times.
+export interface CalendarEventItem {
+  calendar: string; // the calendar's entity ID
+  summary: string;
+  start: string;
+  end?: string;
+  location?: string;
 }
 
 export interface LovelaceCard {
@@ -121,6 +134,11 @@ export interface HassApi {
   fetchStatChanges(ids: string[], days: number, period: 'day' | 'week' | 'month'): Promise<Record<string, StatChange[]>>;
   subscribeForecast(entityId: string, type: 'daily' | 'hourly', cb: (days: ForecastDay[]) => void): () => void;
   fetchTodo(entityId: string): Promise<TodoItem[]>;
+  // A to-do list's items, now and after every change (todo/item/subscribe).
+  // Writes go through callService (todo.add_item, update_item, remove_item, ...).
+  subscribeTodo(entityId: string, cb: (items: TodoItem[]) => void): () => void;
+  // Events of calendar.* entities between two times (calendar.get_events).
+  fetchCalendarEvents(entityIds: string[], start: Date, end: Date): Promise<CalendarEventItem[]>;
   // Raw Lovelace config of a storage dashboard (authenticated WS call).
   fetchLovelaceConfig(urlPath: string): Promise<LovelaceConfig>;
   // Device + entity registry, used to group unavailable entities by device.
