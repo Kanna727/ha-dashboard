@@ -1,3 +1,10 @@
+# [1.64.0](https://github.com/Kanna727/ha-dashboard/compare/v1.63.0...v1.64.0) (2026-11-12)
+
+
+### Features
+
+* **planner:** a Planner page with habits, todos, reminders, shopping and a master calendar ([#86](https://github.com/Kanna727/ha-dashboard/issues/86)) ([7443603](https://github.com/Kanna727/ha-dashboard/commit/7443603a90761d76bda653f95adde8d33691e217))
+
 # [1.63.0](https://github.com/Kanna727/ha-dashboard/compare/v1.62.0...v1.63.0) (2026-11-12)
 
 
