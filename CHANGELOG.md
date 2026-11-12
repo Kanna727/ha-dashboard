@@ -1,3 +1,10 @@
+# [1.65.0](https://github.com/Kanna727/ha-dashboard/compare/v1.64.0...v1.65.0) (2026-11-12)
+
+
+### Features
+
+* **health:** medicine reminders and low-stock warnings from Home Assistant ([#87](https://github.com/Kanna727/ha-dashboard/issues/87)) ([f7e4140](https://github.com/Kanna727/ha-dashboard/commit/f7e4140aca88c8e20a1d9c8b7a76c3956c9b1020))
+
 # [1.64.0](https://github.com/Kanna727/ha-dashboard/compare/v1.63.0...v1.64.0) (2026-11-12)
 
 
