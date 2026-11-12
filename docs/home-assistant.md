@@ -206,12 +206,13 @@ Without that secret the preview jobs skip with a warning. Pull requests from for
 
 ## 7. Planner lists and reminder alerts (optional)
 
-The Planner page reads three to-do lists. Add them in Settings → Devices & services:
+The Planner page reads three to-do lists and a calendar. Add them in Settings → Devices & services:
 
 - **Local To-do**, twice: one list named `Todos` and one named `Reminders` (they become `todo.todos` and `todo.reminders`). Local To-do lists keep due dates, times and notes.
 - **Shopping List** (`todo.shopping_list`).
+- **Local Calendar** with a calendar named `Appointments` (`calendar.appointments`), for the Appointments card and the appointments added with the calendar's "+ Add". They show in Home Assistant's own calendar too.
 
-Other names work too: set `PLANNER.todos`, `PLANNER.reminders` and `PLANNER.shopping` in the config. Habits need nothing in Home Assistant: the dashboard keeps them in a hidden dashboard of its own (saving needs an admin login).
+Other names work too: set `PLANNER.todos`, `PLANNER.reminders`, `PLANNER.shopping` and `PLANNER.appointments` in the config. Any other calendars (Google, CalDAV...) show on the Planner's calendar by themselves (`PLANNER.calendars` limits which). Habits need nothing in Home Assistant: the dashboard keeps them in a hidden dashboard of its own (saving needs an admin login).
 
 **Reminder alerts.** Home Assistant has no trigger for a to-do item coming due, so an automation checks the reminders list once a minute and sends whatever is due that minute. `notify.notify` reaches the phones, and the wall screens show it as an alert (`dashboard: warn` sets its tone):
 

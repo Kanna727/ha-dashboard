@@ -98,6 +98,7 @@ export const PLANNER = {
   todos: 'todo.todos',
   reminders: 'todo.reminders',
   shopping: 'todo.shopping_list',
+  appointments: 'calendar.appointments',
   people: MEALS.people,
   store: 'dashboard-habits',
   calendars: undefined as string[] | undefined,

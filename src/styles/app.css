@@ -3299,9 +3299,9 @@ button.med-dose:not(:disabled):hover { background: var(--tile-hover); }
 /* ---------- Planner page (planner/*; the owner picked "Today first" on 2026-11-12) ---------- */
 :root {
   --src-habits: #8b7cf6; --src-todos: #38bdf8; --src-reminders: #f472b6; --src-medicines: #34d399;
-  --src-meals: #fbbf24; --src-money: #fb923c; --src-commute: #2dd4bf; --src-calendar: #a3e635; --src-shopping: #34d399;
+  --src-meals: #fbbf24; --src-money: #fb923c; --src-commute: #2dd4bf; --src-calendar: #a3e635; --src-shopping: #34d399; --src-appointments: #60a5fa;
 }
-/* The calendar, then habits + shopping, then todos + reminders. */
+/* The calendar, then habits + shopping, then appointments + todos + reminders. */
 .cols-planner { grid-template-columns: minmax(0, 1fr) minmax(0, 0.68fr) minmax(0, 0.68fr); }
 @media (orientation: portrait) {
   .layout.tablet .cols-planner .col:nth-child(2) { grid-column: auto; grid-row: auto; }
@@ -3352,7 +3352,17 @@ button.med-dose:not(:disabled):hover { background: var(--tile-hover); }
 .pl-dots { display: flex; justify-content: center; gap: 3px; min-height: 6px; }
 .pl-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--c); }
 .pl-dayhead { margin: 4px 0 8px; }
-.pl-dayhead.today { color: var(--src-habits); }
+.pl-dayhead.today, .pl-dayrow.today .pl-dayhead { color: var(--src-habits); }
+/* A day's heading with its "+ Add". */
+.pl-dayrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 6px; }
+.pl-dayrow .pl-dayhead { margin: 0; }
+.pl-dayadd {
+  display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 12px 0 8px; border-radius: 999px;
+  background: var(--tile); color: var(--text); font-size: 13px; font-weight: 700;
+}
+.pl-dayadd svg { color: var(--src-appointments); }
+.pl-dayadd:active { transform: scale(0.96); }
+.pl-weekday .pl-dayadd { min-height: 30px; padding: 0 10px 0 6px; font-size: 12px; }
 .pl-weekday + .pl-weekday { margin-top: 10px; }
 
 /* Agenda */
@@ -3486,3 +3496,26 @@ button.med-dose:not(:disabled):hover { background: var(--tile-hover); }
 .pl-form-row label { flex: 1; min-width: 140px; }
 .pl-form .chips-row { margin-top: 8px; }
 .pl-form .chip-btn { text-transform: none; }
+
+/* Appointments card (planner/AppointmentsPanel.tsx) */
+.pl-appt-day + .pl-appt-day { margin-top: 8px; }
+.pl-appt { align-items: flex-start; }
+.pl-appt-time {
+  flex: 0 0 104px; padding-top: 2px; font-size: 12.5px; font-weight: 800; color: var(--src-appointments);
+  font-variant-numeric: tabular-nums;
+}
+.pl-appt.now .pl-appt-time::before { content: '● '; }
+@container (max-width: 300px) { .pl-appt-time { flex-basis: 76px; } }
+
+/* The calendar's "+": what to add */
+.pl-addentry { display: grid; gap: 16px; }
+.pl-kinds { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.pl-kind {
+  display: grid; justify-items: center; gap: 4px; padding: 10px 2px 8px; border-radius: 14px; background: var(--tile);
+  color: var(--muted); font-size: 12px; font-weight: 700; border: 1.5px solid transparent; min-width: 0;
+}
+.pl-kind span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-kind svg { color: var(--c); }
+.pl-kind.on { color: var(--text); border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, var(--tile)); }
+/* Phones: three, then two. */
+@media (max-width: 480px) { .pl-kinds { grid-template-columns: repeat(6, minmax(0, 1fr)); } .pl-kind { grid-column: span 2; } .pl-kind:nth-child(n + 4) { grid-column: span 3; } }

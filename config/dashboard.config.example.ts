@@ -372,7 +372,7 @@ const config: DashboardConfig = {
   // are the defaults: Local To-do lists named "Todos" and "Reminders", and the
   // Shopping List integration). Habits are added on the dashboard and kept in
   // HA's hidden 'dashboard-habits' dashboard; every calendar.* shows on the calendar.
-  PLANNER: { todos: 'todo.todos', reminders: 'todo.reminders', shopping: 'todo.shopping_list' },
+  PLANNER: { todos: 'todo.todos', reminders: 'todo.reminders', shopping: 'todo.shopping_list', appointments: 'calendar.appointments' },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {

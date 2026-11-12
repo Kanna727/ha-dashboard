@@ -51,7 +51,18 @@ export interface CalendarEventItem {
   start: string;
   end?: string;
   location?: string;
+  description?: string;
+  uid?: string;
+  recurrenceId?: string;
 }
+
+// A change to a calendar.* entity's events (calendar/event/create, update, delete;
+// Local Calendar supports all three). `event` is HA's: summary, dtstart, dtend
+// ('YYYY-MM-DD' for all day, else an ISO date-time), location, description.
+export type CalendarChange =
+  | { action: 'create'; event: Record<string, string> }
+  | { action: 'update'; uid: string; recurrenceId?: string; event: Record<string, string> }
+  | { action: 'delete'; uid: string; recurrenceId?: string };
 
 export interface LovelaceCard {
   type: string;
@@ -141,6 +152,8 @@ export interface HassApi {
   subscribeTodo(entityId: string, cb: (items: TodoItem[]) => void): () => void;
   // Events of calendar.* entities between two times (calendar.get_events).
   fetchCalendarEvents(entityIds: string[], start: Date, end: Date): Promise<CalendarEventItem[]>;
+  // Adds, changes or deletes one (calendar/event/*).
+  changeCalendarEvent(entityId: string, change: CalendarChange): Promise<void>;
   // Raw Lovelace config of a storage dashboard (authenticated WS call).
   fetchLovelaceConfig(urlPath: string): Promise<LovelaceConfig>;
   // Device + entity registry, used to group unavailable entities by device.

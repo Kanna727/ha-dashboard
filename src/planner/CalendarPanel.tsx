@@ -12,6 +12,8 @@ import { readCache, writeCache } from '../ha/useRegistry';
 import { ymd } from '../lib/medicines';
 import { addDays, CAL_SOURCES, clockText, dayName, dayOf, minutesOf, monthDays, startOfDay, weekStart, type CalEvent, type CalSource } from '../lib/planner';
 import { PLANNER } from '../config/entities';
+import { openAddEntry } from './AddEntry';
+import { openAppointment } from './AppointmentsPanel';
 import { LIST_ENTITY, openTodo, Tick, useFailToast } from './TodoPanel';
 import { useCalendar, useHiddenSources, useTodoActions, useTodoItems } from './usePlanner';
 
@@ -88,7 +90,7 @@ export function CalendarPanel() {
             </button>
           </div>
           <MonthGrid days={grid} month={sel.getMonth()} cal={cal} sel={ymd(sel)} today={today} onPick={pick} />
-          <h3 className="label pl-dayhead">{dayName(sel, now)}</h3>
+          <DayHead day={sel} now={now} />
           <Agenda events={cal.get(ymd(sel)) ?? []} day={sel} now={now} compact />
         </>
       ) : (
@@ -96,15 +98,13 @@ export function CalendarPanel() {
           <WeekStrip days={week} cal={cal} sel={ymd(sel)} today={today} onPick={pick} onMove={(n) => pick(addDays(sel, n))} />
           {view === 'day' ? (
             <>
-              <h3 className="label pl-dayhead">{dayName(sel, now)}</h3>
+              <DayHead day={sel} now={now} />
               <Agenda events={cal.get(ymd(sel)) ?? []} day={sel} now={now} />
             </>
           ) : (
             week.map((d) => (
               <div key={ymd(d)} className="pl-weekday">
-                <h3 className={`label pl-dayhead ${ymd(d) === today ? 'today' : ''}`}>
-                  {dayName(d, now)}
-                </h3>
+                <DayHead day={d} now={now} />
                 <Agenda events={cal.get(ymd(d)) ?? []} day={d} now={now} compact />
               </div>
             ))
@@ -112,6 +112,22 @@ export function CalendarPanel() {
         </>
       )}
     </section>
+  );
+}
+
+// A day's name, with "+ Add" to put something on that day.
+function DayHead({ day, now }: { day: Date; now: Date }) {
+  const modal = useModal();
+  const k = ymd(day);
+  const name = dayName(day, now);
+  return (
+    <div className={`pl-dayrow ${k === ymd(now) ? 'today' : ''}`}>
+      <h3 className="label pl-dayhead">{name}</h3>
+      <button className="pl-dayadd" onClick={() => openAddEntry(modal, k)} aria-label={`Add to ${name}`}>
+        <Icon name="plus" size={18} />
+        <span>Add</span>
+      </button>
+    </div>
   );
 }
 
@@ -223,6 +239,7 @@ function Agenda({ events, day, now, compact = false }: { events: CalEvent[]; day
     void (e.ref!.list === 'todos' ? actTodos : actReminders).setDone(it, !e.done).catch(fail);
   };
   const open = (e: CalEvent) => {
+    if (e.appt) return openAppointment(modal, e.appt);
     const it = item(e);
     if (it && e.ref) return openTodo(modal, e.ref.list, it);
     const page = PAGE_OF[e.src];

@@ -20,7 +20,7 @@ import { extraHistory, extraStatChanges, extraStatistics, MOCK_MACS, SPEEDTEST_I
 import { ENERGY } from '../src/config/entities';
 import { mockMedicines } from './medicines';
 import { HA_EVENT } from '../src/lib/medicines';
-import { mockCalendarEvents, mockHabits, PLANNER_STATES, subscribeMockTodo, todoService } from './planner';
+import { mockCalendarChange, mockCalendarEvents, mockHabits, PLANNER_STATES, subscribeMockTodo, todoService } from './planner';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
@@ -323,6 +323,9 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       },
       async fetchCalendarEvents(entityIds, start, end) {
         return mockCalendarEvents(start, end).filter((e) => entityIds.includes(e.calendar));
+      },
+      async changeCalendarEvent(entityId, change) {
+        mockCalendarChange(entityId, change);
       },
       async fetchRegistry() {
         return { ...REGISTRY, devices: REGISTRY.devices.map((d) => (MOCK_MACS[d.id] ? { ...d, macs: [MOCK_MACS[d.id]] } : d)) };

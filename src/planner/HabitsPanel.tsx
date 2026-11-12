@@ -157,7 +157,8 @@ const newId = (name: string) =>
     .slice(0, 24) || 'habit'}_${Date.now().toString(36)}`;
 
 // Add or edit a habit: name, who, which days; pause and delete when editing.
-function HabitForm({ id }: { id?: string }) {
+// A new one counts from `since` (default today; the calendar's "+" passes its day).
+export function HabitForm({ id, since }: { id?: string; since?: string }) {
   const doc = useHabits();
   const save = useSaveHabits();
   const modal = useModal();
@@ -176,7 +177,7 @@ function HabitForm({ id }: { id?: string }) {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !who.length || (days && !days.length)) return;
-    const next: Habit = { ...h, id: h?.id ?? newId(name), name: name.trim(), who, days: days && days.length < 7 ? days : undefined, since: h?.since ?? ymd(new Date()) };
+    const next: Habit = { ...h, id: h?.id ?? newId(name), name: name.trim(), who, days: days && days.length < 7 ? days : undefined, since: h?.since ?? since ?? ymd(new Date()) };
     if (!next.days) delete next.days;
     void write((d) => upsertHabit(d, next));
   };

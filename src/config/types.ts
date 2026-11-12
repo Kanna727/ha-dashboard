@@ -254,7 +254,9 @@ export interface DashboardConfig {
   // the habits are for (default MEALS.people). `store`: the hidden dashboard the
   // habits are kept in (default 'dashboard-habits'; created on the first save).
   // `calendars`: calendar.* entities shown on the calendar (default: every one).
-  PLANNER?: { todos?: string; reminders?: string; shopping?: string; people?: { id: string; name: string }[]; store?: string; calendars?: string[] };
+  // `appointments`: the calendar the Appointments card and the calendar's "+"
+  // add to (default 'calendar.appointments', a Local Calendar); always shown.
+  PLANNER?: { todos?: string; reminders?: string; shopping?: string; appointments?: string; people?: { id: string; name: string }[]; store?: string; calendars?: string[] };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
   // Back to the Home page (the glance page) after this many minutes without a
