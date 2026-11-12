@@ -1,3 +1,10 @@
+# [1.66.0](https://github.com/Kanna727/ha-dashboard/compare/v1.65.1...v1.66.0) (2026-11-12)
+
+
+### Features
+
+* **planner:** add anything from any calendar day, and an Appointments card ([#89](https://github.com/Kanna727/ha-dashboard/issues/89)) ([119bf05](https://github.com/Kanna727/ha-dashboard/commit/119bf05666018274751734ec9ecdf539f75af1db))
+
 ## [1.65.1](https://github.com/Kanna727/ha-dashboard/compare/v1.65.0...v1.65.1) (2026-11-12)
 
 
