@@ -1,3 +1,10 @@
+# [1.62.0](https://github.com/Kanna727/ha-dashboard/compare/v1.61.1...v1.62.0) (2026-11-12)
+
+
+### Features
+
+* **health:** a medicines panel with doses, stock and low-stock alerts ([#84](https://github.com/Kanna727/ha-dashboard/issues/84)) ([c2772f2](https://github.com/Kanna727/ha-dashboard/commit/c2772f241d810db7c97fd07eb007934b55ec7d04))
+
 ## [1.61.1](https://github.com/Kanna727/ha-dashboard/compare/v1.61.0...v1.61.1) (2026-11-11)
 
 
