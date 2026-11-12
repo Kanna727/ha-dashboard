@@ -1,3 +1,10 @@
+# [1.63.0](https://github.com/Kanna727/ha-dashboard/compare/v1.62.0...v1.63.0) (2026-11-12)
+
+
+### Features
+
+* **health:** tick medicine doses as taken; stock goes down from the ticks ([#85](https://github.com/Kanna727/ha-dashboard/issues/85)) ([c93faa1](https://github.com/Kanna727/ha-dashboard/commit/c93faa13b5acc25972686e0f85ab5492f693669c))
+
 # [1.62.0](https://github.com/Kanna727/ha-dashboard/compare/v1.61.1...v1.62.0) (2026-11-12)
 
 
