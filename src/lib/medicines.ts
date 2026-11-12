@@ -119,14 +119,18 @@ export function withTaken(m: MedicineDef, key: string, dose: number, want: boole
   return { ...m, count, taken: Object.keys(taken).length ? taken : undefined };
 }
 
-// When the stock runs out: the time of the first dose there aren't enough left
-// for, looking `horizon` days ahead. Today's doses not ticked yet are still
-// expected (even ones whose time has passed: they may be taken late), then
-// every dose after today. null when the course ends first, nothing is
-// scheduled, it's paused, or it lasts beyond the horizon.
+// When the stock runs out: the time of the dose that uses up the last of it
+// (with 1 left and a dose tonight, tonight), looking `horizon` days ahead; when
+// there isn't enough for even the next dose, that dose's time. Today's doses
+// not ticked yet are still expected (even ones whose time has passed: they may
+// be taken late), then every dose after today. null when the course ends
+// first, nothing is scheduled, it's paused, or it lasts beyond the horizon.
+// (Until 1.65 this was the first dose there was nothing left for, a dose
+// later: the owner read "runs out tomorrow" with the last one due tonight.)
 export function runOut(m: MedicineDef, stock: number, now: Date, times: Record<MedSlot, string>, horizon = 400): Date | null {
   if (m.paused) return null;
   let left = stock;
+  let last: Date | null = null; // the latest dose the stock covers
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   for (let d = 0; d <= horizon; d++) {
     const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + d);
@@ -137,8 +141,10 @@ export function runOut(m: MedicineDef, stock: number, now: Date, times: Record<M
       if (!need) continue;
       for (const p of m.who) {
         if (d === 0 && isTaken(m, doseKey(day, slot, p))) continue;
-        if (left + 1e-9 < need) return atTime(day, times[slot]);
+        const t = atTime(day, times[slot]);
+        if (left + 1e-9 < need) return last ?? t;
         left -= need;
+        last = t;
       }
     }
   }
