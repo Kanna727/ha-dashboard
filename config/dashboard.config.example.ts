@@ -356,6 +356,18 @@ const config: DashboardConfig = {
   // cards and scores are found by name). Amounts start blurred on the tablet;
   // a card's colours by its name.
   FINANCE: { prefix: 'fold', hide: ['tablet'], cardColors: { 'SBI Cashback': ['#0f766e', '#134e4a'] }, hideAccounts: [] },
+  // Medicines panel: the dose times (around the meals) and when a medicine
+  // starts showing in "Needs attention". The medicines themselves are added,
+  // edited, paused and deleted on the dashboard and kept in HA's hidden
+  // 'dashboard-medicines' dashboard.
+  MEDICINES: {
+    people: [
+      { id: 'a', name: 'Alex' },
+      { id: 's', name: 'Sam' },
+    ],
+    times: { before_breakfast: '07:30', after_breakfast: '09:00', after_lunch: '14:00', before_dinner: '19:00', after_dinner: '20:30' },
+    lowDays: 5,
+  },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {

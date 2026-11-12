@@ -18,6 +18,7 @@ import { mockPlayCamera } from './camera';
 import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
 import { extraHistory, extraStatChanges, extraStatistics, MOCK_MACS, SPEEDTEST_IDS, speedTestResult } from './extras';
 import { ENERGY } from '../src/config/entities';
+import { mockMedicines } from './medicines';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
@@ -346,6 +347,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
           if (urlPath === 'dashboard-money') return mockMoneyHistory();
           if (urlPath === 'dashboard-fold-data') return mockSnapshot();
           if (urlPath === 'dashboard-fold-activity') return mockActivity();
+          if (urlPath === 'dashboard-medicines') return mockMedicines();
           return null;
         } catch {
           return null;

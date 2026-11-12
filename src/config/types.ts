@@ -54,6 +54,18 @@ export interface MealsConfig {
   notes: string[];
 }
 
+// When a medicine is taken, around the meals.
+export type MedSlot = 'before_breakfast' | 'after_breakfast' | 'before_lunch' | 'after_lunch' | 'before_dinner' | 'after_dinner';
+
+export interface MedicinesConfig {
+  people?: { id: string; name: string }[]; // default MEALS.people
+  times?: Partial<Record<MedSlot, string>>; // 'HH:MM' each dose is taken (and comes off the stock)
+  lowDays?: number; // "Needs attention" when a medicine runs out within this many days (default 5)
+  // The hidden dashboard holding the medicines, edited on the dashboard itself
+  // (default 'dashboard-medicines'; created on the first save).
+  store?: string;
+}
+
 export interface DashboardConfig {
   ROOMS: RoomDef[];
   // Per-fan "manual off" flag. While it is on, the fan's automations won't turn the fan on.
@@ -173,6 +185,9 @@ export interface DashboardConfig {
     arriveBy?: string;
   };
   MEALS: MealsConfig;
+  // Medicines panel settings. The medicines themselves are added and edited on
+  // the dashboard and kept in HA (MEDICINES.store; see lib/medicines.ts).
+  MEDICINES?: MedicinesConfig;
   // Optional: settings added after the config moved into HA must be optional
   // with defaults in entities.ts, because the stored config can be older than
   // the app.

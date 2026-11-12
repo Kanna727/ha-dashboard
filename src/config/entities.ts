@@ -86,6 +86,13 @@ export const FINANCE = {
   editsStore: 'dashboard-money-edits',
   ...cfg.FINANCE,
 };
+export const MEDICINES = {
+  people: MEALS.people,
+  times: {} as NonNullable<NonNullable<DashboardConfig['MEDICINES']>['times']>,
+  lowDays: 5,
+  store: 'dashboard-medicines',
+  ...cfg.MEDICINES,
+};
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };
 export const HOME_IDLE = { minutes: 2, layouts: ['tablet'] as string[], ...cfg.HOME_IDLE };
 export const SCREEN_POWER = {

@@ -10,6 +10,7 @@ import { AttentionPanel } from '../panels/AttentionPanel';
 import { GlancePanel } from '../panels/GlancePanel';
 import { HealthPanel } from '../panels/HealthPanel';
 import { MealsPanel } from '../panels/MealsPanel';
+import { MedicinesPanel } from '../medicines/MedicinesPanel';
 import { NetworkDevicesPanel, NetworkPanel } from '../panels/NetworkPanel';
 import { RoomsPanel } from '../panels/RoomsPanel';
 import { TopBar } from '../panels/TopBar';
@@ -61,7 +62,7 @@ function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { classNam
         ],
       };
     case 'health':
-      return { className: 'cols cols-2', columns: [[card('health', <HealthPanel full />)], [card('meals', <MealsPanel full />)]] };
+      return { className: 'cols cols-2', columns: [[card('health', <HealthPanel full />)], [card('medicines', <MedicinesPanel full />), card('meals', <MealsPanel full />)]] };
     case 'money':
       return moneyColumns('overview');
   }
@@ -188,6 +189,7 @@ const LABELS: Record<string, string> = {
   car: 'Car',
   commute: 'Commute',
   meals: 'Meals',
+  medicines: 'Medicines',
   energyHistory: 'Energy history',
   health: 'Health',
   network: 'Network',
@@ -241,6 +243,7 @@ function PhoneTab({ page }: { page: Page }) {
       {page === 'health' && (
         <>
           <HealthPanel />
+          <MedicinesPanel />
           <MealsPanel />
         </>
       )}
