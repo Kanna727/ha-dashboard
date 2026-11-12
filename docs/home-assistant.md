@@ -212,7 +212,14 @@ The Planner page reads three to-do lists and a calendar. Add them in Settings �
 - **Shopping List** (`todo.shopping_list`).
 - **Local Calendar** with a calendar named `Appointments` (`calendar.appointments`), for the Appointments card and the appointments added with the calendar's "+ Add". They show in Home Assistant's own calendar too.
 
-Other names work too: set `PLANNER.todos`, `PLANNER.reminders`, `PLANNER.shopping` and `PLANNER.appointments` in the config. Any other calendars (Google, CalDAV...) show on the Planner's calendar by themselves (`PLANNER.calendars` limits which). Habits need nothing in Home Assistant: the dashboard keeps them in a hidden dashboard of its own (saving needs an admin login).
+Other names work too: set `PLANNER.todos`, `PLANNER.reminders`, `PLANNER.shopping` and `PLANNER.appointments` in the config. Any other calendars (Google, CalDAV...) show on the Planner's calendar by themselves (`PLANNER.calendars` limits which).
+
+**Google calendars** come in two ways:
+
+- **Remote Calendar** with the calendar's private iCal link (Google Calendar on the web → the calendar's Settings → Integrate calendar → *Secret address in iCal format*). Nothing to set up at Google, read-only, one calendar per link. Anyone with the link can read the calendar, so paste it into Home Assistant only. Remote Calendar fetches the link once a day; to see changes sooner, add an automation that runs `homeassistant.update_entity` on the calendar every 15 minutes or so. Google's iCal feed itself can lag behind by up to a few hours. Company (Workspace) accounts often have the secret address turned off.
+- **Google Calendar** (sign in with Google): needs a Google Cloud project with the Google Calendar API on and an OAuth client of type *Web application* with the redirect URI `https://my.home-assistant.io/redirect/oauth`. Publish the app (*In production*), or the sign-in expires after 7 days. It brings in every calendar the account sees, refreshed every 15 minutes; set its access to read-only in the integration's options, since the dashboard only reads. A company account's admin may block it ("Access blocked").
+
+Calendar events show on the wall screens as they are, so anyone there can read their titles. Habits need nothing in Home Assistant: the dashboard keeps them in a hidden dashboard of its own (saving needs an admin login).
 
 **Reminder alerts.** Home Assistant has no trigger for a to-do item coming due, so an automation checks the reminders list once a minute and sends whatever is due that minute. `notify.notify` reaches the phones, and the wall screens show it as an alert (`dashboard: warn` sets its tone):
 
