@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { MEDICINES } from '../config/entities';
 import { Icon } from '../components/Icon';
 import { PanelHead, useModal } from '../components/Modal';
+import { useToasts } from '../components/Toasts';
 import { Avatar } from '../meals/parts';
 import { DAYS, clock } from '../meals/plan';
 import { saveErrorText } from '../money/useTxEdits';
@@ -21,6 +22,7 @@ import {
   upsertMedicine,
   withCount,
   withPaused,
+  withTaken,
   type MedicineDef,
   type StockStatus,
 } from '../lib/medicines';
@@ -66,11 +68,19 @@ function Who({ med }: { med: MedicineDef }) {
 // "Add medicine" opens the form. The list is kept in HA (useMedicines).
 export function MedicinesPanel({ full = false }: { full?: boolean }) {
   const modal = useModal();
+  const save = useSaveMedicines();
+  const { push } = useToasts();
   const { now, list, day, doses, stock } = useMedicines();
   if (!MEDICINES.people.length) return null;
   const people = MEDICINES.people.filter((p) => list.some((m) => !m.paused && m.who.includes(p.id)));
   const openMed = (m: MedicineDef) => openMedicine(modal, m);
   const add = () => modal.open({ title: 'Add a medicine', icon: 'pill', accent: 'var(--accent-fan)', body: <MedicineForm onDone={() => modal.close()} /> });
+  // Ticks a dose as taken (or unticks it), on the stored list.
+  const tick = (med: MedicineDef, key: string, dose: number, want: boolean) =>
+    save((current) => {
+      const cur = current.find((m) => m.id === med.id);
+      return cur ? upsertMedicine(current, withTaken(cur, key, dose, want, new Date())) : current;
+    }).catch((e) => push({ id: `med-tick-${Date.now()}`, title: 'Not saved', text: saveErrorText(e), icon: 'pill', tone: 'warn' }));
   const sorted = [...stock].sort(
     (a, b) => Number(!!a.med.paused) - Number(!!b.med.paused) || Number(b.low) - Number(a.low) || (a.out?.getTime() ?? Infinity) - (b.out?.getTime() ?? Infinity),
   );
@@ -107,13 +117,19 @@ export function MedicinesPanel({ full = false }: { full?: boolean }) {
                   <span className="mc-slot-name">
                     {state === 'done' && <Icon name="tick" size={14} />} {SLOT_LABEL[s.slot]}
                   </span>
-                  <small>{clock(s.time)}</small>
+                  <small>{state === 'missed' ? `${clock(s.time)} · not taken` : clock(s.time)}</small>
                 </span>
                 {people.map((p) => (
                   <span key={p.id} className="med-doses">
-                    {(s.byPerson[p.id] ?? []).map(({ med, dose }) => (
-                      <button key={med.id} className="med-dose" onClick={() => openMed(med)}>
-                        <Icon name="pill" size={13} />
+                    {(s.byPerson[p.id] ?? []).map(({ med, dose, key, taken }) => (
+                      <button
+                        key={med.id}
+                        className={`med-dose ${taken ? 'taken' : ''} ${state === 'missed' && !taken ? 'missed' : ''}`}
+                        aria-pressed={day.offset ? undefined : taken}
+                        aria-label={`${med.name}${dose !== 1 ? ` ${amount(dose)}` : ''}, ${p.name}: ${day.offset ? 'tomorrow' : taken ? 'taken (tap to undo)' : 'not taken yet (tap when taken)'}`}
+                        onClick={() => (day.offset ? openMed(med) : tick(med, key, dose, !taken))}
+                      >
+                        <span className="med-check">{taken ? <Icon name="tick" size={13} /> : day.offset ? <Icon name="pill" size={12} /> : null}</span>
                         <span>{med.name}</span>
                         {dose !== 1 && <em>{amount(dose)}</em>}
                       </button>
@@ -205,7 +221,7 @@ function MedicineSheet({ id }: { id: string }) {
       () => (setError(''), true),
       (e) => (setError(saveErrorText(e)), false),
     );
-  const addN = (n: number) => change((m, at) => withCount(m, (remaining(m, at, MED_TIMES) ?? 0) + n, at));
+  const addN = (n: number) => change((m, at) => withCount(m, (remaining(m) ?? 0) + n, at));
   const step = Math.max(1, Math.ceil(smallestDose(med))) || 1;
 
   return (
@@ -258,7 +274,7 @@ function MedicineSheet({ id }: { id: string }) {
         <button className="chip-btn" onClick={() => setEditing(true)}>
           <Icon name="pencil" size={16} /> Edit
         </button>
-        <button className="chip-btn" onClick={() => change((m, at) => withPaused(m, !m.paused, at, MED_TIMES))}>
+        <button className="chip-btn" onClick={() => change((m) => withPaused(m, !m.paused))}>
           <Icon name={med.paused ? 'play' : 'pause'} size={16} /> {med.paused ? 'Resume' : 'Pause'}
         </button>
         <button
@@ -277,8 +293,8 @@ function MedicineSheet({ id }: { id: string }) {
       </div>
       <p className="muted med-hint">
         {med.paused
-          ? 'Paused: no doses are shown, counted or warned about until you resume it.'
-          : 'Each dose comes off the count at its time. Count a refill here, or set the count if a dose was skipped.'}
+          ? 'Paused: no doses are shown or warned about until you resume it.'
+          : 'Tick each dose on the board when it’s taken and it comes off the count. Count a refill here, or set the count after counting.'}
       </p>
     </div>
   );

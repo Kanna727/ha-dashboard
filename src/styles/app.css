@@ -3215,7 +3215,6 @@ b.tone-bad { color: var(--danger); }
 .med-dose span { min-width: 0; overflow-wrap: break-word; }
 .med-table .mc-slot-name { flex-wrap: wrap; }
 .med-dose em { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--card); color: var(--muted); }
-.mc-row.done .med-dose svg { color: var(--ok); }
 .med-stock-title { margin: 16px 0 8px; }
 .med-stock { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .med-stock-row {
@@ -3279,3 +3278,15 @@ button.med-dose { padding: 0; text-align: left; color: inherit; background: none
   .med-dose-meal { grid-template-columns: 1fr 1fr; }
   .med-dose-meal > strong { grid-column: 1 / -1; }
 }
+/* Dose ticks on the medicines board. */
+button.med-dose { gap: 7px; min-height: 30px; padding: 3px 6px 3px 3px; margin-left: -3px; border-radius: 9px; }
+button.med-dose:not(:disabled):hover { background: var(--tile-hover); }
+.med-check { display: grid; place-items: center; flex-shrink: 0; width: 20px; height: 20px; border-radius: 6px; border: 2px solid color-mix(in srgb, var(--accent-fan) 70%, transparent); color: #04131d; }
+.med-dose.taken .med-check { background: var(--ok); border-color: var(--ok); }
+.med-dose.taken > span:not(.med-check) { color: var(--muted); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
+.med-dose.missed .med-check { border-color: var(--warn); }
+.med-dose.missed > span:not(.med-check) { color: var(--warn); }
+.mc-row.missed { border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.mc-row.missed .mc-slot small { color: var(--warn); font-weight: 700; }
+.med-dose .med-check svg { color: #04131d; }
+.med-dose:not(.taken) .med-check svg { color: var(--accent-fan); }
