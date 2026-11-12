@@ -51,7 +51,7 @@ export function QuickAdd({ kind, placeholder, onAdd }: { kind: string; placehold
       </button>
       {parsed && (
         <span className={`pl-add-when ${kind === 'reminders' && !parsed.time ? 'warn' : ''}`}>
-          {parsed.summary ? `“${parsed.summary}”` : ''} {when ? `· ${when}` : kind === 'reminders' ? '· add a time to be reminded' : '· no date'}
+          {parsed.summary ? `“${parsed.summary}”` : ''} {when ? `· ${when}` : kind === 'reminders' ? '· add a time to be reminded' : kind === 'appointments' ? '· pick the day next' : '· no date'}
         </span>
       )}
     </form>
@@ -149,22 +149,37 @@ export function openTodo(modal: ModalApi, kind: ListKind, it: TodoEntry) {
   modal.open({ title: it.summary, icon: kind === 'todos' ? 'todo' : 'alarm', accent: `var(--src-${kind})`, body: <TodoForm key={it.uid} kind={kind} uid={it.uid} /> });
 }
 
+// A new reminder's time on `day`: the next whole hour today, else 9 AM.
+function defaultTime(day: string): string {
+  const now = new Date();
+  if (day !== ymd(now)) return '09:00';
+  return `${String(Math.min(23, now.getHours() + 1)).padStart(2, '0')}:00`;
+}
+
 // One item's editor: name, date and time, notes; done, delete. Follows the list
-// live, so a change made elsewhere shows here too.
-function TodoForm({ kind, uid }: { kind: ListKind; uid: string }) {
+// live, so a change made elsewhere shows here too. Without `uid` it adds a new
+// item dated `day` (the calendar's "+").
+export function TodoForm({ kind, uid, day }: { kind: ListKind; uid?: string; day?: string }) {
   const entity = LIST_ENTITY(kind);
+  const exists = useHasList(entity);
   const items = useTodoItems(entity);
   const act = useTodoActions(entity);
   const modal = useModal();
-  const it = items?.find((i) => i.uid === uid);
+  const it = uid ? items?.find((i) => i.uid === uid) : undefined;
   const due = parseDue(it?.due);
   const [name, setName] = useState(it?.summary ?? '');
-  const [date, setDate] = useState(due?.day ?? '');
-  const [time, setTime] = useState(due?.time ?? '');
+  const [date, setDate] = useState(due?.day ?? day ?? '');
+  const [time, setTime] = useState(due?.time ?? (!uid && kind === 'reminders' && day ? defaultTime(day) : ''));
   const [notes, setNotes] = useState(it?.description ?? '');
   const [armed, setArmed] = useState(false);
   const [error, setError] = useState('');
-  if (!it) return <p className="muted">This item was removed.</p>;
+  if (!exists)
+    return (
+      <p className="muted pl-missing">
+        No <code>{entity}</code> list in Home Assistant. Add the Local To-do integration with a list named “{LABEL[kind]}”.
+      </p>
+    );
+  if (uid && !it) return <p className="muted">This item was removed.</p>;
   const run = (p: Promise<unknown>) =>
     p.then(
       () => modal.close(),
@@ -173,14 +188,15 @@ function TodoForm({ kind, uid }: { kind: ListKind; uid: string }) {
   const save = (e: FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+    if (!it) return void run(act.add(name.trim(), date || undefined, date ? time || undefined : undefined, notes.trim() || undefined));
     void run(act.update(it, { summary: name.trim(), date, time: date ? time || undefined : undefined, description: notes.trim() }));
   };
-  const done = it.status === 'completed';
+  const done = it?.status === 'completed';
   return (
     <form className="pl-form" onSubmit={save}>
       <label>
         <span className="label">{kind === 'todos' ? 'Todo' : 'Reminder'}</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} autoFocus={false} />
+        <input value={name} onChange={(e) => setName(e.target.value)} autoFocus={!it} placeholder={kind === 'todos' ? 'Call the bank' : 'Take out the trash'} />
       </label>
       <div className="pl-form-row">
         <label>
@@ -205,25 +221,29 @@ function TodoForm({ kind, uid }: { kind: ListKind; uid: string }) {
       {error && <p className="med-error">{error}</p>}
       <div className="med-actions">
         <button type="submit" className="chip-btn active" disabled={!name.trim()}>
-          <Icon name="save" size={16} /> Save
+          <Icon name={it ? 'save' : 'plus'} size={16} /> {it ? 'Save' : kind === 'todos' ? 'Add todo' : 'Add reminder'}
         </button>
-        <button type="button" className="chip-btn" onClick={() => void run(act.setDone(it, !done))}>
-          <Icon name={done ? 'undo' : 'tick'} size={16} /> {done ? 'Not done' : 'Done'}
-        </button>
-        <button
-          type="button"
-          className={`chip-btn med-delete ${armed ? 'armed' : ''}`}
-          onClick={() => {
-            if (!armed) {
-              setArmed(true);
-              window.setTimeout(() => setArmed(false), 4000);
-              return;
-            }
-            void run(act.remove(it));
-          }}
-        >
-          <Icon name="trash" size={16} /> {armed ? 'Tap again to delete' : 'Delete'}
-        </button>
+        {it && (
+          <>
+            <button type="button" className="chip-btn" onClick={() => void run(act.setDone(it, !done))}>
+              <Icon name={done ? 'undo' : 'tick'} size={16} /> {done ? 'Not done' : 'Done'}
+            </button>
+            <button
+              type="button"
+              className={`chip-btn med-delete ${armed ? 'armed' : ''}`}
+              onClick={() => {
+                if (!armed) {
+                  setArmed(true);
+                  window.setTimeout(() => setArmed(false), 4000);
+                  return;
+                }
+                void run(act.remove(it));
+              }}
+            >
+              <Icon name="trash" size={16} /> {armed ? 'Tap again to delete' : 'Delete'}
+            </button>
+          </>
+        )}
       </div>
     </form>
   );

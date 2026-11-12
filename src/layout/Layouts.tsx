@@ -22,6 +22,7 @@ import { BalanceSheetPanel, EpfPanel, FundsPanel, InsurancePanel, StocksPanel, T
 import { useMoneySection, type MoneySection } from '../money/sections';
 import { MoneyStrip, MoneyTiles } from '../money/MoneyTiles';
 import { CleanPage, useHasClean } from './CleanPage';
+import { AppointmentsPanel } from '../planner/AppointmentsPanel';
 import { CalendarPanel } from '../planner/CalendarPanel';
 import { HabitsPanel } from '../planner/HabitsPanel';
 import { ShoppingPanel } from '../planner/ShoppingPanel';
@@ -73,7 +74,7 @@ function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { classNam
         columns: [
           [card('calendar', <CalendarPanel />)],
           [card('habits', <HabitsPanel />), card('shopping', <ShoppingPanel />)],
-          [card('todos', <TodoPanel kind="todos" />), card('reminders', <TodoPanel kind="reminders" />)],
+          [card('appointments', <AppointmentsPanel />), card('todos', <TodoPanel kind="todos" />), card('reminders', <TodoPanel kind="reminders" />)],
         ],
       };
     case 'money':
@@ -227,6 +228,7 @@ const LABELS: Record<string, string> = {
   insurance: 'Insurance',
   calendar: 'Calendar',
   habits: 'Habits',
+  appointments: 'Appointments',
   todos: 'Todos',
   reminders: 'Reminders',
   shopping: 'Shopping',
@@ -268,6 +270,7 @@ function PhoneTab({ page }: { page: Page }) {
       {page === 'planner' && (
         <>
           <CalendarPanel />
+          <AppointmentsPanel />
           <HabitsPanel />
           <TodoPanel kind="todos" />
           <TodoPanel kind="reminders" />

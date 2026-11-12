@@ -5,6 +5,7 @@
 // The lists follow todo.* service calls and are kept in localStorage, so edits
 // survive a reload; `localStorage.removeItem('mockTodo:<entity>')` resets one.
 import type { HassEntity } from 'home-assistant-js-websocket';
+import type { CalendarChange } from '../src/ha/api';
 import type { ExternalEvent, HabitsDoc, TodoEntry } from '../src/lib/planner';
 import { addDays, startOfDay } from '../src/lib/planner';
 import { atTime, ymd } from '../src/lib/medicines';
@@ -37,15 +38,15 @@ function seed(id: string): TodoEntry[] {
 }
 
 export const TODO_LISTS = ['todo.todos', 'todo.reminders', 'todo.shopping_list'];
-const NAMES: Record<string, string> = { 'todo.todos': 'Todos', 'todo.reminders': 'Reminders', 'todo.shopping_list': 'Shopping list', 'calendar.family': 'Family' };
+const NAMES: Record<string, string> = { 'todo.todos': 'Todos', 'todo.reminders': 'Reminders', 'todo.shopping_list': 'Shopping list', 'calendar.family': 'Family', 'calendar.appointments': 'Appointments' };
 
 export const PLANNER_STATES: Record<string, HassEntity> = Object.fromEntries(
-  [...TODO_LISTS, 'calendar.family'].map((id) => [
+  [...TODO_LISTS, 'calendar.family', 'calendar.appointments'].map((id) => [
     id,
     {
       entity_id: id,
       state: id.startsWith('calendar') ? 'off' : '0',
-      attributes: { friendly_name: NAMES[id], supported_features: id.startsWith('todo.shopping') ? 15 : 127 },
+      attributes: { friendly_name: NAMES[id], supported_features: id === 'calendar.family' ? 0 : id.startsWith('calendar') ? 7 : id.startsWith('todo.shopping') ? 15 : 127 },
       last_changed: new Date().toISOString(),
       last_updated: new Date().toISOString(),
       context: { id: '', parent_id: null, user_id: null },
@@ -153,12 +154,57 @@ export function mockHabits(): HabitsDoc {
   return { version: 1, habits, ticks };
 }
 
-// The family calendar's events in [start, end).
+// The Appointments calendar (a Local Calendar): seeded, then kept in
+// localStorage ('mockAppointments') and changed by calendar/event/* messages.
+const APPT_KEY = 'mockAppointments';
+let appts: ExternalEvent[] | null = null;
+function appointments(): ExternalEvent[] {
+  if (!appts) {
+    try {
+      appts = JSON.parse(localStorage.getItem(APPT_KEY) ?? 'null');
+    } catch {
+      /* storage blocked */
+    }
+    appts ??= [
+      { calendar: 'calendar.appointments', uid: 'appt-1', summary: 'Dentist', start: at(0, '16:00'), end: at(0, '16:45'), location: 'Smile Dental' },
+      { calendar: 'calendar.appointments', uid: 'appt-2', summary: 'Haircut', start: at(2, '11:00'), end: at(2, '11:30') },
+      { calendar: 'calendar.appointments', uid: 'appt-3', summary: 'Plumber visit', start: at(5, '09:30'), end: at(5, '10:30'), description: 'Kitchen sink' },
+      { calendar: 'calendar.appointments', uid: 'appt-4', summary: 'Passport office', start: on(8), end: on(9) },
+    ];
+  }
+  return appts;
+}
+const isDay = (v: string) => /^\d{4}-\d\d-\d\d$/.test(v);
+const iso = (v: string) => (isDay(v) ? v : new Date(v).toISOString());
+// calendar/event/create, update and delete on the appointments (the family calendar is read-only).
+export function mockCalendarChange(entityId: string, c: CalendarChange) {
+  if (entityId !== 'calendar.appointments') throw new Error('This calendar is read-only');
+  const list = appointments();
+  const fields = (ev: Record<string, string>) => ({
+    summary: ev.summary,
+    start: iso(ev.dtstart),
+    end: iso(ev.dtend),
+    ...(ev.location ? { location: ev.location } : {}),
+    ...(ev.description ? { description: ev.description } : {}),
+  });
+  if (c.action === 'create') appts = [...list, { calendar: entityId, uid: `appt-${Date.now()}`, ...fields(c.event) }];
+  else if (c.action === 'update') appts = list.map((e) => (e.uid === c.uid ? { calendar: entityId, uid: e.uid, ...fields(c.event) } : e));
+  else appts = list.filter((e) => e.uid !== c.uid);
+  try {
+    localStorage.setItem(APPT_KEY, JSON.stringify(appts));
+  } catch {
+    /* storage blocked */
+  }
+}
+
+// The family calendar's and the appointments' events in [start, end).
 export function mockCalendarEvents(start: Date, end: Date): ExternalEvent[] {
   const evs: ExternalEvent[] = [
     { calendar: 'calendar.family', summary: 'Dinner with friends', start: at(3, '19:30'), end: at(3, '22:00'), location: 'Their place' },
     { calendar: 'calendar.family', summary: 'School holiday', start: on(6), end: on(8) },
     { calendar: 'calendar.family', summary: 'Car service', start: at(11, '10:00'), end: at(11, '12:00') },
+    ...appointments(),
   ];
-  return evs.filter((e) => new Date(e.start) < end && new Date(e.end ?? e.start) >= start);
+  const t = (v: string) => (isDay(v) ? new Date(`${v}T00:00`) : new Date(v));
+  return evs.filter((e) => t(e.start) < end && t(e.end ?? e.start) > start);
 }

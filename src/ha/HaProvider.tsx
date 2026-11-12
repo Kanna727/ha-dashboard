@@ -246,21 +246,38 @@ export const haApi: HassApi = {
       unsub.then((u) => u?.()).catch(() => undefined);
     };
   },
+  // HA's REST calendar API, which (unlike calendar.get_events) gives each event's uid.
   async fetchCalendarEvents(entityIds, start, end) {
     if (!entityIds.length) return [];
     const conn = await getConnection();
-    type Ev = { summary?: string; start?: string; end?: string; location?: string };
-    const res = await conn.sendMessagePromise<{ response?: Record<string, { events?: Ev[] }> }>({
-      type: 'call_service',
-      domain: 'calendar',
-      service: 'get_events',
-      target: { entity_id: entityIds },
-      service_data: { start_date_time: start.toISOString(), end_date_time: end.toISOString() },
-      return_response: true,
-    });
-    return Object.entries(res.response ?? {}).flatMap(([calendar, r]) =>
-      (r.events ?? []).flatMap((e) => (e.summary && e.start ? [{ calendar, summary: e.summary, start: e.start, end: e.end, location: e.location || undefined }] : [])),
+    const auth = conn.options.auth;
+    if (!auth) return [];
+    if (auth.expired) await auth.refreshAccessToken();
+    type When = { date?: string; dateTime?: string };
+    type Ev = { summary?: string; start?: When; end?: When; location?: string | null; description?: string | null; uid?: string | null; recurrence_id?: string | null };
+    const q = `start=${encodeURIComponent(start.toISOString())}&end=${encodeURIComponent(end.toISOString())}`;
+    const lists = await Promise.all(
+      entityIds.map(async (calendar) => {
+        const r = await fetch(`${HASS_URL}/api/calendars/${calendar}?${q}`, { headers: { Authorization: `Bearer ${auth.accessToken}` } });
+        // One calendar failing (its integration offline) leaves the others.
+        if (!r.ok) {
+          console.warn('calendar', calendar, r.status);
+          return [];
+        }
+        return ((await r.json()) as Ev[]).flatMap((e) => {
+          const s = e.start?.dateTime ?? e.start?.date;
+          if (!e.summary || !s) return [];
+          const end = e.end?.dateTime ?? e.end?.date;
+          return [{ calendar, summary: e.summary, start: s, end, location: e.location || undefined, description: e.description || undefined, uid: e.uid || undefined, recurrenceId: e.recurrence_id || undefined }];
+        });
+      }),
     );
+    return lists.flat();
+  },
+  async changeCalendarEvent(entityId, c) {
+    const conn = await getConnection();
+    const occurrence = c.action !== 'create' ? { uid: c.uid, ...(c.recurrenceId ? { recurrence_id: c.recurrenceId } : {}) } : {};
+    await conn.sendMessagePromise({ type: `calendar/event/${c.action}`, entity_id: entityId, ...occurrence, ...(c.action !== 'delete' ? { event: c.event } : {}) });
   },
   async fetchRegistry() {
     const conn = await getConnection();

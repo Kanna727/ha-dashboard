@@ -9,8 +9,10 @@ import { store } from '../ha/store';
 import { readCache, writeCache } from '../ha/useRegistry';
 import { stockStatus } from '../lib/medicines';
 import {
+  apptEvent,
   buildCalendar,
   dueData,
+  type ApptFields,
   parseHabits,
   type CalEvent,
   type CalSource,
@@ -119,19 +121,33 @@ export function useTodoActions(entityId: string) {
 
 // ------------------------------------------------------------- HA calendars
 
-const calendarIds = () =>
-  PLANNER.calendars ??
-  Object.keys(store.getAll())
-    .filter((id) => id.startsWith('calendar.'))
-    .sort()
-    .join(',');
+// The calendars shown: PLANNER.calendars or every calendar.*, and the
+// appointments calendar whenever it exists.
+const calendarIds = () => {
+  const all = store.getAll();
+  const ids = PLANNER.calendars ?? Object.keys(all).filter((id) => id.startsWith('calendar.'));
+  return [...new Set([...ids, ...(all[PLANNER.appointments] ? [PLANNER.appointments] : [])])].sort().join(',');
+};
 
-// Events from HA's calendars in the days shown, refreshed every 15 minutes
-// and whenever the days change. Names are the calendars' friendly names.
-export function useExternalEvents(from: Date, days: number): ExternalEvent[] {
+// Bumped after every change made here, so every reader fetches again at once.
+let calVersion = 0;
+const calListeners = new Set<() => void>();
+const calChanged = () => {
+  calVersion++;
+  calListeners.forEach((l) => l());
+};
+
+// Events of some calendars (comma-separated IDs) from `from` for `days` days,
+// refreshed every 15 minutes, after a change made here and whenever the days
+// change; null until they first arrive. `calendar` is the calendar's friendly
+// name; the appointments are marked.
+export function useCalendarEvents(ids: string, from: Date, days: number): ExternalEvent[] | null {
   const hass = useHass();
-  const ids = useSyncExternalStore(store.subscribe, () => [calendarIds()].flat().join(','));
-  const [events, setEvents] = useState<ExternalEvent[]>([]);
+  const version = useSyncExternalStore(
+    (l) => (calListeners.add(l), () => calListeners.delete(l)),
+    () => calVersion,
+  );
+  const [events, setEvents] = useState<ExternalEvent[] | null>(null);
   const start = from.getTime();
   useEffect(() => {
     const list = ids ? ids.split(',') : [];
@@ -143,7 +159,14 @@ export function useExternalEvents(from: Date, days: number): ExternalEvent[] {
         .then((evs) => {
           if (!live) return;
           const all = store.getAll();
-          setEvents(evs.map((e) => ({ ...e, calendar: String(all[e.calendar]?.attributes.friendly_name ?? e.calendar) })));
+          setEvents(
+            evs.map((e) => ({
+              ...e,
+              entity: e.calendar,
+              calendar: String(all[e.calendar]?.attributes.friendly_name ?? e.calendar),
+              ...(e.calendar === PLANNER.appointments ? { appointment: true } : {}),
+            })),
+          );
         })
         .catch((e) => console.warn('calendar events', e));
     void load();
@@ -152,8 +175,28 @@ export function useExternalEvents(from: Date, days: number): ExternalEvent[] {
       live = false;
       window.clearInterval(t);
     };
-  }, [hass, ids, start, days]);
+  }, [hass, ids, start, days, version]);
   return events;
+}
+
+// Every shown calendar's events in the days shown.
+export function useExternalEvents(from: Date, days: number): ExternalEvent[] {
+  const ids = useSyncExternalStore(store.subscribe, calendarIds);
+  return useCalendarEvents(ids, from, days) ?? [];
+}
+
+// Adds, changes and deletes appointments (Local Calendar; any logged-in user may).
+export function useAppointmentActions() {
+  const hass = useHass();
+  return useMemo(() => {
+    const run = (p: Promise<void>) => p.finally(calChanged);
+    const id = PLANNER.appointments;
+    return {
+      add: (f: ApptFields) => run(hass.changeCalendarEvent(id, { action: 'create', event: apptEvent(f) })),
+      update: (e: ExternalEvent, f: ApptFields) => run(hass.changeCalendarEvent(id, { action: 'update', uid: e.uid!, recurrenceId: e.recurrenceId, event: apptEvent(f) })),
+      remove: (e: ExternalEvent) => run(hass.changeCalendarEvent(id, { action: 'delete', uid: e.uid!, recurrenceId: e.recurrenceId })),
+    };
+  }, [hass]);
 }
 
 // ------------------------------------------------------------- the master calendar

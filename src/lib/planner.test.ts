@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  apptEvent,
+  apptFields,
   buildCalendar,
   dueData,
   dueText,
@@ -13,6 +15,7 @@ import {
   recentDays,
   removeHabit,
   sortOpen,
+  spanText,
   streak,
   upsertHabit,
   withTick,
@@ -201,3 +204,41 @@ describe('calendar', () => {
     expect(monthDays(2027, 1).length).toBe(28); // February 2027: Mon 1 … Sun 28
   });
 });
+
+describe('appointments', () => {
+  it('makes HA calendar events: all day, timed, an hour by default, past midnight', () => {
+    expect(apptEvent({ summary: 'Passport office', day: '2026-11-20', location: ' ', description: 'Bring the form' })).toEqual({
+      summary: 'Passport office',
+      dtstart: '2026-11-20',
+      dtend: '2026-11-21',
+      description: 'Bring the form',
+    });
+    const at = (e: Record<string, string>) => [new Date(e.dtstart).getTime(), new Date(e.dtend).getTime()];
+    const timed = apptEvent({ summary: 'Dentist', day: '2026-11-13', start: '16:00', location: 'Smile Dental' });
+    expect(timed.location).toBe('Smile Dental');
+    expect(timed.dtstart).toMatch(/^2026-11-13T16:00:00[+-]\d\d:\d\d$/);
+    expect(at(timed)).toEqual([new Date(2026, 10, 13, 16).getTime(), new Date(2026, 10, 13, 17).getTime()]);
+    expect(at(apptEvent({ summary: 'Show', day: '2026-11-13', start: '22:00', end: '00:30' }))).toEqual([new Date(2026, 10, 13, 22).getTime(), new Date(2026, 10, 14, 0, 30).getTime()]);
+  });
+
+  it('reads events back into the form and shows their times', () => {
+    const e = { calendar: 'Appointments', summary: 'Dentist', start: new Date(2026, 10, 13, 16).toISOString(), end: new Date(2026, 10, 13, 16, 45).toISOString(), location: 'Clinic' };
+    expect(apptFields(e)).toEqual({ summary: 'Dentist', day: '2026-11-13', start: '16:00', end: '16:45', location: 'Clinic', description: '' });
+    expect(spanText(e)).toBe('4 – 4:45 PM');
+    expect(spanText({ ...e, start: new Date(2026, 10, 13, 11).toISOString() })).toBe('11 AM – 4:45 PM');
+    expect(apptFields({ calendar: 'A', summary: 'Trip', start: '2026-11-20', end: '2026-11-21' })).toEqual({ summary: 'Trip', day: '2026-11-20', location: '', description: '' });
+    expect(spanText({ calendar: 'A', summary: 'Trip', start: '2026-11-20', end: '2026-11-21' })).toBe('All day');
+    expect(spanText({ calendar: 'A', summary: 'Trip', start: '2026-11-20', end: '2026-11-23' })).toBe('Until Sunday');
+  });
+
+  it('puts appointments on the calendar as their own source', () => {
+    const appt = { calendar: 'Appointments', summary: 'Haircut', start: new Date(2026, 10, 12, 11).toISOString(), end: new Date(2026, 10, 12, 11, 30).toISOString(), uid: 'x', appointment: true };
+    const cal = buildCalendar(d(12), 1, { now, external: [appt, { calendar: 'Family', summary: 'Dinner', start: new Date(2026, 10, 12, 19).toISOString() }] });
+    expect(cal.get('2026-11-12')!.map((e) => [e.src, e.title, e.sub, e.time, e.end])).toEqual([
+      ['appointments', 'Haircut', 'Appointment', '11:00', '11:30'],
+      ['calendar', 'Dinner', 'Family', '19:00', undefined],
+    ]);
+    expect(cal.get('2026-11-12')![0].appt).toBe(appt);
+  });
+});
+

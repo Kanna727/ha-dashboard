@@ -295,9 +295,10 @@ export function parseQuickAdd(text: string, now: Date): { summary: string; date?
 
 // ---------------------------------------------------------------- calendar
 
-export type CalSource = 'habits' | 'todos' | 'reminders' | 'medicines' | 'meals' | 'money' | 'commute' | 'calendar';
+export type CalSource = 'habits' | 'appointments' | 'todos' | 'reminders' | 'medicines' | 'meals' | 'money' | 'commute' | 'calendar';
 export const CAL_SOURCES: { id: CalSource; label: string }[] = [
   { id: 'habits', label: 'Habits' },
+  { id: 'appointments', label: 'Appointments' },
   { id: 'todos', label: 'Todos' },
   { id: 'reminders', label: 'Reminders' },
   { id: 'medicines', label: 'Medicines' },
@@ -317,6 +318,7 @@ export interface CalEvent {
   done?: boolean; // ticked (todo, reminder, the day's doses)
   late?: boolean; // overdue
   ref?: { list: 'todos' | 'reminders'; uid: string };
+  appt?: ExternalEvent; // an appointment (opens its editor)
   progress?: { done: number; total: number }; // habits
   // Small, frequent items left out of the month cells (meals, dose times, commute days, the habits line).
   minor?: boolean;
@@ -325,10 +327,15 @@ export interface CalEvent {
 // An event from one of HA's calendar.* entities (calendar.get_events).
 export interface ExternalEvent {
   calendar: string; // its calendar's name
+  entity?: string; // its calendar's entity ID
   summary: string;
   start: string; // 'YYYY-MM-DD' (all day) or an ISO date-time
   end?: string; // exclusive end, the same kind
   location?: string;
+  description?: string;
+  uid?: string; // to edit or delete it
+  recurrenceId?: string; // one occurrence of a repeating event
+  appointment?: boolean; // from the Appointments calendar (PLANNER.appointments)
 }
 
 export interface CalendarInputs {
@@ -456,23 +463,26 @@ export function buildCalendar(from: Date, days: number, inp: CalendarInputs): Ma
 
   // HA calendars: all-day events on every day they cover.
   for (const e of inp.external ?? []) {
+    const src: CalSource = e.appointment ? 'appointments' : 'calendar';
+    const sub = e.location || (e.appointment ? 'Appointment' : e.calendar);
     const allDay = /^\d{4}-\d\d-\d\d$/.test(e.start);
     if (allDay) {
       const first = dayOf(e.start);
       const last = e.end && /^\d{4}-\d\d-\d\d$/.test(e.end) ? addDays(dayOf(e.end), -1) : first;
       for (let d = first, i = 0; d <= last && i < 62; d = addDays(d, 1), i++)
-        add(ymd(d), { id: `cal|${e.calendar}|${e.start}|${e.summary}|${i}`, src: 'calendar', title: e.summary, sub: e.location || e.calendar });
+        add(ymd(d), { id: `cal|${e.calendar}|${e.start}|${e.summary}|${i}`, src, title: e.summary, sub, ...(e.appointment ? { appt: e } : {}) });
     } else {
       const t = new Date(e.start);
       if (Number.isNaN(t.getTime())) continue;
       const end = e.end ? new Date(e.end) : undefined;
       add(ymd(t), {
         id: `cal|${e.calendar}|${e.start}|${e.summary}`,
-        src: 'calendar',
+        src,
         title: e.summary,
-        sub: e.location || e.calendar,
+        sub,
         time: hhmm(t),
         end: end && !Number.isNaN(end.getTime()) && ymd(end) === ymd(t) ? hhmm(end) : undefined,
+        ...(e.appointment ? { appt: e } : {}),
       });
     }
   }
@@ -489,3 +499,67 @@ export function monthDays(year: number, month: number): Date[] {
   const n = daysBetween(start, last) + 1;
   return Array.from({ length: Math.ceil(n / 7) * 7 }, (_, i) => addDays(start, i));
 }
+
+// ---------------------------------------------------------------- appointments
+
+// A local time as an ISO string with the device's offset ("2026-11-21T16:00:00+05:30"),
+// which HA's calendar takes as is.
+export function localIso(d: Date): string {
+  const off = -d.getTimezoneOffset();
+  const sign = off >= 0 ? '+' : '-';
+  const a = Math.abs(off);
+  return `${ymd(d)}T${hhmm(d)}:00${sign}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
+}
+export const atClock = (day: string, t: string) => {
+  const d = dayOf(day);
+  d.setMinutes(minutesOf(t));
+  return d;
+};
+
+export interface ApptFields {
+  summary: string;
+  day: string; // 'YYYY-MM-DD'
+  start?: string; // 'HH:MM'; none = all day
+  end?: string; // 'HH:MM'; none = an hour after the start (before the start: the next day)
+  location?: string;
+  description?: string;
+}
+
+// HA's calendar event for an appointment (calendar/event/create and update):
+// all-day events end the next day (exclusive), timed ones an hour later by default.
+export function apptEvent(f: ApptFields): Record<string, string> {
+  const extra = { ...(f.location?.trim() ? { location: f.location.trim() } : {}), ...(f.description?.trim() ? { description: f.description.trim() } : {}) };
+  if (!f.start) return { summary: f.summary, dtstart: f.day, dtend: ymd(addDays(dayOf(f.day), 1)), ...extra };
+  const start = atClock(f.day, f.start);
+  let end = f.end ? atClock(f.day, f.end) : new Date(start.getTime() + 3_600_000);
+  if (end <= start) end = f.end ? atClock(ymd(addDays(dayOf(f.day), 1)), f.end) : new Date(start.getTime() + 3_600_000);
+  return { summary: f.summary, dtstart: localIso(start), dtend: localIso(end), ...extra };
+}
+
+// The form's fields for an event read back from HA.
+export function apptFields(e: ExternalEvent): ApptFields {
+  const base = { summary: e.summary, location: e.location ?? '', description: e.description ?? '' };
+  if (/^\d{4}-\d\d-\d\d$/.test(e.start)) return { ...base, day: e.start };
+  const s = new Date(e.start);
+  const end = e.end ? new Date(e.end) : undefined;
+  return { ...base, day: ymd(s), start: hhmm(s), ...(end && !Number.isNaN(end.getTime()) ? { end: hhmm(end) } : {}) };
+}
+
+// When an event starts and ends (all-day ones: midnight to midnight).
+export function eventSpan(e: ExternalEvent): { start: Date; end: Date; allDay: boolean } {
+  const allDay = /^\d{4}-\d\d-\d\d$/.test(e.start);
+  const start = allDay ? dayOf(e.start) : new Date(e.start);
+  const end = e.end ? (allDay ? dayOf(e.end) : new Date(e.end)) : allDay ? addDays(start, 1) : start;
+  return { start, end, allDay };
+}
+
+// "4 – 5 PM", "11 AM – 12:30 PM", "All day", "Until Friday".
+export function spanText(e: ExternalEvent): string {
+  const { start, end, allDay } = eventSpan(e);
+  if (allDay) return daysBetween(start, end) > 1 ? `Until ${dayName(addDays(end, -1), start)}` : 'All day';
+  const a = clockText(hhmm(start));
+  if (end <= start) return a;
+  const b = clockText(hhmm(end));
+  return a.slice(-2) === b.slice(-2) && ymd(start) === ymd(end) ? `${a.slice(0, -3)} – ${b}` : `${a} – ${b}`;
+}
+
