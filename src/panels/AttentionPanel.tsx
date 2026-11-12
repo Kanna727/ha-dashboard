@@ -10,6 +10,8 @@ import { isNight, washerDone } from '../lib/attention';
 import { useIssues } from './useIssues';
 import { daysUntil } from '../lib/finance';
 import { useFinance } from '../money/useFinance';
+import { lowText } from '../lib/medicines';
+import { useMedicines, whoseName } from '../medicines/useMedicines';
 
 interface Item {
   id: string;
@@ -30,13 +32,15 @@ const ago = (t: number, now: number) => {
 // Everything that wants someone's attention, most urgent first: the header's
 // issues (internet down, doors open, purifier faults, rain coming; not the
 // offline devices, which are always a few), plus laundry left in the washer,
-// the dishwasher finished or stuck, and the car unlocked at night.
+// the dishwasher finished or stuck, the car unlocked at night, and medicines
+// about to run out.
 function useAttention(): Item[] {
   const now = useNow(60_000);
   const issues = useIssues();
   const dw = APPLIANCES.dishwasher;
   const [running, door, dwState, lock] = useEntities([APPLIANCES.washer.running, APPLIANCES.washer.door, dw.state, CAR.lock]);
   const bill = useFinance()?.bill;
+  const meds = useMedicines();
   const items: Item[] = issues
     .filter((i) => i.id !== 'offline')
     .map((i) => ({ id: i.id, icon: iconOf(i.id), text: i.text, tone: i.severity, page: i.id === 'rain' ? ('commute' as const) : undefined }));
@@ -49,6 +53,8 @@ function useAttention(): Item[] {
     const when = billDays < 0 ? 'was due' : billDays === 0 ? 'due today' : billDays === 1 ? 'due tomorrow' : `due in ${billDays} days`;
     items.push({ id: 'bill', icon: 'creditCard', text: `${bill!.card ? `${bill!.card} bill` : 'Card bill'} ${when}`, tone: 'warn', page: 'money' });
   }
+  // Medicines running out within MEDICINES.lowDays (default 5), soonest first.
+  for (const m of meds.low) items.push({ id: `med:${m.med.id}`, icon: 'pill', text: lowText(m, now, whoseName(m, meds.list)), tone: 'warn', page: 'health' });
   const washed = washerDone(running, door, now.getTime());
   if (washed !== null) items.push({ id: 'washer', icon: 'washer', text: `Washer done ${ago(washed, now.getTime())}`, tone: 'done' });
   if (s === 'finished') items.push({ id: 'dw', icon: 'dishwasher', text: 'Dishwasher finished', tone: 'done', page: 'clean' });

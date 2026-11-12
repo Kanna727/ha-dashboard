@@ -1,4 +1,5 @@
 import {
+  mdiPill,
   mdiWallet,
   mdiEyeOffOutline,
   mdiCreditCardOutline,
@@ -373,6 +374,7 @@ export const ICONS = {
   eyeOff: mdiEyeOffOutline,
   creditCard: mdiCreditCardOutline,
   bank: mdiBank,
+  pill: mdiPill,
 } as const;
 
 export type IconName = keyof typeof ICONS;

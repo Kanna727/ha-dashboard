@@ -3206,3 +3206,76 @@ b.tone-bad { color: var(--danger); }
 .cat-subs li.muted { display: block; font-size: 12px; }
 .cat-sub-track { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.05); }
 .cat-sub-track i { display: block; height: 100%; border-radius: 3px; opacity: 0.75; }
+
+/* ---------- medicines (medicines/MedicinesPanel.tsx) ---------- */
+.med-table .mc-row { align-items: start; }
+.med-doses { display: grid; gap: 5px; min-width: 0; }
+.med-dose { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 13.5px; font-weight: 600; line-height: 1.25; }
+.med-dose svg { flex-shrink: 0; color: var(--accent-fan); }
+.med-dose span { min-width: 0; overflow-wrap: break-word; }
+.med-table .mc-slot-name { flex-wrap: wrap; }
+.med-dose em { font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 6px; border-radius: 6px; background: var(--card); color: var(--muted); }
+.mc-row.done .med-dose svg { color: var(--ok); }
+.med-stock-title { margin: 16px 0 8px; }
+.med-stock { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.med-stock-row {
+  --tc: var(--accent-fan);
+  position: relative; overflow: hidden; width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  border-radius: 14px; background: var(--tile); border: 1px solid transparent; text-align: left; color: var(--text);
+}
+.med-stock-row.low { --tc: var(--warn); border-color: color-mix(in srgb, var(--warn) 60%, transparent); }
+.med-stock-row.untracked { --tc: transparent; }
+.med-stock-fill { position: absolute; inset: 0 auto 0 0; width: var(--fill); background: color-mix(in srgb, var(--tc) 14%, transparent); transition: width 0.4s ease; }
+.med-stock-name { position: relative; flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.med-stock-name strong { font-size: 14.5px; }
+.med-stock-name .meal-avatar { width: 18px; height: 18px; font-size: 9.5px; }
+.med-stock-name small { flex-basis: 100%; font-size: 12px; color: var(--muted); }
+.med-stock-row.low .med-stock-name small { color: var(--warn); font-weight: 700; }
+.med-stock-left { position: relative; display: grid; justify-items: end; font-size: 22px; font-weight: 800; line-height: 1; }
+.med-stock-left small { font-size: 10.5px; font-weight: 700; color: var(--muted); margin-top: 3px; }
+.med-detail { display: grid; gap: 14px; }
+.med-detail-count { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; background: var(--tile); }
+.med-detail-count strong { font-size: 44px; line-height: 1; }
+.med-detail-count span { display: grid; gap: 3px; font-size: 15px; font-weight: 700; }
+.med-detail-count small { font-size: 13px; font-weight: 600; color: var(--muted); }
+.med-detail-count.low { background: color-mix(in srgb, var(--warn) 14%, var(--card)); }
+.med-detail-count.low small { color: var(--warn); }
+.med-note { margin: 0; padding: 10px 14px; border-radius: 12px; font-size: 14px; background: color-mix(in srgb, var(--accent-fan) 9%, var(--card)); }
+.med-adjust { display: flex; flex-wrap: wrap; gap: 8px; }
+.med-adjust .chip-btn { min-height: 40px; gap: 6px; }
+.med-setcount { display: flex; align-items: end; gap: 8px; }
+.med-setcount label { display: grid; gap: 6px; }
+.med-setcount input { width: 120px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--tile); color: var(--text); font: inherit; font-size: 16px; }
+.med-hint { margin: 0; font-size: 12.5px; }
+button.med-dose { padding: 0; text-align: left; color: inherit; background: none; }
+.med-stock-row.paused { opacity: 0.6; --tc: transparent; }
+.med-stock-name small svg { vertical-align: -2px; }
+.med-add { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 11px; border-radius: 14px; border: 1px dashed var(--border); color: var(--accent-fan); font-weight: 700; font-size: 14px; }
+.med-detail-count .meal-avatars { margin-left: auto; }
+.med-detail-count.paused strong { color: var(--muted); }
+.med-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.med-actions .chip-btn { min-height: 40px; gap: 6px; }
+.med-delete.armed { background: color-mix(in srgb, var(--danger) 22%, transparent); color: var(--danger); }
+.med-error { margin: 0; color: var(--warn); font-size: 13px; font-weight: 600; }
+.med-form { display: grid; gap: 16px; }
+.med-field { display: grid; gap: 7px; min-width: 0; }
+.med-field input { width: 100%; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--tile); color: var(--text); font: inherit; font-size: 16px; color-scheme: dark; }
+.med-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+.med-dose-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.med-dose-meal { display: grid; gap: 6px; padding: 10px; border-radius: 14px; background: var(--tile); }
+.med-dose-meal > strong { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.med-stepper { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 6px; padding: 6px; border-radius: 10px; background: var(--card); }
+.med-stepper.on { background: color-mix(in srgb, var(--accent-fan) 16%, var(--card)); }
+.med-stepper > span { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 0 2px; font-size: 12.5px; font-weight: 700; }
+.med-stepper > span small { font-size: 11px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.med-stepper b { text-align: center; font-size: 17px; color: var(--muted); }
+.med-stepper.on b { color: var(--accent-fan); }
+.med-stepper button { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; background: var(--tile); color: var(--text); }
+.med-stepper button:disabled { opacity: 0.35; }
+.med-days { display: flex; flex-wrap: wrap; gap: 6px; }
+.med-day { width: 38px; justify-content: center; padding-left: 0; padding-right: 0; }
+@media (max-width: 600px) {
+  .med-dose-grid { grid-template-columns: minmax(0, 1fr); }
+  .med-dose-meal { grid-template-columns: 1fr 1fr; }
+  .med-dose-meal > strong { grid-column: 1 / -1; }
+}
