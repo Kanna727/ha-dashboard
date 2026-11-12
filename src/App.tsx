@@ -6,6 +6,7 @@ import { Alerts } from './components/Alerts';
 import { Doorbell } from './components/Doorbell';
 import { NightMode } from './components/NightMode';
 import { ScreenPower } from './components/ScreenPower';
+import { MedicinesToHa } from './medicines/MedicinesToHa';
 import { IdleHome } from './layout/IdleHome';
 import { SkyBackdrop } from './components/SkyBackdrop';
 import { DesktopLayout, PhoneLayout, TabletLayout } from './layout/Layouts';
@@ -48,6 +49,7 @@ export function App() {
           <NightMode layout={layout} />
           <IdleHome layout={layout} />
           <ScreenPower />
+          <MedicinesToHa />
           {layout === 'phone' ? <PhoneLayout /> : layout === 'tablet' ? <TabletLayout /> : <DesktopLayout />}
         </ToastProvider>
       </ModalProvider>

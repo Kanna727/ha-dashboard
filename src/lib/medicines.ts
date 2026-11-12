@@ -328,3 +328,74 @@ export function newMedicineId(name: string, list: MedicineDef[]): string {
 export const upsertMedicine = (list: MedicineDef[], m: MedicineDef) =>
   list.some((x) => x.id === m.id) ? list.map((x) => (x.id === m.id ? m : x)) : [...list, m];
 export const removeMedicine = (list: MedicineDef[], id: string) => list.filter((x) => x.id !== id);
+
+// ---- what Home Assistant gets (for its reminder and stock automations) ----
+
+// HA automations can't read the stored document, so the dashboard sends this
+// summary as a `dashboard_medicines` event whenever it changes; a trigger-based
+// template sensor (sensor.dashboard_medicines) keeps it, its state the `hash`.
+// See AGENTS.md "Medicines panel" for the HA side.
+export const HA_EVENT = 'dashboard_medicines';
+export const HA_SENSOR = 'sensor.dashboard_medicines';
+
+export interface HaMedicines {
+  hash: string;
+  times: Record<MedSlot, string>;
+  labels: Record<MedSlot, string>;
+  people: Record<string, string>; // id → name
+  low_days: number; // MEDICINES.lowDays
+  // Every medicine: what's left, when it runs out ('YYYY-MM-DD', null = not
+  // within ~a year or the course ends first), whether it's low or has run out.
+  medicines: { id: string; name: string; who: string[]; unit: string; left: number | null; runs_out: string | null; low: boolean; empty: boolean; paused: boolean }[];
+  // One entry per person per dose time of every medicine that isn't paused.
+  doses: { id: string; name: string; person: string; slot: MedSlot; dose: number; days: number[]; until: string | null }[];
+  taken: string[]; // doseKeys ticked today or yesterday
+}
+
+// A short, stable hash of a string (djb2), for telling whether HA has the latest summary.
+export function shortHash(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+export function haSummary(list: MedicineDef[], now: Date, times: Record<MedSlot, string>, people: { id: string; name: string }[], lowDays: number): HaMedicines {
+  const yesterday = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  const body: Omit<HaMedicines, 'hash'> = {
+    times,
+    labels: SLOT_LABEL,
+    people: Object.fromEntries(people.map((p) => [p.id, p.name])),
+    low_days: lowDays,
+    medicines: list.map((m) => {
+      const s = stockStatus(m, now, times, lowDays);
+      return {
+        id: m.id,
+        name: m.name,
+        who: m.who,
+        unit: unitOf(m),
+        left: s.left,
+        runs_out: s.out ? ymd(s.out) : null,
+        low: s.low,
+        empty: s.left !== null && s.left + 1e-9 < smallestDose(m),
+        paused: !!m.paused,
+      };
+    }),
+    doses: list
+      .filter((m) => !m.paused)
+      .flatMap((m) =>
+        MED_SLOTS.filter((slot) => (m.doses[slot] ?? 0) > 0).flatMap((slot) =>
+          m.who.map((person) => ({
+            id: m.id,
+            name: m.name,
+            person,
+            slot,
+            dose: m.doses[slot]!,
+            days: m.days ? [...new Set(m.days)].sort() : [0, 1, 2, 3, 4, 5, 6],
+            until: m.until ?? null,
+          })),
+        ),
+      ),
+    taken: list.flatMap((m) => Object.keys(m.taken ?? {}).filter((k) => k.slice(0, 10) >= yesterday)).sort(),
+  };
+  return { hash: shortHash(JSON.stringify(body)), ...body };
+}

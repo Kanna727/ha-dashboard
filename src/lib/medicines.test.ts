@@ -4,6 +4,7 @@ import {
   daySchedule,
   doseKey,
   doseStates,
+  haSummary,
   lowText,
   newMedicineId,
   parseMedicines,
@@ -189,5 +190,34 @@ describe('medicines', () => {
     expect(list.map((m) => m.id)).toEqual(['omega', 'vitd']);
     expect(upsertMedicine(list, { ...omega, name: 'Fish oil' }).map((m) => m.name)).toEqual(['Fish oil', 'Vitamin D3']);
     expect(removeMedicine(list, 'omega').map((m) => m.id)).toEqual(['vitd']);
+  });
+
+  it('sums the medicines up for Home Assistant', () => {
+    const now = at('10:00');
+    const people = [
+      { id: 'a', name: 'Alex' },
+      { id: 's', name: 'Sam' },
+    ];
+    const yesterday = doseKey(at('10:00', 10), 'after_dinner', 'a');
+    const old = doseKey(at('10:00', 9), 'after_dinner', 'a');
+    const list: MedicineDef[] = [
+      { ...omega, ...counted(3), taken: { [lunch]: 1, [yesterday]: 1, [old]: 1 } },
+      { ...vitd, ...counted(0), unit: 'capsule' },
+      { ...omega, id: 'iron', name: 'Iron', paused: true, ...counted(10) },
+    ];
+    const s = haSummary(list, now, times, people, 5);
+    expect(s.people).toEqual({ a: 'Alex', s: 'Sam' });
+    expect(s.low_days).toBe(5);
+    expect(s.times.after_dinner).toBe('20:30');
+    expect(s.labels.before_breakfast).toBe('Before breakfast');
+    expect(s.medicines[0]).toMatchObject({ id: 'omega', left: 3, runs_out: '2026-11-13', low: true, empty: false, paused: false, unit: 'tablet' });
+    expect(s.medicines[1]).toMatchObject({ id: 'vitd', left: 0, low: true, empty: true, unit: 'capsule' });
+    expect(s.medicines[2]).toMatchObject({ id: 'iron', paused: true, low: false, runs_out: null });
+    // Paused medicines have no doses; a shared one has one per person.
+    expect(s.doses.map((d) => `${d.id}/${d.slot}/${d.person}`)).toEqual(['omega/after_lunch/a', 'omega/after_dinner/a', 'vitd/after_breakfast/a', 'vitd/after_breakfast/s']);
+    expect(s.doses[2]).toMatchObject({ days: [0], until: null, dose: 1 });
+    expect(s.taken).toEqual([yesterday, lunch].sort()); // today's and yesterday's only
+    expect(s.hash).toBe(haSummary(list, now, times, people, 5).hash);
+    expect(s.hash).not.toBe(haSummary([list[0]], now, times, people, 5).hash);
   });
 });

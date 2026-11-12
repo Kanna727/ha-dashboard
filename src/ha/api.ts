@@ -124,6 +124,8 @@ export interface HassTarget {
 // on it don't re-run (and re-fetch) on every reconnect.
 export interface HassApi {
   callService(domain: string, service: string, data?: Record<string, unknown>, target?: HassTarget): Promise<unknown>;
+  // Fires an event on HA's bus (admin users only), e.g. for a trigger-based template sensor.
+  fireEvent(eventType: string, data: Record<string, unknown>): Promise<void>;
   fetchHistory(entityIds: string[], hours: number): Promise<Record<string, HistoryPoint[]>>;
   // Each entity's newest state in the window that isn't unavailable/unknown, with
   // its time in ms. For last-known values of non-numeric entities (e.g. binary sensors).
