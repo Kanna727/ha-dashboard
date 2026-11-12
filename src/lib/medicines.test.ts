@@ -87,28 +87,33 @@ describe('medicines', () => {
     expect(withCount(omega, -2, at('10:00')).count).toBe(0);
   });
 
-  it('finds the first dose there are not enough for', () => {
-    // 3 left, nothing ticked: Wed lunch + dinner, Thu lunch, then Thu dinner is missing.
-    expect(runOut(omega, 3, at('10:00'), times)).toEqual(at('20:30', 12));
+  it('finds the dose that uses up the last one', () => {
+    // 3 left, nothing ticked: Wed lunch + dinner, then Thu lunch takes the last one.
+    expect(runOut(omega, 3, at('10:00'), times)).toEqual(at('13:30', 12));
     // Today's lunch not ticked by 14:00 is still expected (taken late).
-    expect(runOut(omega, 3, at('14:00'), times)).toEqual(at('20:30', 12));
+    expect(runOut(omega, 3, at('14:00'), times)).toEqual(at('13:30', 12));
     // Ticked: it's no longer expected, so 3 last a dose longer.
-    expect(runOut({ ...omega, taken: { [lunch]: 1 } }, 3, at('14:00'), times)).toEqual(at('13:30', 13));
+    expect(runOut({ ...omega, taken: { [lunch]: 1 } }, 3, at('14:00'), times)).toEqual(at('20:30', 12));
+    // 1 left with tonight's dose still to take: it runs out tonight, not tomorrow.
+    expect(runOut({ ...omega, taken: { [lunch]: 1 } }, 1, at('14:00'), times)).toEqual(at('20:30'));
+    // Not enough for the next dose: that dose.
     expect(runOut(omega, 0, at('10:00'), times)).toEqual(at('13:30'));
-    // Shared weekly: 2 a Sunday; 3 left covers one Sunday (15 Nov), not the next.
+    // Shared weekly: 2 a Sunday; 3 left cover Sunday 15 Nov and one of the two on the 22nd, which takes the last one.
     expect(runOut(vitd, 3, at('10:00'), times)).toEqual(at('08:30', 22));
+    expect(runOut(vitd, 4, at('10:00'), times)).toEqual(at('08:30', 22));
+    expect(runOut(vitd, 2, at('10:00'), times)).toEqual(at('08:30', 15));
     expect(runOut({ ...omega, paused: true }, 0, at('10:00'), times)).toBeNull();
   });
 
   it('ignores the stock when the course ends first', () => {
     expect(runOut({ ...omega, until: '2026-11-12' }, 10, at('10:00'), times)).toBeNull();
-    expect(runOut({ ...omega, until: '2026-11-12' }, 2, at('10:00'), times)).toEqual(at('13:30', 12));
+    expect(runOut({ ...omega, until: '2026-11-12' }, 2, at('10:00'), times)).toEqual(at('20:30'));
     expect(runOut({ ...omega, doses: {} }, 0, at('10:00'), times)).toBeNull();
   });
 
   it('flags medicines running out within the low days', () => {
     const now = at('10:00');
-    expect(stockStatus({ ...omega, ...counted(9) }, now, times, 5).low).toBe(true); // runs out Sun dinner
+    expect(stockStatus({ ...omega, ...counted(9) }, now, times, 5).low).toBe(true); // the last one goes Sun lunch
     expect(stockStatus({ ...omega, ...counted(12) }, now, times, 5).low).toBe(false);
     expect(stockStatus({ ...omega, ...counted(null) }, now, times, 5)).toMatchObject({ left: null, low: false });
     expect(stockStatus({ ...omega, ...counted(0), paused: true }, now, times, 5).low).toBe(false);
@@ -120,7 +125,8 @@ describe('medicines', () => {
     expect(lowText(s(0), now)).toBe('Omega-3 has run out');
     expect(lowText(s(0.5), now)).toBe('Omega-3 has run out'); // less than one dose
     expect(lowText(s(3), now)).toBe('Omega-3 runs out tomorrow');
-    expect(lowText(s(6), now, 'Alex')).toBe("Alex's Omega-3 runs out Saturday");
+    expect(lowText(s(1), now)).toBe('Omega-3 runs out today'); // the last one goes at lunch
+    expect(lowText(s(6), now, 'Alex')).toBe("Alex's Omega-3 runs out Friday");
     expect(dayText(at('09:00', 25), now)).toBe('25 Nov');
   });
 
@@ -220,7 +226,7 @@ describe('medicines', () => {
     expect(s.low_days).toBe(5);
     expect(s.times.after_dinner).toBe('20:30');
     expect(s.labels.before_breakfast).toBe('Before breakfast');
-    expect(s.medicines[0]).toMatchObject({ id: 'omega', left: 3, runs_out: '2026-11-13', low: true, empty: false, paused: false, unit: 'tablet' });
+    expect(s.medicines[0]).toMatchObject({ id: 'omega', left: 3, runs_out: '2026-11-12', low: true, empty: false, paused: false, unit: 'tablet' });
     expect(s.medicines[1]).toMatchObject({ id: 'vitd', left: 0, low: true, empty: true, unit: 'capsule' });
     expect(s.medicines[2]).toMatchObject({ id: 'iron', paused: true, low: false, runs_out: null });
     // Paused medicines have no doses; a shared one has one per person.
