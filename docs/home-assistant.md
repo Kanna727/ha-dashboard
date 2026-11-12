@@ -203,3 +203,56 @@ gh secret set HA_PREVIEW_WEBHOOK_ID
 ```
 
 Without that secret the preview jobs skip with a warning. Pull requests from forks never deploy (they get no secrets), so only code pushed to this repo runs on your HA's origin.
+
+## 7. Planner lists and reminder alerts (optional)
+
+The Planner page reads three to-do lists. Add them in Settings → Devices & services:
+
+- **Local To-do**, twice: one list named `Todos` and one named `Reminders` (they become `todo.todos` and `todo.reminders`). Local To-do lists keep due dates, times and notes.
+- **Shopping List** (`todo.shopping_list`).
+
+Other names work too: set `PLANNER.todos`, `PLANNER.reminders` and `PLANNER.shopping` in the config. Habits need nothing in Home Assistant: the dashboard keeps them in a hidden dashboard of its own (saving needs an admin login).
+
+**Reminder alerts.** Home Assistant has no trigger for a to-do item coming due, so an automation checks the reminders list once a minute and sends whatever is due that minute. `notify.notify` reaches the phones, and the wall screens show it as an alert (`dashboard: warn` sets its tone):
+
+```yaml
+alias: Alert - Reminder due
+mode: single
+triggers:
+  - trigger: time_pattern
+    minutes: "/1"
+conditions:
+  - condition: numeric_state
+    entity_id: todo.reminders
+    above: 0
+actions:
+  - action: todo.get_items
+    target:
+      entity_id: todo.reminders
+    data:
+      status: needs_action
+    response_variable: lists
+  - variables:
+      due_now: >-
+        {% set end = now().replace(second=0, microsecond=0) %}
+        {% set ns = namespace(items=[]) %}
+        {% for i in lists['todo.reminders']['items'] if i.due is defined and 'T' in i.due %}
+          {% set t = as_datetime(i.due) %}
+          {% if t is not none and end - timedelta(minutes=1) < t <= end %}
+            {% set ns.items = ns.items + [i.summary] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.items }}
+  - repeat:
+      for_each: "{{ due_now }}"
+      sequence:
+        - action: notify.notify
+          data:
+            title: Reminder
+            message: "{{ repeat.item }}"
+            data:
+              dashboard: warn
+```
+
+Reminders with only a date (no time) never alert, and one that came due while Home Assistant was down isn't sent afterwards.
+

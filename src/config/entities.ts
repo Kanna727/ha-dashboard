@@ -93,6 +93,15 @@ export const MEDICINES = {
   store: 'dashboard-medicines',
   ...cfg.MEDICINES,
 };
+export const PLANNER = {
+  todos: 'todo.todos',
+  reminders: 'todo.reminders',
+  shopping: 'todo.shopping_list',
+  people: MEALS.people,
+  store: 'dashboard-habits',
+  calendars: undefined as string[] | undefined,
+  ...cfg.PLANNER,
+};
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };
 export const HOME_IDLE = { minutes: 2, layouts: ['tablet'] as string[], ...cfg.HOME_IDLE };
 export const SCREEN_POWER = {

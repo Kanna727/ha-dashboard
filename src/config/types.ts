@@ -244,6 +244,14 @@ export interface DashboardConfig {
     activityStore?: string;
     editsStore?: string;
   };
+  // Planner page (planner/): habits, to-do lists and the master calendar.
+  // `todos`, `reminders`, `shopping`: HA todo lists (defaults 'todo.todos',
+  // 'todo.reminders' from the Local To-do integration, 'todo.shopping_list'
+  // from Shopping List); a list that doesn't exist is left out. `people`: who
+  // the habits are for (default MEALS.people). `store`: the hidden dashboard the
+  // habits are kept in (default 'dashboard-habits'; created on the first save).
+  // `calendars`: calendar.* entities shown on the calendar (default: every one).
+  PLANNER?: { todos?: string; reminders?: string; shopping?: string; people?: { id: string; name: string }[]; store?: string; calendars?: string[] };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
   // Back to the Home page (the glance page) after this many minutes without a
