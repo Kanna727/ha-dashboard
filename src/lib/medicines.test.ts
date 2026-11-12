@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   dayText,
   daySchedule,
+  doseKey,
   doseStates,
-  dosesBetween,
   lowText,
   newMedicineId,
   parseMedicines,
@@ -18,6 +18,7 @@ import {
   upsertMedicine,
   withCount,
   withPaused,
+  withTaken,
   type MedicineDef,
 } from './medicines';
 
@@ -27,9 +28,10 @@ const at = (hhmm: string, date = 11) => {
   const [h, m] = hhmm.split(':').map(Number);
   return new Date(2026, 10, date, h, m);
 };
-const counted = (n: number | null, when: Date) => ({ count: n, countedAt: when.toISOString() });
+const counted = (n: number | null) => ({ count: n, countedAt: at('07:00').toISOString() });
 const omega: MedicineDef = { id: 'omega', name: 'Omega-3', who: ['a'], doses: { after_lunch: 1, after_dinner: 1 } };
 const vitd: MedicineDef = { id: 'vitd', name: 'Vitamin D3', who: ['a', 's'], doses: { after_breakfast: 1 }, days: [0] };
+const lunch = doseKey(at('10:00'), 'after_lunch', 'a');
 
 describe('medicines', () => {
   it('counts the use per day, shared and weekly', () => {
@@ -37,24 +39,45 @@ describe('medicines', () => {
     expect(perDay(vitd)).toBeCloseTo(2 / 7);
   });
 
-  it('takes the doses since the last count off it', () => {
-    expect(dosesBetween(omega, at('10:00'), at('10:00', 13), times)).toBe(4); // Wed L, D, Thu L, D
-    expect(dosesBetween(omega, at('13:30'), at('20:30'), times)).toBe(1); // a dose at the count's own time was already in it
-    const m = { ...omega, ...counted(10, at('10:00')) };
-    expect(remaining(m, at('21:00'), times)).toBe(8);
-    expect(remaining(m, at('10:00', 20), times)).toBe(0); // never below zero
-    expect(remaining({ ...m, count: null }, at('21:00'), times)).toBeNull();
-    expect(remaining({ ...m, paused: true }, at('21:00'), times)).toBe(10);
+  it('keys a dose by day, time and person', () => {
+    expect(lunch).toBe('2026-11-11|after_lunch|a');
   });
 
-  it('pausing keeps what was left, resuming counts from then', () => {
-    let m: MedicineDef = { ...omega, ...counted(10, at('10:00')) };
-    m = withPaused(m, true, at('21:00'), times);
-    expect(m).toMatchObject({ count: 8, paused: true });
-    expect(remaining(m, at('21:00', 14), times)).toBe(8);
-    m = withPaused(m, false, at('21:00', 14), times);
-    expect(m.paused).toBeUndefined();
-    expect(remaining(m, at('21:00', 15), times)).toBe(6);
+  it('takes a ticked dose off the count, once, and puts it back on untick', () => {
+    const m = { ...omega, ...counted(10) };
+    const ticked = withTaken(m, lunch, 1, true, at('14:00'));
+    expect(ticked).toMatchObject({ count: 9, taken: { [lunch]: 1 } });
+    expect(withTaken(ticked, lunch, 1, true, at('14:00')).count).toBe(9); // a second screen's tick changes nothing
+    const unticked = withTaken(ticked, lunch, 1, false, at('14:05'));
+    expect(unticked.count).toBe(10);
+    expect(unticked.taken).toBeUndefined();
+    expect(withTaken(m, lunch, 1, false, at('14:00')).count).toBe(10); // unticking an untaken dose changes nothing
+  });
+
+  it('never takes more than is left, and gives back only what it took', () => {
+    const half = withTaken({ ...omega, ...counted(0.5) }, lunch, 1, true, at('14:00'));
+    expect(half).toMatchObject({ count: 0, taken: { [lunch]: 0.5 } });
+    expect(withTaken(half, lunch, 1, false, at('14:00')).count).toBe(0.5);
+    // Not counted yet: the tick is remembered, the count stays unknown.
+    expect(withTaken({ ...omega, count: null }, lunch, 1, true, at('14:00'))).toMatchObject({ count: null, taken: { [lunch]: 0 } });
+  });
+
+  it('forgets ticks older than a week', () => {
+    const old = doseKey(at('10:00', 2), 'after_lunch', 'a');
+    const m = { ...omega, ...counted(10), taken: { [old]: 1 } };
+    expect(Object.keys(withTaken(m, lunch, 1, true, at('14:00')).taken!)).toEqual([lunch]);
+  });
+
+  it('reads what is left from the count', () => {
+    expect(remaining({ ...omega, ...counted(8) })).toBe(8);
+    expect(remaining({ ...omega, ...counted(-1) })).toBe(0);
+    expect(remaining({ ...omega, ...counted(null) })).toBeNull();
+  });
+
+  it('pauses and resumes without touching the count', () => {
+    const m = withPaused({ ...omega, ...counted(10) }, true);
+    expect(m).toMatchObject({ count: 10, paused: true });
+    expect(withPaused(m, false).paused).toBeUndefined();
   });
 
   it('stores a new count in halves', () => {
@@ -63,9 +86,12 @@ describe('medicines', () => {
   });
 
   it('finds the first dose there are not enough for', () => {
-    // 10:00 Wed, 3 left: lunch + dinner today, lunch Thu, then Thu dinner is missing.
+    // 3 left, nothing ticked: Wed lunch + dinner, Thu lunch, then Thu dinner is missing.
     expect(runOut(omega, 3, at('10:00'), times)).toEqual(at('20:30', 12));
-    expect(runOut(omega, 3, at('14:00'), times)).toEqual(at('13:30', 13));
+    // Today's lunch not ticked by 14:00 is still expected (taken late).
+    expect(runOut(omega, 3, at('14:00'), times)).toEqual(at('20:30', 12));
+    // Ticked: it's no longer expected, so 3 last a dose longer.
+    expect(runOut({ ...omega, taken: { [lunch]: 1 } }, 3, at('14:00'), times)).toEqual(at('13:30', 13));
     expect(runOut(omega, 0, at('10:00'), times)).toEqual(at('13:30'));
     // Shared weekly: 2 a Sunday; 3 left covers one Sunday (15 Nov), not the next.
     expect(runOut(vitd, 3, at('10:00'), times)).toEqual(at('08:30', 22));
@@ -80,34 +106,47 @@ describe('medicines', () => {
 
   it('flags medicines running out within the low days', () => {
     const now = at('10:00');
-    expect(stockStatus({ ...omega, ...counted(9, now) }, now, times, 5).low).toBe(true); // runs out Sun dinner
-    expect(stockStatus({ ...omega, ...counted(12, now) }, now, times, 5).low).toBe(false);
-    expect(stockStatus({ ...omega, ...counted(null, now) }, now, times, 5)).toMatchObject({ left: null, low: false });
-    expect(stockStatus({ ...omega, ...counted(0, now), paused: true }, now, times, 5).low).toBe(false);
+    expect(stockStatus({ ...omega, ...counted(9) }, now, times, 5).low).toBe(true); // runs out Sun dinner
+    expect(stockStatus({ ...omega, ...counted(12) }, now, times, 5).low).toBe(false);
+    expect(stockStatus({ ...omega, ...counted(null) }, now, times, 5)).toMatchObject({ left: null, low: false });
+    expect(stockStatus({ ...omega, ...counted(0), paused: true }, now, times, 5).low).toBe(false);
   });
 
   it('words the attention item', () => {
     const now = at('10:00');
-    const s = (n: number) => stockStatus({ ...omega, ...counted(n, now) }, now, times, 5);
+    const s = (n: number) => stockStatus({ ...omega, ...counted(n) }, now, times, 5);
     expect(lowText(s(0), now)).toBe('Omega-3 has run out');
+    expect(lowText(s(0.5), now)).toBe('Omega-3 has run out'); // less than one dose
     expect(lowText(s(3), now)).toBe('Omega-3 runs out tomorrow');
     expect(lowText(s(6), now, 'Alex')).toBe("Alex's Omega-3 runs out Saturday");
     expect(dayText(at('09:00', 25), now)).toBe('25 Nov');
   });
 
-  it('lays out a day by time and person, without paused medicines', () => {
+  it('lays out a day by time and person, with ticks, without paused medicines', () => {
     const sunday = daySchedule([omega, vitd], at('07:00', 15), times);
     expect(sunday.map((s) => s.slot)).toEqual(['after_breakfast', 'after_lunch', 'after_dinner']);
     expect(Object.keys(sunday[0].byPerson)).toEqual(['a', 's']);
-    expect(daySchedule([omega, vitd], at('07:00'), times).map((s) => s.slot)).toEqual(['after_lunch', 'after_dinner']);
+    const wed = daySchedule([{ ...omega, taken: { [lunch]: 1 } }, vitd], at('07:00'), times);
+    expect(wed.map((s) => s.slot)).toEqual(['after_lunch', 'after_dinner']);
+    expect(wed[0].byPerson.a[0]).toMatchObject({ key: lunch, taken: true, dose: 1 });
+    expect(wed[1].byPerson.a[0].taken).toBe(false);
     expect(daySchedule([{ ...omega, paused: true }], at('07:00'), times)).toEqual([]);
   });
 
-  it('moves on to tomorrow after the last dose', () => {
-    const today = shownDay([omega], at('20:40'), times);
-    expect(today.offset).toBe(0);
-    expect(doseStates(today.slots, at('20:40'))).toEqual(['done', 'next']);
-    expect(shownDay([omega], at('21:01'), times).offset).toBe(1);
+  it('marks doses done when ticked and missed when late', () => {
+    const ticked = { ...omega, taken: { [lunch]: 1 } };
+    expect(doseStates(daySchedule([omega], at('10:00'), times), at('14:30'))).toEqual(['missed', 'next']);
+    expect(doseStates(daySchedule([ticked], at('10:00'), times), at('14:30'))).toEqual(['done', 'next']);
+    expect(doseStates(daySchedule([ticked], at('10:00'), times), at('10:00'))).toEqual(['done', 'next']);
+    expect(doseStates(daySchedule([omega], at('10:00'), times), at('10:00'))).toEqual(['next', 'later']);
+  });
+
+  it('moves on to tomorrow once the day is ticked off, or two hours after its last dose', () => {
+    expect(shownDay([omega], at('21:00'), times).offset).toBe(0); // dinner not ticked yet
+    expect(shownDay([omega], at('22:31'), times).offset).toBe(1);
+    const all = { ...omega, taken: { [lunch]: 1, [doseKey(at('10:00'), 'after_dinner', 'a')]: 1 } };
+    expect(shownDay([all], at('20:00'), times).offset).toBe(0); // ticked early: stays till its time
+    expect(shownDay([all], at('20:31'), times).offset).toBe(1);
   });
 
   it('describes the schedule', () => {
@@ -120,15 +159,25 @@ describe('medicines', () => {
     const list = parseMedicines({
       version: 1,
       medicines: [
-        { id: 'a', name: 'A', who: ['x', 3], doses: { after_lunch: 1, at_noon: 2, after_dinner: -1 }, days: [1, 9], count: 4, countedAt: 'x', paused: true },
+        {
+          id: 'a',
+          name: 'A',
+          who: ['x', 3],
+          doses: { after_lunch: 1, at_noon: 2, after_dinner: -1 },
+          days: [1, 9],
+          count: 4,
+          countedAt: 'x',
+          paused: true,
+          taken: { '2026-11-11|after_lunch|x': 1, junk: 1, '2026-11-11|after_dinner|x': 'one' },
+        },
         { id: 'b' },
         'junk',
-        { id: 'c', name: 'C', doses: {}, days: [] },
+        { id: 'c', name: 'C', doses: {}, days: [], taken: [1] },
       ],
     });
     expect(list.map((m) => m.id)).toEqual(['a', 'c']);
-    expect(list[0]).toMatchObject({ who: ['x'], doses: { after_lunch: 1 }, days: [1], count: 4, paused: true });
-    expect(list[1]).toMatchObject({ who: [], days: undefined, count: null });
+    expect(list[0]).toMatchObject({ who: ['x'], doses: { after_lunch: 1 }, days: [1], count: 4, paused: true, taken: { '2026-11-11|after_lunch|x': 1 } });
+    expect(list[1]).toMatchObject({ who: [], days: undefined, count: null, taken: undefined });
     expect(parseMedicines(null)).toEqual([]);
   });
 

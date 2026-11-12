@@ -25,8 +25,7 @@ const STEP = 0.5;
 export function MedicineForm({ med, onDone }: { med?: MedicineDef; onDone: (saved: MedicineDef | null) => void }) {
   const save = useSaveMedicines();
   const people = MEDICINES.people;
-  const opened = useState(() => new Date())[0];
-  const left = med ? remaining(med, opened, MED_TIMES) : null;
+  const left = med ? remaining(med) : null;
   const [name, setName] = useState(med?.name ?? '');
   const [who, setWho] = useState<string[]>(med?.who ?? (people.length === 1 ? [people[0].id] : []));
   const [doses, setDoses] = useState<Partial<Record<MedSlot, number>>>(med?.doses ?? {});
@@ -81,11 +80,11 @@ export function MedicineForm({ med, onDone }: { med?: MedicineDef; onDone: (save
           pack: pack.trim() ? Number(pack) : undefined,
           note: note.trim() || undefined,
           paused: stored?.paused,
+          taken: stored?.taken,
         };
-        // An untouched count means "what's left now", worked out with the old
-        // schedule at the moment of saving; a typed one is taken as counted now.
-        const n = count === startCount && stored ? remaining(stored, at, MED_TIMES) : countN;
-        saved = withCount(fields, n, at);
+        // An untouched count keeps what's stored (ticks from other screens
+        // included); a typed one is taken as counted now.
+        saved = count === startCount && stored ? { ...fields, count: stored.count, countedAt: stored.countedAt } : withCount(fields, countN, at);
         return upsertMedicine(current, saved);
       });
       onDone(saved);

@@ -2,11 +2,10 @@
 // dashboard), the daily schedule, and how much stock is left and for how long.
 // Pure (no React, no config import). Unit-tested.
 //
-// Stock: each medicine stores the count someone last entered (`count`) and
-// when (`countedAt`). What's left now is that count minus every dose scheduled
-// since, so no screen or automation has to "take" doses off and nothing is
-// counted twice. Every change (refill, correction, schedule edit, pause,
-// resume) stores what's left at that moment as the new count.
+// Stock: each medicine stores how many are left (`count`). Ticking a dose as
+// taken takes it off the count and remembers how much came off under the
+// dose's key (`taken`), so unticking puts exactly that back and a second tick
+// from another screen changes nothing. Untaken doses don't touch the stock.
 import type { MedSlot, MedicinesConfig } from '../config/types';
 
 export interface MedicineDef {
@@ -21,9 +20,11 @@ export interface MedicineDef {
   unit?: string; // what is counted, default 'tablet'
   pack?: number; // how many come in a strip or bottle: the refill button adds this many
   note?: string; // e.g. 'Empty stomach'
-  paused?: boolean; // no doses (and none counted) while paused
-  count?: number | null; // stock when last counted; null/missing = not counted
-  countedAt?: string; // ISO time of that count
+  paused?: boolean; // no doses shown or expected while paused
+  count?: number | null; // how many are left; null/missing = not counted
+  countedAt?: string; // ISO time someone last set the count by hand
+  // Doses ticked as taken: doseKey → how many came off the count (kept a week).
+  taken?: Record<string, number>;
 }
 
 export const MED_SLOTS: MedSlot[] = ['before_breakfast', 'after_breakfast', 'before_lunch', 'after_lunch', 'before_dinner', 'after_dinner'];
@@ -47,7 +48,7 @@ export const DEFAULT_TIMES: Record<MedSlot, string> = {
 };
 
 const DAY = 86_400_000;
-// A dose stays "up next" this long after its time before it counts as taken.
+// A dose stays "up next" this long after its time; unticked after that, it shows as missed.
 export const GRACE_MIN = 30;
 
 export const timesOf = (times: MedicinesConfig['times']): Record<MedSlot, string> => ({ ...DEFAULT_TIMES, ...times });
@@ -55,7 +56,8 @@ export const unitOf = (m: MedicineDef) => m.unit || 'tablet';
 
 // How many come off the stock at a dose time (everyone on the medicine takes theirs).
 export const doseAt = (m: MedicineDef, slot: MedSlot) => (m.doses[slot] ?? 0) * m.who.length;
-export const smallestDose = (m: MedicineDef) => Math.min(...MED_SLOTS.map((s) => doseAt(m, s)).filter((n) => n > 0), Infinity);
+// The smallest single dose one person takes (what one tick takes off).
+export const smallestDose = (m: MedicineDef) => Math.min(...MED_SLOTS.map((s) => m.doses[s] ?? 0).filter((n) => n > 0), Infinity);
 
 // 'YYYY-MM-DD' in local time.
 export function ymd(d: Date): string {
@@ -75,45 +77,53 @@ export function perDay(m: MedicineDef): number {
   return (daily * (m.days ? new Set(m.days).size : 7)) / 7;
 }
 
-// Units scheduled after `from` up to and including `to`.
-export function dosesBetween(m: MedicineDef, from: Date, to: Date, times: Record<MedSlot, string>): number {
-  if (m.paused || to <= from) return 0;
-  let total = 0;
-  const end = new Date(to.getFullYear(), to.getMonth(), to.getDate());
-  for (let day = new Date(from.getFullYear(), from.getMonth(), from.getDate()); day <= end; day = new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1)) {
-    if (!takesOn(m, day)) continue;
-    for (const slot of MED_SLOTS) {
-      const need = doseAt(m, slot);
-      const t = need && atTime(day, times[slot]);
-      if (t && t > from && t <= to) total += need;
-    }
-  }
-  return total;
+// One person's dose at one time on one day: 'YYYY-MM-DD|after_dinner|a'.
+export const doseKey = (day: Date, slot: MedSlot, person: string) => `${ymd(day)}|${slot}|${person}`;
+export const isTaken = (m: MedicineDef, key: string) => !!m.taken && key in m.taken;
+
+// How many are left (never below 0); null when never counted.
+export function remaining(m: MedicineDef): number | null {
+  return m.count === null || m.count === undefined || !Number.isFinite(m.count) ? null : Math.max(0, m.count);
 }
 
-// What's left now: the last count minus the doses since (never below 0).
-export function remaining(m: MedicineDef, now: Date, times: Record<MedSlot, string>): number | null {
-  if (m.count === null || m.count === undefined || !Number.isFinite(m.count)) return null;
-  const at = m.countedAt ? new Date(m.countedAt) : now;
-  return Math.max(0, m.count - dosesBetween(m, Number.isNaN(at.getTime()) ? now : at, now, times));
-}
-
-// Stores `n` as what's left right now.
+// Sets how many are left, counted by hand now.
 export const withCount = (m: MedicineDef, n: number | null, now: Date): MedicineDef => ({
   ...m,
   count: n === null ? null : Math.max(0, Math.round(n * 2) / 2),
   countedAt: now.toISOString(),
 });
 
-// Pausing or resuming first stores what's left, so the pause doesn't count doses.
-export const withPaused = (m: MedicineDef, paused: boolean, now: Date, times: Record<MedSlot, string>): MedicineDef => ({
-  ...withCount(m, remaining(m, now, times), now),
-  paused: paused || undefined,
-});
+export const withPaused = (m: MedicineDef, paused: boolean): MedicineDef => ({ ...m, paused: paused || undefined });
+
+// How long ticks are kept: the board only shows today and tomorrow, and an
+// untick can only reach back that far.
+export const KEEP_TAKEN_DAYS = 7;
+
+// Ticks (`want`) or unticks one dose. A tick takes `dose` off the count (no
+// more than is left) and remembers how much; an untick puts that back. Asking
+// for the state it's already in changes nothing, so two screens can't take a
+// dose off twice. Ticks older than a week are dropped.
+export function withTaken(m: MedicineDef, key: string, dose: number, want: boolean, now: Date): MedicineDef {
+  const taken = { ...m.taken };
+  let count = remaining(m);
+  if (want && !(key in taken)) {
+    const off = count === null ? 0 : Math.min(count, dose);
+    taken[key] = off;
+    if (count !== null) count -= off;
+  } else if (!want && key in taken) {
+    if (count !== null) count += taken[key];
+    delete taken[key];
+  }
+  const oldest = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - KEEP_TAKEN_DAYS));
+  for (const k of Object.keys(taken)) if (k.slice(0, 10) < oldest) delete taken[k];
+  return { ...m, count, taken: Object.keys(taken).length ? taken : undefined };
+}
 
 // When the stock runs out: the time of the first dose there aren't enough left
-// for, looking `horizon` days ahead. null when the course ends first, nothing
-// is scheduled, it's paused, or it lasts beyond the horizon.
+// for, looking `horizon` days ahead. Today's doses not ticked yet are still
+// expected (even ones whose time has passed: they may be taken late), then
+// every dose after today. null when the course ends first, nothing is
+// scheduled, it's paused, or it lasts beyond the horizon.
 export function runOut(m: MedicineDef, stock: number, now: Date, times: Record<MedSlot, string>, horizon = 400): Date | null {
   if (m.paused) return null;
   let left = stock;
@@ -123,12 +133,13 @@ export function runOut(m: MedicineDef, stock: number, now: Date, times: Record<M
     if (m.until && ymd(day) > m.until) return null;
     if (!takesOn(m, day)) continue;
     for (const slot of MED_SLOTS) {
-      const need = doseAt(m, slot);
+      const need = m.doses[slot] ?? 0;
       if (!need) continue;
-      const t = atTime(day, times[slot]);
-      if (t <= now) continue; // already counted
-      if (left + 1e-9 < need) return t;
-      left -= need;
+      for (const p of m.who) {
+        if (d === 0 && isTaken(m, doseKey(day, slot, p))) continue;
+        if (left + 1e-9 < need) return atTime(day, times[slot]);
+        left -= need;
+      }
     }
   }
   return null;
@@ -159,7 +170,7 @@ export interface StockStatus {
 }
 
 export function stockStatus(m: MedicineDef, now: Date, times: Record<MedSlot, string>, lowDays: number): StockStatus {
-  const left = remaining(m, now, times);
+  const left = remaining(m);
   if (left === null) return { med: m, left, out: null, low: false };
   const out = runOut(m, left, now, times);
   return { med: m, left, out, low: !!out && out.getTime() - now.getTime() < lowDays * DAY };
@@ -175,12 +186,18 @@ export function lowText(s: StockStatus, now: Date, who?: string): string {
 }
 
 // One day's doses by time: each slot with something to take, and per person
-// what they take then. Paused medicines are left out.
+// what they take then and whether it's ticked. Paused medicines are left out.
+export interface PersonDose {
+  med: MedicineDef;
+  dose: number;
+  key: string;
+  taken: boolean;
+}
 export interface SlotDoses {
   slot: MedSlot;
   time: string;
   at: Date;
-  byPerson: Record<string, { med: MedicineDef; dose: number }[]>;
+  byPerson: Record<string, PersonDose[]>;
 }
 export function daySchedule(list: MedicineDef[], day: Date, times: Record<MedSlot, string>): SlotDoses[] {
   const out: SlotDoses[] = [];
@@ -189,27 +206,41 @@ export function daySchedule(list: MedicineDef[], day: Date, times: Record<MedSlo
     for (const m of list) {
       const dose = m.doses[slot];
       if (!dose || m.paused || !takesOn(m, day)) continue;
-      for (const p of m.who) (byPerson[p] ??= []).push({ med: m, dose });
+      for (const p of m.who) {
+        const key = doseKey(day, slot, p);
+        (byPerson[p] ??= []).push({ med: m, dose, key, taken: isTaken(m, key) });
+      }
     }
     if (Object.keys(byPerson).length) out.push({ slot, time: times[slot], at: atTime(day, times[slot]), byPerson });
   }
   return out;
 }
 
-// The day the panel shows: today until its last dose is past its grace, then tomorrow.
+const allTaken = (s: SlotDoses) => Object.values(s.byPerson).every((ds) => ds.every((d) => d.taken));
+
+// Untaken doses stay on the board this long after the day's last dose time.
+export const LATE_HOURS = 2;
+
+// The day the panel shows: today, until its last dose time has passed with
+// everything ticked, or LATE_HOURS after it; then tomorrow.
 export function shownDay(list: MedicineDef[], now: Date, times: Record<MedSlot, string>): { offset: 0 | 1; slots: SlotDoses[] } {
   const today = daySchedule(list, now, times);
-  const pending = today.some((s) => now.getTime() < s.at.getTime() + GRACE_MIN * 60_000);
-  if (pending) return { offset: 0, slots: today };
+  const last = today.at(-1)?.at.getTime();
+  const t = now.getTime();
+  const over = last === undefined || t >= last + LATE_HOURS * 3_600_000 || (t >= last && today.every(allTaken));
+  if (!over) return { offset: 0, slots: today };
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
   return { offset: 1, slots: daySchedule(list, tomorrow, times) };
 }
 
-export type DoseState = 'done' | 'next' | 'later';
+// Each slot's look: every dose ticked (done), past its time by GRACE_MIN with
+// something unticked (missed), the first other one (next), or later.
+export type DoseState = 'done' | 'missed' | 'next' | 'later';
 export function doseStates(slots: SlotDoses[], now: Date): DoseState[] {
   let seen = false;
   return slots.map((s) => {
-    if (now.getTime() >= s.at.getTime() + GRACE_MIN * 60_000) return 'done';
+    if (allTaken(s)) return 'done';
+    if (now.getTime() >= s.at.getTime() + GRACE_MIN * 60_000) return 'missed';
     if (seen) return 'later';
     seen = true;
     return 'next';
@@ -241,6 +272,12 @@ export const MEDICINES_VERSION = 1;
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v : undefined);
 
+function takenOf(v: unknown): Record<string, number> | undefined {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return undefined;
+  const out = Object.fromEntries(Object.entries(v).filter(([k, n]) => /^\d{4}-\d{2}-\d{2}\|/.test(k) && num(n) !== undefined && (n as number) >= 0));
+  return Object.keys(out).length ? out : undefined;
+}
+
 // The medicines in a stored document; anything malformed is dropped, so an
 // odd entry can't break the panel.
 export function parseMedicines(doc: unknown): MedicineDef[] {
@@ -271,6 +308,7 @@ export function parseMedicines(doc: unknown): MedicineDef[] {
       paused: r.paused === true || undefined,
       count: num(r.count) ?? null,
       countedAt: str(r.countedAt),
+      taken: takenOf(r.taken),
     });
   }
   return out;
