@@ -1,3 +1,10 @@
+## [1.65.1](https://github.com/Kanna727/ha-dashboard/compare/v1.65.0...v1.65.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **health:** a medicine runs out on the dose that takes the last one ([#88](https://github.com/Kanna727/ha-dashboard/issues/88)) ([fdc4f49](https://github.com/Kanna727/ha-dashboard/commit/fdc4f49be065de28bd664553888a643e7a028446))
+
 # [1.65.0](https://github.com/Kanna727/ha-dashboard/compare/v1.64.0...v1.65.0) (2026-11-12)
 
 
