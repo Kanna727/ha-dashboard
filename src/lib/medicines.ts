@@ -333,10 +333,24 @@ export const removeMedicine = (list: MedicineDef[], id: string) => list.filter((
 
 // HA automations can't read the stored document, so the dashboard sends this
 // summary as a `dashboard_medicines` event whenever it changes; a trigger-based
-// template sensor (sensor.dashboard_medicines) keeps it, its state the `hash`.
+// template sensor named "Dashboard medicines" keeps it, its state the `hash`.
 // See AGENTS.md "Medicines panel" for the HA side.
 export const HA_EVENT = 'dashboard_medicines';
-export const HA_SENSOR = 'sensor.dashboard_medicines';
+
+// That sensor, found by itself (no entity ID in the bundle): the one the config
+// names, else a sensor called "Dashboard medicines", else one already holding a
+// summary. undefined when HA has none, and then nothing is sent.
+export function findHaSensor(states: Record<string, { attributes: Record<string, unknown> } | undefined>, configured?: string): string | undefined {
+  if (configured) return states[configured] ? configured : undefined;
+  const sensors = Object.keys(states).filter((id) => id.startsWith('sensor.'));
+  return (
+    sensors.find((id) => String(states[id]?.attributes.friendly_name ?? '').trim().toLowerCase() === 'dashboard medicines') ??
+    sensors.find((id) => {
+      const a = states[id]?.attributes;
+      return !!a && Array.isArray(a.doses) && Array.isArray(a.taken) && 'low_days' in a;
+    })
+  );
+}
 
 export interface HaMedicines {
   hash: string;

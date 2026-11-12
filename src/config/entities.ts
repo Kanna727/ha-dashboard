@@ -91,6 +91,7 @@ export const MEDICINES = {
   times: {} as NonNullable<NonNullable<DashboardConfig['MEDICINES']>['times']>,
   lowDays: 5,
   store: 'dashboard-medicines',
+  haSensor: undefined as string | undefined,
   ...cfg.MEDICINES,
 };
 export const PLANNER = {

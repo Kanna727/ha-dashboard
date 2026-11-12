@@ -19,7 +19,7 @@ import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
 import { extraHistory, extraStatChanges, extraStatistics, MOCK_MACS, SPEEDTEST_IDS, speedTestResult } from './extras';
 import { ENERGY } from '../src/config/entities';
 import { mockMedicines } from './medicines';
-import { HA_EVENT, HA_SENSOR } from '../src/lib/medicines';
+import { HA_EVENT } from '../src/lib/medicines';
 import { mockCalendarEvents, mockHabits, PLANNER_STATES, subscribeMockTodo, todoService } from './planner';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
@@ -245,7 +245,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         // Plays HA's trigger-based template sensor for the medicines summary.
         if (eventType === HA_EVENT) {
           const { hash, ...attributes } = data;
-          patch(HA_SENSOR, { state: String(hash), attributes });
+          patch('sensor.dashboard_medicines', { state: String(hash), attributes });
         }
       },
       async fetchHistory(entityIds, hours) {

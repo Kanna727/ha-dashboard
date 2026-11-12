@@ -4,6 +4,7 @@ import {
   daySchedule,
   doseKey,
   doseStates,
+  findHaSensor,
   haSummary,
   lowText,
   newMedicineId,
@@ -190,6 +191,15 @@ describe('medicines', () => {
     expect(list.map((m) => m.id)).toEqual(['omega', 'vitd']);
     expect(upsertMedicine(list, { ...omega, name: 'Fish oil' }).map((m) => m.name)).toEqual(['Fish oil', 'Vitamin D3']);
     expect(removeMedicine(list, 'omega').map((m) => m.id)).toEqual(['vitd']);
+  });
+
+  it('finds the sensor that keeps the summary in Home Assistant', () => {
+    const a = (attributes: Record<string, unknown>) => ({ attributes });
+    expect(findHaSensor({ 'sensor.x': a({}), 'sensor.meds_copy': a({ friendly_name: 'Dashboard medicines' }) })).toBe('sensor.meds_copy');
+    expect(findHaSensor({ 'sensor.renamed': a({ friendly_name: 'Pills', doses: [], taken: [], low_days: 5 }) })).toBe('sensor.renamed');
+    expect(findHaSensor({ 'binary_sensor.y': a({ friendly_name: 'Dashboard medicines' }), 'sensor.z': a({}) })).toBeUndefined();
+    expect(findHaSensor({ 'sensor.mine': a({}), 'sensor.other': a({ friendly_name: 'Dashboard medicines' }) }, 'sensor.mine')).toBe('sensor.mine');
+    expect(findHaSensor({}, 'sensor.mine')).toBeUndefined();
   });
 
   it('sums the medicines up for Home Assistant', () => {
