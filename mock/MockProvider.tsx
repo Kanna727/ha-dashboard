@@ -6,6 +6,7 @@ import { store } from '../src/ha/store';
 import { hsToRgb, kelvinToRgb } from '../src/lib/lightColor';
 import { bucketStart } from '../src/lib/driveHistory';
 import { mockActivity, mockMoneyHistory, mockSnapshot } from './finance';
+import { partnerActivity, partnerMoneyHistory, partnerSnapshot } from './financePartner';
 import { CAR_TEST, CarTestPanel } from './CarTestPanel';
 import { installMockCommute, MOCK_COMMUTE_CARD } from './commute';
 import { CommuteTestPanel } from './CommuteTestPanel';
@@ -19,12 +20,13 @@ import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
 import { extraHistory, extraStatChanges, extraStatistics, MOCK_MACS, SPEEDTEST_IDS, speedTestResult } from './extras';
 import { ENERGY } from '../src/config/entities';
 import { mockMedicines } from './medicines';
-import { HA_EVENT, HA_SENSOR } from '../src/lib/medicines';
+import { HA_EVENT } from '../src/lib/medicines';
+import { mockCalendarChange, mockCalendarEvents, mockHabits, PLANNER_STATES, subscribeMockTodo, todoService } from './planner';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
 // and logs them, so layouts can be exercised without touching the house.
-let states = { ...FIXTURES };
+let states = { ...FIXTURES, ...PLANNER_STATES };
 const MOCK_LAYOUT = 'mockSharedLayout';
 installMockCommute();
 
@@ -215,6 +217,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         if (vacuumService(domain, service, data, ids(target), patch)) return {};
         if (dishwasherService(domain, service, data, ids(target), patch, (id) => states[id])) return {};
         if (deskService(domain, service, data, ids(target), patch)) return {};
+        if (todoService(domain, service, data, ids(target).length ? ids(target) : [data.entity_id].flat().map(String))) return {};
         if (domain === 'notify') mockNotify(service, data);
         // A speed test: the service call returns when it's done (6 s here, ~30 s in HA).
         if (domain === 'homeassistant' && service === 'update_entity' && [data.entity_id].flat().some((id) => SPEEDTEST_IDS.includes(String(id)))) {
@@ -243,7 +246,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         // Plays HA's trigger-based template sensor for the medicines summary.
         if (eventType === HA_EVENT) {
           const { hash, ...attributes } = data;
-          patch(HA_SENSOR, { state: String(hash), attributes });
+          patch('sensor.dashboard_medicines', { state: String(hash), attributes });
         }
       },
       async fetchHistory(entityIds, hours) {
@@ -316,6 +319,15 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       async fetchTodo(entityId) {
         return entityId.includes('to_do') ? TODO_ITEMS_2 : TODO_ITEMS;
       },
+      subscribeTodo(entityId, cb) {
+        return subscribeMockTodo(entityId, cb);
+      },
+      async fetchCalendarEvents(entityIds, start, end) {
+        return mockCalendarEvents(start, end).filter((e) => entityIds.includes(e.calendar));
+      },
+      async changeCalendarEvent(entityId, change) {
+        mockCalendarChange(entityId, change);
+      },
       async fetchRegistry() {
         return { ...REGISTRY, devices: REGISTRY.devices.map((d) => (MOCK_MACS[d.id] ? { ...d, macs: [MOCK_MACS[d.id]] } : d)) };
       },
@@ -356,7 +368,12 @@ export default function MockProvider({ children }: { children: ReactNode }) {
           if (urlPath === 'dashboard-money') return mockMoneyHistory();
           if (urlPath === 'dashboard-fold-data') return mockSnapshot();
           if (urlPath === 'dashboard-fold-activity') return mockActivity();
+          // The second person's (mock/financePartner.ts).
+          if (urlPath === 'dashboard-money-partner') return partnerMoneyHistory();
+          if (urlPath === 'dashboard-fold-data-partner') return partnerSnapshot();
+          if (urlPath === 'dashboard-fold-activity-partner') return partnerActivity();
           if (urlPath === 'dashboard-medicines') return mockMedicines();
+          if (urlPath === 'dashboard-habits') return mockHabits();
           return null;
         } catch {
           return null;

@@ -86,12 +86,41 @@ export const FINANCE = {
   editsStore: 'dashboard-money-edits',
   ...cfg.FINANCE,
 };
+// Whose money the page shows (FINANCE.people). One person with no name when
+// there's no list: then there's no switch and no owner tags.
+export interface MoneyPerson {
+  id: string;
+  name: string;
+  prefix: string;
+  store: string;
+  snapshotStore: string;
+  activityStore: string;
+}
+export const MONEY_PEOPLE: MoneyPerson[] = (cfg.FINANCE?.people?.length ? cfg.FINANCE.people : [{ id: 'me', name: '' }]).map((p, i) => ({
+  id: p.id,
+  name: p.name,
+  prefix: p.prefix ?? (i === 0 ? FINANCE.prefix : `${p.id}_${FINANCE.prefix}`),
+  store: p.store ?? (i === 0 ? FINANCE.store : `${FINANCE.store}-${p.id}`),
+  snapshotStore: p.snapshotStore ?? (i === 0 ? FINANCE.snapshotStore : `${FINANCE.snapshotStore}-${p.id}`),
+  activityStore: p.activityStore ?? (i === 0 ? FINANCE.activityStore : `${FINANCE.activityStore}-${p.id}`),
+}));
 export const MEDICINES = {
   people: MEALS.people,
   times: {} as NonNullable<NonNullable<DashboardConfig['MEDICINES']>['times']>,
   lowDays: 5,
   store: 'dashboard-medicines',
+  haSensor: undefined as string | undefined,
   ...cfg.MEDICINES,
+};
+export const PLANNER = {
+  todos: 'todo.todos',
+  reminders: 'todo.reminders',
+  shopping: 'todo.shopping_list',
+  appointments: 'calendar.appointments',
+  people: MEALS.people,
+  store: 'dashboard-habits',
+  calendars: undefined as string[] | undefined,
+  ...cfg.PLANNER,
 };
 export const NIGHT_MODE = { enabled: true, idleMinutes: 5, nightOnly: true, layouts: ['tablet'] as string[], ...cfg.NIGHT_MODE };
 export const HOME_IDLE = { minutes: 2, layouts: ['tablet'] as string[], ...cfg.HOME_IDLE };

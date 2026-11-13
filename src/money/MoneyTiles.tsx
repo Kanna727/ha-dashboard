@@ -4,7 +4,7 @@ import { useNow } from '../hooks/useNow';
 import { daysUntil, dueLabel, fmtInr, fmtShort, monthSpend, netWorthRange } from '../lib/finance';
 import { Amt } from './Amt';
 import { withToday } from './MoneyCharts';
-import { cardBackground, EyeButton, updated } from './MoneyPanels';
+import { cardBackground, EyeButton, PersonSwitch, updated } from './MoneyPanels';
 import { fmtPct } from './parts';
 import { MONEY_SECTIONS, setMoneySection, useMoneySection, type MoneySection } from './sections';
 import { useFinance } from './useFinance';
@@ -243,6 +243,7 @@ export function MoneyTiles() {
     <div className="money-tiles-bar">
       <h2 className="label">Money</h2>
       {up && <span className={`panel-summary ${up.stale ? 'warn' : ''}`}>{up.text}</span>}
+      <PersonSwitch />
       <EyeButton />
     </div>
     <div className={`money-tiles n${tiles.length}`}>
@@ -292,6 +293,7 @@ export function MoneyStrip() {
         </button>
       ))}
       <span className="ms-eye">
+        <PersonSwitch />
         <EyeButton />
       </span>
     </nav>

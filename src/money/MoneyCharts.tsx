@@ -4,6 +4,7 @@ import { BarChart, type Bar } from '../components/BarChart';
 import { useNow } from '../hooks/useNow';
 import { daysUntil, rowColors, fmtInr, fmtShort, monthSpend, netWorthRange, type MoneyHistory } from '../lib/finance';
 import { Amt } from './Amt';
+import { OwnerTag } from './parts';
 import { useFinance } from './useFinance';
 import { useMonthSubs } from './MoneyDetails';
 import { frequencyLabel } from '../lib/financeDetail';
@@ -295,13 +296,13 @@ export function ComingUp() {
   const snap = useSnapshot();
   // "monthly" beside a recurring payment (the daily snapshot knows how often).
   const freq = new Map(snap.recurring.map((r) => [r.name.toLowerCase(), frequencyLabel(r.frequency)]));
-  const items: { date: string; name: string; amount?: number; card?: boolean }[] = h.upcoming
+  const items: { date: string; name: string; amount?: number; card?: boolean; owner?: string }[] = h.upcoming
     .filter((u) => {
       const d = daysUntil(u.date, now);
       return d >= 0 && d <= 45;
     })
-    .map((u) => ({ date: u.date, name: u.name, amount: u.amount }));
-  if (f?.bill?.due && daysUntil(f.bill.due, now) >= -3) items.push({ date: f.bill.due, name: `${f.bill.card || 'Card'} bill`, amount: f.bill.amount, card: true });
+    .map((u) => ({ date: u.date, name: u.name, amount: u.amount, owner: u.owner }));
+  if (f?.bill?.due && daysUntil(f.bill.due, now) >= -3) items.push({ date: f.bill.due, name: `${f.bill.card || 'Card'} bill`, amount: f.bill.amount, card: true, owner: f.bill.owner });
   if (!items.length) return null;
   items.sort((a, b) => a.date.localeCompare(b.date));
   return (
@@ -312,13 +313,14 @@ export function ComingUp() {
           const d = daysUntil(it.date, now);
           const [y, m, dd] = it.date.split('-').map(Number);
           return (
-            <li key={`${it.date}${it.name}`} className={d <= 3 ? 'soon' : ''}>
+            <li key={`${it.date}${it.name}${it.owner}`} className={d <= 3 ? 'soon' : ''}>
               <span className="cu-date">
                 <b>{dd}</b>
                 <small>{new Date(y, m - 1, dd).toLocaleDateString('en-IN', { month: 'short' })}</small>
               </span>
               <span className="cu-name">
                 {it.name}
+                <OwnerTag owner={it.owner} />
                 <small className="muted">
                   {[freq.get(it.name.toLowerCase()), d < 0 ? `${-d}d late` : d === 0 ? 'today' : d === 1 ? 'tomorrow' : `in ${d} days`].filter(Boolean).join(' · ')}
                 </small>

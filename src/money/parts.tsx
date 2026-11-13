@@ -1,3 +1,5 @@
+import { MONEY_PEOPLE } from '../config/entities';
+import { MANY_PEOPLE, personName, useMoneyPerson } from './person';
 import type { ReactNode } from 'react';
 import { fmtInr, fmtShort } from '../lib/finance';
 import { Amt } from './Amt';
@@ -81,4 +83,12 @@ export function ratingTone(r: string | undefined): 'ok' | 'warn' | 'bad' | '' {
   if (/fair|average/i.test(r)) return 'warn';
   if (/poor|bad/i.test(r)) return 'bad';
   return '';
+}
+
+// Whose a row is, on the Both view.
+export function OwnerTag({ owner }: { owner?: string }) {
+  const sel = useMoneyPerson();
+  if (!MANY_PEOPLE || sel !== 'all' || !owner) return null;
+  const i = MONEY_PEOPLE.findIndex((p) => p.id === owner);
+  return <span className={`owner-tag o${i}`}>{personName(owner)}</span>;
 }

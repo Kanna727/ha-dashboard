@@ -3,14 +3,16 @@ import type { IconName } from '../components/Icon';
 
 // The dashboard's pages (the floating tab bar, layout/TabBar.tsx), kept in the
 // URL hash (#energy) so the back button and a bookmarked kiosk URL both work.
-// The home page has no hash. The owner picked the pages on 2026-10-26.
-export type Page = 'home' | 'energy' | 'commute' | 'health' | 'money' | 'clean';
+// The home page has no hash. The owner picked the pages on 2026-10-26 and
+// added the Planner on 2026-11-12.
+export type Page = 'home' | 'energy' | 'commute' | 'health' | 'planner' | 'money' | 'clean';
 
 export const PAGES: { id: Page; label: string; icon: IconName }[] = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'energy', label: 'Energy', icon: 'flash' },
   { id: 'commute', label: 'Commute', icon: 'car' },
   { id: 'health', label: 'Health', icon: 'heart' },
+  { id: 'planner', label: 'Planner', icon: 'planner' },
   { id: 'money', label: 'Money', icon: 'wallet' },
   { id: 'clean', label: 'Clean', icon: 'broom' },
 ];

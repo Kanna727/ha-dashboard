@@ -354,8 +354,19 @@ const config: DashboardConfig = {
   BATTERIES: { low: 20, hide: [] },
   // Money page: helpers named fold_* (input_number.fold_net_worth, ...; accounts,
   // cards and scores are found by name). Amounts start blurred on the tablet;
-  // a card's colours by its name.
-  FINANCE: { prefix: 'fold', hide: ['tablet'], cardColors: { 'SBI Cashback': ['#0f766e', '#134e4a'] }, hideAccounts: [] },
+  // a card's colours by its name. Two people, each with their own sync: the
+  // second one's helpers are partner_fold_* and their documents end in
+  // "-partner"; the page adds them up, with a Both / one person switch.
+  FINANCE: {
+    prefix: 'fold',
+    hide: ['tablet'],
+    cardColors: { 'SBI Cashback': ['#0f766e', '#134e4a'] },
+    hideAccounts: [],
+    people: [
+      { id: 'me', name: 'Asha' },
+      { id: 'partner', name: 'Ravi', prefix: 'partner_fold' },
+    ],
+  },
   // Medicines panel: the dose times (around the meals) and when a medicine
   // starts showing in "Needs attention". The medicines themselves are added,
   // edited, paused and deleted on the dashboard and kept in HA's hidden
@@ -368,6 +379,11 @@ const config: DashboardConfig = {
     times: { before_breakfast: '07:30', after_breakfast: '09:00', after_lunch: '14:00', before_dinner: '19:00', after_dinner: '20:30' },
     lowDays: 5,
   },
+  // Planner page: the HA to-do lists for todos, reminders and shopping (these
+  // are the defaults: Local To-do lists named "Todos" and "Reminders", and the
+  // Shopping List integration). Habits are added on the dashboard and kept in
+  // HA's hidden 'dashboard-habits' dashboard; every calendar.* shows on the calendar.
+  PLANNER: { todos: 'todo.todos', reminders: 'todo.reminders', shopping: 'todo.shopping_list', appointments: 'calendar.appointments' },
   // Weekly meal plan shown in the Meals panel. Days without a plan show
   // "No delivery planned".
   MEALS: {

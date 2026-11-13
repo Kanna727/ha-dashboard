@@ -204,8 +204,69 @@ gh secret set HA_PREVIEW_WEBHOOK_ID
 
 Without that secret the preview jobs skip with a warning. Pull requests from forks never deploy (they get no secrets), so only code pushed to this repo runs on your HA's origin.
 
+## 7. Planner lists and reminder alerts (optional)
 
-## 7. Medicine reminders and low-stock warnings (optional)
+The Planner page reads three to-do lists and a calendar. Add them in Settings → Devices & services:
+
+- **Local To-do**, twice: one list named `Todos` and one named `Reminders` (they become `todo.todos` and `todo.reminders`). Local To-do lists keep due dates, times and notes.
+- **Shopping List** (`todo.shopping_list`).
+- **Local Calendar** with a calendar named `Appointments` (`calendar.appointments`), for the Appointments card and the appointments added with the calendar's "+ Add". They show in Home Assistant's own calendar too.
+
+Other names work too: set `PLANNER.todos`, `PLANNER.reminders`, `PLANNER.shopping` and `PLANNER.appointments` in the config. Any other calendars (Google, CalDAV...) show on the Planner's calendar by themselves (`PLANNER.calendars` limits which).
+
+**Google calendars** come in two ways:
+
+- **Remote Calendar** with the calendar's private iCal link (Google Calendar on the web → the calendar's Settings → Integrate calendar → *Secret address in iCal format*). Nothing to set up at Google, read-only, one calendar per link. Anyone with the link can read the calendar, so paste it into Home Assistant only. Remote Calendar fetches the link once a day; to see changes sooner, add an automation that runs `homeassistant.update_entity` on the calendar every 15 minutes or so. Google's iCal feed itself can lag behind by up to a few hours. Company (Workspace) accounts often have the secret address turned off.
+- **Google Calendar** (sign in with Google): needs a Google Cloud project with the Google Calendar API on and an OAuth client of type *Web application* with the redirect URI `https://my.home-assistant.io/redirect/oauth`. Publish the app (*In production*), or the sign-in expires after 7 days. It brings in every calendar the account sees, refreshed every 15 minutes; set its access to read-only in the integration's options, since the dashboard only reads. A company account's admin may block it ("Access blocked").
+
+Calendar events show on the wall screens as they are, so anyone there can read their titles. Habits need nothing in Home Assistant: the dashboard keeps them in a hidden dashboard of its own (saving needs an admin login).
+
+**Reminder alerts.** Home Assistant has no trigger for a to-do item coming due, so an automation checks the reminders list once a minute and sends whatever is due that minute. `notify.notify` reaches the phones, and the wall screens show it as an alert (`dashboard: warn` sets its tone):
+
+```yaml
+alias: Alert - Reminder due
+mode: single
+triggers:
+  - trigger: time_pattern
+    minutes: "/1"
+conditions:
+  - condition: numeric_state
+    entity_id: todo.reminders
+    above: 0
+actions:
+  - action: todo.get_items
+    target:
+      entity_id: todo.reminders
+    data:
+      status: needs_action
+    response_variable: lists
+  - variables:
+      due_now: >-
+        {% set end = now().replace(second=0, microsecond=0) %}
+        {% set ns = namespace(items=[]) %}
+        {% for i in lists['todo.reminders']['items'] if i.due is defined and 'T' in i.due %}
+          {% set t = as_datetime(i.due) %}
+          {% if t is not none and end - timedelta(minutes=1) < t <= end %}
+            {% set ns.items = ns.items + [i.summary] %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.items }}
+  - repeat:
+      for_each: "{{ due_now }}"
+      sequence:
+        - action: notify.notify
+          data:
+            title: Reminder
+            message: "{{ repeat.item }}"
+            data:
+              dashboard: warn
+```
+
+Reminders with only a date (no time) never alert, and one that came due while Home Assistant was down isn't sent afterwards.
+
+
+
+## 8. Medicine reminders and low-stock warnings (optional)
 
 The Medicines panel keeps its list in a hidden dashboard, which automations can't read. So the dashboard sends Home Assistant a summary as a `dashboard_medicines` event whenever it changes (an admin login has to have the dashboard open now and then: firing events is admin-only), and a trigger-based template sensor keeps it. Template sensors with triggers and attributes are YAML only. Add to `configuration.yaml`:
 

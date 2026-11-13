@@ -1,18 +1,19 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { MEDICINES } from '../config/entities';
 import { useHass, useHassStatus } from '../ha/api';
-import { useEntity } from '../ha/store';
+import { useAllEntities } from '../ha/store';
 import { useNow } from '../hooks/useNow';
-import { HA_EVENT, HA_SENSOR, haSummary, parseMedicines } from '../lib/medicines';
+import { findHaSensor, HA_EVENT, haSummary, parseMedicines } from '../lib/medicines';
 import { useStoreDoc } from '../money/useMoneyHistory';
 import { MED_TIMES } from './useMedicines';
 
 const WAIT_MS = 5_000; // let the stored list arrive (and edits settle) before sending
 const RETRY_MS = 10 * 60_000; // a send that didn't land (non-admin login) is retried this rarely
 
-// Keeps HA's copy of the medicines (sensor.dashboard_medicines, a trigger-based
-// template sensor fed by the `dashboard_medicines` event) up to date for its
-// reminder and low-stock automations. Every open dashboard compares the
+// Keeps HA's copy of the medicines (the "Dashboard medicines" trigger-based
+// template sensor, fed by the `dashboard_medicines` event; findHaSensor) up to
+// date for its reminder and low-stock automations. Without that sensor in HA
+// nothing is sent. Every open dashboard compares the
 // sensor's state with the summary's hash and, when they differ, sends the
 // summary; once one has landed the others match and stay quiet. Firing events
 // needs an admin login; other logins just never send. Renders nothing.
@@ -20,7 +21,8 @@ export function MedicinesToHa() {
   const hass = useHass();
   const { status } = useHassStatus();
   const doc = useStoreDoc(MEDICINES.store, 'Medicines');
-  const sensor = useEntity(HA_SENSOR);
+  const all = useAllEntities();
+  const sensorId = findHaSensor(all, MEDICINES.haSensor);
   const now = useNow(60_000);
   const minute = Math.floor(now.getTime() / 60_000);
   const summary = useMemo(
@@ -28,10 +30,10 @@ export function MedicinesToHa() {
     [doc, minute],
   );
   const tried = useRef<{ hash: string; at: number } | null>(null);
-  const current = sensor?.state;
+  const current = sensorId ? all[sensorId]?.state : undefined;
 
   useEffect(() => {
-    if (!summary || status !== 'live' || current === summary.hash) return;
+    if (!summary || !sensorId || status !== 'live' || current === summary.hash) return;
     const last = tried.current;
     if (last && last.hash === summary.hash && Date.now() - last.at < RETRY_MS) return;
     const t = window.setTimeout(() => {
@@ -39,7 +41,7 @@ export function MedicinesToHa() {
       hass.fireEvent(HA_EVENT, { ...summary }).catch(() => undefined);
     }, WAIT_MS);
     return () => window.clearTimeout(t);
-  }, [summary, status, current, hass]);
+  }, [summary, sensorId, status, current, hass]);
 
   return null;
 }

@@ -1,3 +1,59 @@
+# [1.69.0](https://github.com/Kanna727/ha-dashboard/compare/v1.68.0...v1.69.0) (2026-11-13)
+
+
+### Features
+
+* **health:** a full profile per person; only configured people show ([#92](https://github.com/Kanna727/ha-dashboard/issues/92)) ([6a058e5](https://github.com/Kanna727/ha-dashboard/commit/6a058e5117fd27dbc45f66941b118e6325953dca))
+
+# [1.68.0](https://github.com/Kanna727/ha-dashboard/compare/v1.67.0...v1.68.0) (2026-11-13)
+
+
+### Features
+
+* **health:** read a scale of template helpers by entity-ID prefix ([#91](https://github.com/Kanna727/ha-dashboard/issues/91)) ([40c5497](https://github.com/Kanna727/ha-dashboard/commit/40c5497b2763f7ba4c35c72dbab99531c06e4ab3))
+
+# [1.67.0](https://github.com/Kanna727/ha-dashboard/compare/v1.66.0...v1.67.0) (2026-11-13)
+
+
+### Features
+
+* **money:** more than one person's money, with a Both / one-person switch ([#90](https://github.com/Kanna727/ha-dashboard/issues/90)) ([3152467](https://github.com/Kanna727/ha-dashboard/commit/31524674d1e4df149c73b25eea6228267199ae35))
+
+# [1.66.0](https://github.com/Kanna727/ha-dashboard/compare/v1.65.1...v1.66.0) (2026-11-12)
+
+
+### Features
+
+* **planner:** add anything from any calendar day, and an Appointments card ([#89](https://github.com/Kanna727/ha-dashboard/issues/89)) ([119bf05](https://github.com/Kanna727/ha-dashboard/commit/119bf05666018274751734ec9ecdf539f75af1db))
+
+## [1.65.1](https://github.com/Kanna727/ha-dashboard/compare/v1.65.0...v1.65.1) (2026-11-12)
+
+
+### Bug Fixes
+
+* **health:** a medicine runs out on the dose that takes the last one ([#88](https://github.com/Kanna727/ha-dashboard/issues/88)) ([fdc4f49](https://github.com/Kanna727/ha-dashboard/commit/fdc4f49be065de28bd664553888a643e7a028446))
+
+# [1.65.0](https://github.com/Kanna727/ha-dashboard/compare/v1.64.0...v1.65.0) (2026-11-12)
+
+
+### Features
+
+* **health:** medicine reminders and low-stock warnings from Home Assistant ([#87](https://github.com/Kanna727/ha-dashboard/issues/87)) ([f7e4140](https://github.com/Kanna727/ha-dashboard/commit/f7e4140aca88c8e20a1d9c8b7a76c3956c9b1020))
+
+# [1.64.0](https://github.com/Kanna727/ha-dashboard/compare/v1.63.0...v1.64.0) (2026-11-12)
+
+
+### Features
+
+* **planner:** a Planner page with habits, todos, reminders, shopping and a master calendar ([#86](https://github.com/Kanna727/ha-dashboard/issues/86)) ([7443603](https://github.com/Kanna727/ha-dashboard/commit/7443603a90761d76bda653f95adde8d33691e217))
+
+# [1.63.0](https://github.com/Kanna727/ha-dashboard/compare/v1.62.0...v1.63.0) (2026-11-12)
+
+
+### Features
+
+* **health:** tick medicine doses as taken; stock goes down from the ticks ([#85](https://github.com/Kanna727/ha-dashboard/issues/85)) ([c93faa1](https://github.com/Kanna727/ha-dashboard/commit/c93faa13b5acc25972686e0f85ab5492f693669c))
+
 # [1.62.0](https://github.com/Kanna727/ha-dashboard/compare/v1.61.1...v1.62.0) (2026-11-12)
 
 

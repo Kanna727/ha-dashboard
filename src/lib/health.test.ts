@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changeOver, findHealthSources, fmtHours, healthPeople, recoveryTone, sleepStages } from './health';
+import { changeOver, findHealthSources, fmtHours, healthPeople, helperScale, recoveryTone, sleepStages } from './health';
 
 const ent = (entityId: string, deviceId: string) => ({ entityId, deviceId, platform: 'x' });
 const registry = {
@@ -51,18 +51,30 @@ describe('healthPeople', () => {
   const sources = findHealthSources(registry);
   const deviceOf = (id: string) => registry.entities.find((e) => e.entityId === id)?.deviceId;
 
-  it('gives configured people their devices and lists unclaimed ones by device name', () => {
+  it('gives configured people their devices and leaves unclaimed ones out', () => {
     const people = healthPeople(sources, [{ name: 'Alex', scale: 'sensor.scale_a_bmi', wearable: 'sensor.band_alex_hrv', cycling: 'sensor.ride_alex_ftp' }], deviceOf);
-    expect(people.map((p) => [p.name, p.scale?.deviceName, p.wearable?.deviceName, p.cycling?.deviceName])).toEqual([
-      ['Alex', 'Scale A', 'Band', 'Rides'],
-      ['Scale B', 'Scale B', undefined, undefined],
-    ]);
+    expect(people.map((p) => [p.name, p.scale?.deviceName, p.wearable?.deviceName, p.cycling?.deviceName])).toEqual([['Alex', 'Scale A', 'Band', 'Rides']]);
+  });
+
+  it('lists every device by its name when nobody is configured', () => {
+    expect(healthPeople(sources, [], deviceOf).map((p) => p.name)).toEqual(['Band', 'Rides', 'Scale A', 'Scale B']);
+  });
+
+  it('reads a scale of device-less template helpers by entity-ID prefix', () => {
+    const people = healthPeople(sources, [{ name: 'Sam', scale: 'sensor.sam_weight' }, { name: 'Lee', scale: 'sensor.lee_body_fat_mass' }], deviceOf);
+    expect(people[0].scale?.roles.weight).toBe('sensor.sam_weight');
+    expect(people[0].scale?.roles.body_fat).toBe('sensor.sam_body_fat');
+    expect(people[0].scale?.roles.muscle_mass_percentage).toBe('sensor.sam_muscle_mass_percentage');
+    expect(people[1].scale?.roles.weight).toBe('sensor.lee_weight');
+    expect(people[0].scale?.deviceName).toBe('Sam');
+    expect(helperScale('sensor.room_temperature')).toBeUndefined();
+    expect(helperScale('light.sam_weight')).toBeUndefined();
   });
 
   it('ignores an entity that is not on a device of that kind', () => {
     const people = healthPeople(sources, [{ name: 'Sam', scale: 'sensor.band_alex_hrv' }], deviceOf);
     expect(people[0].scale).toBeUndefined();
-    expect(people).toHaveLength(5);
+    expect(people).toHaveLength(1);
   });
 });
 

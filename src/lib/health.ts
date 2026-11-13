@@ -12,12 +12,48 @@ export const SCALE_KEYS = [
   'muscle_mass',
   'bmi',
   'water_percentage',
+  'water',
   'bone_mass',
+  'bone_mass_percentage',
+  'body_fat_mass',
+  'lean_body_mass',
+  'muscle_mass_percentage',
   'bmr',
   'body_age',
   'visceral_fat',
   'protein_ratio',
 ] as const;
+
+// A scale built from template helpers has no device in the registry, so it
+// can't be found by device. Its readings are `sensor.<name>_<key>`; HEALTH.people
+// names one of them and the rest follow from the prefix.
+export const HELPER_SCALE_KEYS = [
+  'weight',
+  'body_fat',
+  'body_fat_mass',
+  'lean_body_mass',
+  'muscle_mass',
+  'muscle_mass_percentage',
+  'bone_mass',
+  'bone_mass_percentage',
+  'water',
+  'bmi',
+  'bmr',
+  'visceral_fat',
+] as const;
+
+export function helperScale(entity: string): HealthSource | undefined {
+  if (!entity.startsWith('sensor.')) return undefined;
+  const o = entity.slice('sensor.'.length);
+  const key = [...HELPER_SCALE_KEYS].sort((a, b) => b.length - a.length).find((k) => o.endsWith(`_${k}`));
+  if (!key) return undefined;
+  const prefix = o.slice(0, -key.length - 1);
+  if (!prefix) return undefined;
+  const roles: Record<string, string> = {};
+  for (const k of HELPER_SCALE_KEYS) roles[k] = `sensor.${prefix}_${k}`;
+  const name = prefix.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  return { kind: 'scale', device: `helpers:${prefix}`, deviceName: name, roles };
+}
 
 // A recovery/sleep/strain wearable.
 export const WEARABLE_KEYS = [
@@ -138,9 +174,10 @@ export interface HealthPerson {
   cycling?: HealthSource;
 }
 
-// Each configured person gets the devices of the entities named for them.
-// Devices nobody claims still show, as a "person" named after the device, so a
-// new scale or account appears without a config change.
+// Each configured person gets the devices of the entities named for them (a
+// scale of template helpers, which has no device, is read by entity-ID prefix).
+// Without HEALTH.people, devices nobody claims show as a "person" named after
+// the device, so a first scale or account appears without a config change.
 export function healthPeople(sources: HealthSource[], people: PersonConfig[], deviceOf: (entity: string) => string | undefined): HealthPerson[] {
   const claimed = new Set<string>();
   const out: HealthPerson[] = people.map((p) => {
@@ -148,7 +185,8 @@ export function healthPeople(sources: HealthSource[], people: PersonConfig[], de
     for (const kind of ['scale', 'wearable', 'cycling'] as const) {
       const id = p[kind];
       const dev = id ? deviceOf(id) : undefined;
-      const src = dev ? sources.find((s) => s.device === dev && s.kind === kind) : undefined;
+      let src = dev ? sources.find((s) => s.device === dev && s.kind === kind) : undefined;
+      if (!src && id && !dev && kind === 'scale') src = helperScale(id);
       if (src) {
         person[kind] = src;
         claimed.add(src.device);
@@ -156,7 +194,9 @@ export function healthPeople(sources: HealthSource[], people: PersonConfig[], de
     }
     return person;
   });
-  for (const s of sources) if (!claimed.has(s.device)) out.push({ name: s.deviceName, [s.kind]: s });
+  // With people configured only they show: a leftover device (a removed
+  // integration's scale) must not appear as an extra person.
+  if (!people.length) for (const s of sources) if (!claimed.has(s.device)) out.push({ name: s.deviceName, [s.kind]: s });
   return out;
 }
 

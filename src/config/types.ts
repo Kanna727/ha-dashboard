@@ -64,6 +64,9 @@ export interface MedicinesConfig {
   // The hidden dashboard holding the medicines, edited on the dashboard itself
   // (default 'dashboard-medicines'; created on the first save).
   store?: string;
+  // HA's template sensor that keeps the medicines summary for its reminder
+  // automations (default: found by itself, see lib/medicines.ts findHaSensor).
+  haSensor?: string;
 }
 
 export interface DashboardConfig {
@@ -233,8 +236,14 @@ export interface DashboardConfig {
   // details into (defaults 'dashboard-fold-data', 'dashboard-fold-activity').
   // `editsStore`: where the dashboard keeps the owner's own changes to the
   // transactions (default 'dashboard-money-edits'; created on the first save).
+  // `people`: more than one person's money (each their own money-app sync):
+  // `id` (a short slug), `name`, the helpers' `prefix`, and their own `store`,
+  // `snapshotStore`, `activityStore` (defaults: the first person uses the keys
+  // above, the others `<default>-<id>`). The page then adds them up, with a
+  // Both / one person switch, and tags each account, card and transaction.
   FINANCE?: {
     prefix?: string;
+    people?: { id: string; name: string; prefix?: string; store?: string; snapshotStore?: string; activityStore?: string }[];
     hide?: ('tablet' | 'phone' | 'desktop')[];
     cardColors?: Record<string, [string, string]>;
     store?: string;
@@ -244,6 +253,16 @@ export interface DashboardConfig {
     activityStore?: string;
     editsStore?: string;
   };
+  // Planner page (planner/): habits, to-do lists and the master calendar.
+  // `todos`, `reminders`, `shopping`: HA todo lists (defaults 'todo.todos',
+  // 'todo.reminders' from the Local To-do integration, 'todo.shopping_list'
+  // from Shopping List); a list that doesn't exist is left out. `people`: who
+  // the habits are for (default MEALS.people). `store`: the hidden dashboard the
+  // habits are kept in (default 'dashboard-habits'; created on the first save).
+  // `calendars`: calendar.* entities shown on the calendar (default: every one).
+  // `appointments`: the calendar the Appointments card and the calendar's "+"
+  // add to (default 'calendar.appointments', a Local Calendar); always shown.
+  PLANNER?: { todos?: string; reminders?: string; shopping?: string; appointments?: string; people?: { id: string; name: string }[]; store?: string; calendars?: string[] };
   // Dim night screen after inactivity (kiosk burn-in and glare).
   NIGHT_MODE?: { enabled?: boolean; idleMinutes?: number; nightOnly?: boolean; layouts?: ('tablet' | 'phone' | 'desktop')[] };
   // Back to the Home page (the glance page) after this many minutes without a

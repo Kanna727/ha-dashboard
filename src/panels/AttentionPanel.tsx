@@ -9,7 +9,7 @@ import { showOnClean } from '../layout/CleanPage';
 import { isNight, washerDone } from '../lib/attention';
 import { useIssues } from './useIssues';
 import { daysUntil } from '../lib/finance';
-import { useFinance } from '../money/useFinance';
+import { useHouseholdFinance } from '../money/useFinance';
 import { lowText } from '../lib/medicines';
 import { useMedicines, whoseName } from '../medicines/useMedicines';
 
@@ -39,7 +39,7 @@ function useAttention(): Item[] {
   const issues = useIssues();
   const dw = APPLIANCES.dishwasher;
   const [running, door, dwState, lock] = useEntities([APPLIANCES.washer.running, APPLIANCES.washer.door, dw.state, CAR.lock]);
-  const bill = useFinance()?.bill;
+  const bill = useHouseholdFinance()?.bill;
   const meds = useMedicines();
   const items: Item[] = issues
     .filter((i) => i.id !== 'offline')

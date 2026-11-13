@@ -1,4 +1,7 @@
 import {
+  mdiCalendarCheck,
+  mdiCartOutline,
+  mdiRepeat,
   mdiPill,
   mdiWallet,
   mdiEyeOffOutline,
@@ -336,6 +339,9 @@ export const ICONS = {
   cog: mdiCogOutline,
   history: mdiHistory,
   calendar: mdiCalendarClock,
+  planner: mdiCalendarCheck,
+  cart: mdiCartOutline,
+  habit: mdiRepeat,
   map: mdiMapOutline,
   backup: mdiBackupRestore,
   tap: mdiGestureTap,

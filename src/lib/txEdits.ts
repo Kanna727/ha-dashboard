@@ -24,6 +24,8 @@ export interface TxPatch {
   category?: string;
   sub?: string;
   account?: string;
+  // Whose it is (FINANCE.people id): set on the ones the owner adds.
+  owner?: string;
 }
 export interface SyncedEdit extends TxPatch {
   hidden?: boolean;
@@ -62,7 +64,7 @@ const obj = (v: unknown): Obj => (v && typeof v === 'object' && !Array.isArray(v
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
 const str = (v: unknown) => (typeof v === 'string' ? v : undefined);
 
-const PATCH_KEYS = ['note', 'merchant', 'category', 'sub', 'account'] as const;
+const PATCH_KEYS = ['note', 'merchant', 'category', 'sub', 'account', 'owner'] as const;
 function patchOf(v: unknown): TxPatch {
   const o = obj(v);
   const p: TxPatch = {};
@@ -83,13 +85,13 @@ function origOf(v: unknown): Tx | undefined {
   const amount = num(o.amount);
   if (t === undefined || amount === undefined) return undefined;
   const tx: Tx = { t, date: localDay(t), amount };
-  for (const k of ['merchant', 'category', 'sub', 'account', 'notes'] as const) if (str(o[k])) tx[k] = str(o[k]);
+  for (const k of ['merchant', 'category', 'sub', 'account', 'notes', 'owner'] as const) if (str(o[k])) tx[k] = str(o[k]);
   return tx;
 }
 // The copy kept with a change: only what the totals and the list need.
 export const origCopy = (t: Tx): Tx => {
   const c: Tx = { t: t.t, date: t.date, amount: t.amount };
-  for (const k of ['merchant', 'category', 'sub', 'account', 'notes'] as const) if (t[k]) c[k] = t[k];
+  for (const k of ['merchant', 'category', 'sub', 'account', 'notes', 'owner'] as const) if (t[k]) c[k] = t[k];
   return c;
 };
 
@@ -145,6 +147,7 @@ function applyPatch(tx: Tx, p: TxPatch): Tx & { note?: string } {
     category: pick(p.category, tx.category),
     sub: p.category !== undefined && p.sub === undefined ? undefined : pick(p.sub, tx.sub),
     account: pick(p.account, tx.account),
+    owner: p.owner ?? tx.owner,
     note: p.note?.trim() || undefined,
   };
 }

@@ -15,12 +15,15 @@ export interface Account {
   name: string;
   last4: string;
   balance: number;
+  // Whose it is (FINANCE.people id), when there's more than one person.
+  owner?: string;
 }
 
 export interface Score {
   id: string;
   bureau: string;
   score: number;
+  owner?: string;
 }
 
 export interface Finance {
@@ -60,7 +63,7 @@ export interface Finance {
   cards: Account[];
   scores: Score[];
   // The next card bill: which card, how much, when (YYYY-MM-DD).
-  bill?: { card: string; last4?: string; amount?: number; due?: string };
+  bill?: { card: string; last4?: string; amount?: number; due?: string; owner?: string };
   lastTransaction?: { amount?: number; merchant: string; category?: string; account?: string };
   // When the money app last fetched the bank balances (its own "as of"; banks
   // share them only a few times a day, so this lags hours behind the sync).
@@ -125,7 +128,8 @@ export function parseAmount(s: string | undefined): number | undefined {
 export function accountName(e: HassEntity, prefix: string, kind: 'bank' | 'cc'): Omit<Account, 'id' | 'balance'> {
   const fallback = e.entity_id.split('.')[1].replace(new RegExp(`^${prefix}_${kind}_`), '').replace(/_/g, ' ');
   const raw = String(e.attributes.friendly_name ?? '');
-  const lead = new RegExp(`^\\s*${prefix}\\s+(${kind === 'bank' ? 'bank' : 'cc|credit card'})\\s+`, 'i');
+  // A two-word prefix ("partner_fold") also matches "Partner Fold Bank …".
+  const lead = new RegExp(`^\\s*${prefix.replace(/_/g, '[\\s_]+')}\\s+(${kind === 'bank' ? 'bank' : 'cc|credit card'})\\s+`, 'i');
   const words = (lead.test(raw) ? raw.replace(lead, '') : fallback).trim().split(/\s+/);
   const last4 = /^\d{3,6}$/.test(words[words.length - 1] ?? '') ? words.pop()! : '';
   const [bank = '', ...rest] = words;
@@ -341,6 +345,7 @@ export interface Upcoming {
   name: string;
   amount: number;
   category?: string;
+  owner?: string;
 }
 export interface MoneyHistory {
   updated?: number;
