@@ -2643,23 +2643,6 @@ html.night .sky { display: none; }
 /* A panel that only wraps a card (NetworkDevicesPanel): the card's own header is the panel's. */
 .panel-wrap > .card { margin: 0; padding: 0; background: none; border: 0; box-shadow: none; }
 
-/* Energy history on the page (EnergyHistoryPanel full). Narrower than the
-   popup, so below 640 px its plug list turns into a row of chips that scrolls
-   sideways, above the charts. */
-.energy-history-panel.full { container-type: inline-size; }
-@container (max-width: 640px) {
-  .eh-explorer { grid-template-columns: minmax(0, 1fr); }
-  .eh-ex-list { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
-  .eh-ex-list::-webkit-scrollbar { display: none; }
-  .eh-ex-list li { flex: 0 0 auto; }
-  .eh-ex-list button { grid-template-columns: 18px auto; grid-template-rows: auto auto; column-gap: 8px; row-gap: 1px; width: auto; padding: 8px 14px 10px 10px; }
-  .eh-ex-list button > svg { grid-row: 1 / span 2; }
-  .eh-ex-list button strong { grid-column: 2; font-size: 12px; color: var(--muted); }
-  .eh-ex-list button i { left: 10px; }
-  .eh-ex-list .eh-ex-note { display: none; }
-}
-.energy-history-panel.full .eh-ex-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-
 /* Commute on the page (CommutePanel full). `compact` (tablet: a narrower
    column than the popup): like the phone popup, the ETA above the map and the
    buttons and traffic strip below it, routes and leave-later stacked. */

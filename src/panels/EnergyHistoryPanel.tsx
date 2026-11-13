@@ -449,33 +449,13 @@ function EnergyHistoryDetail() {
   );
 }
 
-// This month so far, and where it's heading, for the full panel's header.
-function monthSummary(days: DayEnergy[]): string {
-  const now = Date.now();
-  const start = bucketStart(now, 'month');
-  const cur = runningTotal(days, start, Infinity);
-  const so = cur.length ? cur[cur.length - 1].kwh : 0;
-  const elapsed = (now - start) / DAY;
-  const projected = elapsed > 0.5 ? (so / elapsed) * daysIn(now) : undefined;
-  return `${kwh(so)} this month${projected !== undefined ? ` · on track for ${kwh(projected)}` : ''}`;
-}
-
-// `full` (tablet and desktop Energy page, where there's room): the popup's
-// plug explorer and calendar on the page itself, this month's total in the
-// header. Otherwise the "Month race" card with the explorer in a popup.
-export function EnergyHistoryPanel({ full = false }: { full?: boolean }) {
+// The "Month race" card on every layout, with the plug explorer and calendar
+// in a popup behind the arrow.
+export function EnergyHistoryPanel() {
   const modal = useModal();
   const load = useEnergyStats();
   const { stats } = load;
 
-  if (full) {
-    return (
-      <section className="panel energy-history-panel full">
-        <PanelHead label="Energy history" summary={stats?.days.length ? monthSummary(stats.days) : undefined} />
-        <EnergyHistoryDetail />
-      </section>
-    );
-  }
   return (
     <section className="panel energy-history-panel">
       <PanelHead
