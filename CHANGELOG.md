@@ -1,3 +1,10 @@
+# [1.67.0](https://github.com/Kanna727/ha-dashboard/compare/v1.66.0...v1.67.0) (2026-11-13)
+
+
+### Features
+
+* **money:** more than one person's money, with a Both / one-person switch ([#90](https://github.com/Kanna727/ha-dashboard/issues/90)) ([3152467](https://github.com/Kanna727/ha-dashboard/commit/31524674d1e4df149c73b25eea6228267199ae35))
+
 # [1.66.0](https://github.com/Kanna727/ha-dashboard/compare/v1.65.1...v1.66.0) (2026-11-12)
 
 
