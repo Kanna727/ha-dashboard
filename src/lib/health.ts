@@ -12,7 +12,12 @@ export const SCALE_KEYS = [
   'muscle_mass',
   'bmi',
   'water_percentage',
+  'water',
   'bone_mass',
+  'bone_mass_percentage',
+  'body_fat_mass',
+  'lean_body_mass',
+  'muscle_mass_percentage',
   'bmr',
   'body_age',
   'visceral_fat',
@@ -171,8 +176,8 @@ export interface HealthPerson {
 
 // Each configured person gets the devices of the entities named for them (a
 // scale of template helpers, which has no device, is read by entity-ID prefix).
-// Devices nobody claims still show, as a "person" named after the device, so a
-// new scale or account appears without a config change.
+// Without HEALTH.people, devices nobody claims show as a "person" named after
+// the device, so a first scale or account appears without a config change.
 export function healthPeople(sources: HealthSource[], people: PersonConfig[], deviceOf: (entity: string) => string | undefined): HealthPerson[] {
   const claimed = new Set<string>();
   const out: HealthPerson[] = people.map((p) => {
@@ -189,7 +194,9 @@ export function healthPeople(sources: HealthSource[], people: PersonConfig[], de
     }
     return person;
   });
-  for (const s of sources) if (!claimed.has(s.device)) out.push({ name: s.deviceName, [s.kind]: s });
+  // With people configured only they show: a leftover device (a removed
+  // integration's scale) must not appear as an extra person.
+  if (!people.length) for (const s of sources) if (!claimed.has(s.device)) out.push({ name: s.deviceName, [s.kind]: s });
   return out;
 }
 
