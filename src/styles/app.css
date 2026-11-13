@@ -2873,6 +2873,14 @@ html.night .sky { display: none; }
 .money-summary .neg, .money-passbook .neg, .money-invest .neg, .money-tile-side .neg { color: var(--danger); }
 .money-invest .pos, .money-tx-amt.pos { color: var(--ok); }
 .money-eye { margin-left: 4px; }
+/* Whose money (FINANCE.people): the switch beside the eye, and a tag per row on Both. */
+.money-person { margin: 0; padding: 3px; border-radius: 14px; flex-shrink: 0; }
+.money-person button { padding: 6px 12px; }
+.ms-eye { display: flex; align-items: center; gap: 6px; }
+.owner-tag { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 8px; font-size: 11px; font-weight: 600; line-height: 16px; vertical-align: middle; white-space: nowrap; background: rgba(56, 189, 248, 0.16); color: #7dd3fc; }
+.owner-tag.o1 { background: rgba(244, 114, 182, 0.16); color: #f9a8d4; }
+.txe-whose { margin: 0; }
+.owner-tag.o2 { background: rgba(163, 230, 53, 0.16); color: #bef264; }
 .money-stats { display: flex; flex-wrap: wrap; gap: 14px 28px; justify-content: space-between; }
 .money-asof { margin: 12px 0 0; font-size: 12.5px; font-weight: 600; color: var(--muted); }
 .money-stat { display: grid; gap: 4px; min-width: 0; }

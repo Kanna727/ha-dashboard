@@ -21,8 +21,8 @@ import {
   type TodoEntry,
 } from '../lib/planner';
 import { MED_TIMES, useMedicineList } from '../medicines/useMedicines';
-import { useFinance } from '../money/useFinance';
-import { useMoneyHistory, useSaveStoreDoc, useStoreDoc } from '../money/useMoneyHistory';
+import { useHouseholdFinance } from '../money/useFinance';
+import { useHouseholdMoneyHistory, useSaveStoreDoc, useStoreDoc } from '../money/useMoneyHistory';
 
 // The deployed preview shares the live dashboard's origin, so the mock keeps its own copies.
 const PREFIX = import.meta.env.VITE_MOCK ? 'mock' : 'dash';
@@ -227,8 +227,8 @@ export function useCalendar(from: Date, days: number, now: Date): Map<string, Ca
   const todos = useTodoItems(PLANNER.todos);
   const reminders = useTodoItems(PLANNER.reminders);
   const meds = useMedicineList();
-  const finance = useFinance();
-  const money = useMoneyHistory();
+  const finance = useHouseholdFinance();
+  const money = useHouseholdMoneyHistory();
   const external = useExternalEvents(from, days);
   const [hiddenSet] = useHiddenSources();
   const minute = Math.floor(now.getTime() / 60_000);

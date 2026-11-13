@@ -2,7 +2,9 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useModal } from '../components/Modal';
 import { fmtInr } from '../lib/finance';
 import { diffPatch, withAdded, withChange, withHidden, withoutAdded, type ViewTx } from '../lib/txEdits';
+import { MONEY_PEOPLE } from '../config/entities';
 import { useFinance } from './useFinance';
+import { MANY_PEOPLE, useMoneyPerson } from './person';
 import { useMoneyHistory, useSnapshot } from './useMoneyHistory';
 import { saveErrorText, useSaveTxEdits, useTxView } from './useTxEdits';
 
@@ -27,7 +29,8 @@ const fmtWhenFull = (t: number) =>
 
 // What to suggest in each field: everything already seen.
 function useOptions(view: ViewTx[]) {
-  const f = useFinance();
+  // Everyone's accounts: the account says whose a new transaction is.
+  const f = useFinance('all');
   const h = useMoneyHistory();
   const snap = useSnapshot();
   return useMemo(() => {
@@ -35,6 +38,7 @@ function useOptions(view: ViewTx[]) {
     const subs = new Map<string, Set<string>>();
     const merchants = new Set<string>();
     const accounts = new Set<string>(['Cash']);
+    const ownerOf = new Map<string, string>();
     const addSub = (c: string, s: string) => {
       if (!subs.has(c)) subs.set(c, new Set());
       subs.get(c)!.add(s);
@@ -50,10 +54,14 @@ function useOptions(view: ViewTx[]) {
       cats.add(c.name);
       for (const [s] of c.subs) if (s !== 'Other') addSub(c.name, s);
     }
-    for (const a of [...(f?.banks ?? []), ...(f?.cards ?? [])]) accounts.add(a.last4 ? `${a.name} ••${a.last4}` : a.name);
+    for (const a of [...(f?.banks ?? []), ...(f?.cards ?? [])]) {
+      const label = a.last4 ? `${a.name} ••${a.last4}` : a.name;
+      accounts.add(label);
+      if (a.owner) ownerOf.set(label, a.owner);
+    }
     cats.delete('Untagged');
     const sort = (s: Set<string>) => [...s].sort((a, b) => a.localeCompare(b));
-    return { cats: sort(cats), subs, merchants: sort(merchants), accounts: sort(accounts) };
+    return { cats: sort(cats), subs, merchants: sort(merchants), accounts: sort(accounts), ownerOf };
   }, [view, h.months, snap.spending, f?.banks, f?.cards]);
 }
 
@@ -79,6 +87,11 @@ export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
   const [category, setCategory] = useState(tx?.category ?? '');
   const [sub, setSub] = useState(tx?.sub ?? '');
   const [account, setAccount] = useState(tx?.account ?? 'Cash');
+  // Whose (FINANCE.people): the chosen account's person, else the page's choice.
+  const sel = useMoneyPerson();
+  const [owner, setOwner] = useState(tx?.owner ?? (sel !== 'all' ? sel : MONEY_PEOPLE[0].id));
+  const accountOwner = opts.ownerOf.get(account.trim());
+  const whose = accountOwner ?? owner;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState(false);
@@ -108,7 +121,7 @@ export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
       const id = tx?.key ?? `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
       const trim = (s: string) => s.trim() || undefined;
       void run((e) =>
-        withAdded(e, { id, t: t!, amount: signed, note: trim(name), merchant: trim(merchant), category: trim(category), sub: trim(sub), account: trim(account) }),
+        withAdded(e, { id, t: t!, amount: signed, note: trim(name), merchant: trim(merchant), category: trim(category), sub: trim(sub), account: trim(account), ...(MANY_PEOPLE ? { owner: whose } : {}) }),
       );
     } else {
       void run((e) => withChange(e, tx.key, tx.orig!, diffPatch(tx.orig!, fields)));
@@ -159,6 +172,28 @@ export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
         <Field label="Account">
           <input value={account} onChange={(e) => setAccount(e.target.value)} list="txe-accounts" maxLength={80} />
         </Field>
+        {MANY_PEOPLE && (!tx || tx.source === 'added') && (
+          // Not a <label>: it would pass every click on to the first button.
+          <div className="txe-field">
+            <span className="label">Whose</span>
+            <div className="segmented small txe-whose" role="radiogroup" aria-label="Whose">
+              {MONEY_PEOPLE.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={whose === p.id}
+                  className={whose === p.id ? 'active' : ''}
+                  disabled={!!accountOwner}
+                  title={accountOwner ? 'Set by the account' : undefined}
+                  onClick={() => setOwner(p.id)}
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <Field label="Category">
           <input value={category} onChange={(e) => setCategory(e.target.value)} list="txe-cats" placeholder="Untagged" maxLength={60} />
         </Field>

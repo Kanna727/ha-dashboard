@@ -236,8 +236,14 @@ export interface DashboardConfig {
   // details into (defaults 'dashboard-fold-data', 'dashboard-fold-activity').
   // `editsStore`: where the dashboard keeps the owner's own changes to the
   // transactions (default 'dashboard-money-edits'; created on the first save).
+  // `people`: more than one person's money (each their own money-app sync):
+  // `id` (a short slug), `name`, the helpers' `prefix`, and their own `store`,
+  // `snapshotStore`, `activityStore` (defaults: the first person uses the keys
+  // above, the others `<default>-<id>`). The page then adds them up, with a
+  // Both / one person switch, and tags each account, card and transaction.
   FINANCE?: {
     prefix?: string;
+    people?: { id: string; name: string; prefix?: string; store?: string; snapshotStore?: string; activityStore?: string }[];
     hide?: ('tablet' | 'phone' | 'desktop')[];
     cardColors?: Record<string, [string, string]>;
     store?: string;
