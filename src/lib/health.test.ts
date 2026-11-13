@@ -51,12 +51,13 @@ describe('healthPeople', () => {
   const sources = findHealthSources(registry);
   const deviceOf = (id: string) => registry.entities.find((e) => e.entityId === id)?.deviceId;
 
-  it('gives configured people their devices and lists unclaimed ones by device name', () => {
+  it('gives configured people their devices and leaves unclaimed ones out', () => {
     const people = healthPeople(sources, [{ name: 'Alex', scale: 'sensor.scale_a_bmi', wearable: 'sensor.band_alex_hrv', cycling: 'sensor.ride_alex_ftp' }], deviceOf);
-    expect(people.map((p) => [p.name, p.scale?.deviceName, p.wearable?.deviceName, p.cycling?.deviceName])).toEqual([
-      ['Alex', 'Scale A', 'Band', 'Rides'],
-      ['Scale B', 'Scale B', undefined, undefined],
-    ]);
+    expect(people.map((p) => [p.name, p.scale?.deviceName, p.wearable?.deviceName, p.cycling?.deviceName])).toEqual([['Alex', 'Scale A', 'Band', 'Rides']]);
+  });
+
+  it('lists every device by its name when nobody is configured', () => {
+    expect(healthPeople(sources, [], deviceOf).map((p) => p.name)).toEqual(['Band', 'Rides', 'Scale A', 'Scale B']);
   });
 
   it('reads a scale of device-less template helpers by entity-ID prefix', () => {
@@ -73,7 +74,7 @@ describe('healthPeople', () => {
   it('ignores an entity that is not on a device of that kind', () => {
     const people = healthPeople(sources, [{ name: 'Sam', scale: 'sensor.band_alex_hrv' }], deviceOf);
     expect(people[0].scale).toBeUndefined();
-    expect(people).toHaveLength(5);
+    expect(people).toHaveLength(1);
   });
 });
 

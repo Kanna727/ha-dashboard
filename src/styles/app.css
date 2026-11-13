@@ -2557,23 +2557,52 @@ html.night .sky { display: none; }
 .hp-name { font-weight: 700; font-size: 15px; }
 .hp-weight { display: flex; align-items: baseline; gap: 4px; flex-wrap: wrap; }
 .hp-weight strong { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.hp-weight small, .hp-big small { color: var(--muted); font-weight: 600; margin-right: 6px; }
+.hp-weight small { color: var(--muted); font-weight: 600; margin-right: 6px; }
 .hp-delta { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
 .hp-delta.down { color: var(--ok); }
 .hp-delta.up { color: var(--warn); }
 .hp-spark { width: 96px; flex-shrink: 0; }
 .hp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .hp-chip svg { flex-shrink: 0; }
-/* Popup: trends, a tab per person */
+/* Profile (panels/HealthProfile.tsx): one person's whole page, in sections */
 .hp-detail .segmented { margin-bottom: 14px; }
-.hp-detail-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
-.hp-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.hp-detail-body .card { margin: 0; }
-.hp-big { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
-.hp-big strong { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.hp-profile { display: flex; flex-direction: column; }
+.hp-sec { margin-top: 22px; }
+.hp-sec:first-child { margin-top: 6px; }
+.hp-sec > header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.hp-sec h3 { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--label); }
+.hp-line { flex: 1; height: 1px; background: var(--border); }
+.hp-src { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: var(--tile); color: var(--muted); }
+.hp-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; margin-top: 12px; }
+.hp-tiles-flush { margin-top: 0; flex: 1; min-width: 0; }
+.hp-tile { background: var(--card); border-radius: 18px; padding: 14px; min-width: 0; }
+.hp-t { font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--label); }
+.hp-v { margin-top: 4px; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hp-v small { margin-left: 4px; font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.hp-d { margin-top: 2px; font-size: 12px; font-weight: 700; }
+.hp-tspark { margin-top: 8px; }
+.hp-meter { height: 8px; margin-top: 12px; border-radius: 99px; background: var(--tile); overflow: hidden; }
+.hp-meter span { display: block; height: 100%; border-radius: 99px; }
+.hp-tile-bars { grid-column: span 2; }
+.hp-comp { margin-top: 4px; }
+.hp-compbar { display: flex; gap: 2px; height: 14px; border-radius: 99px; overflow: hidden; }
+.hp-compbar span { min-width: 3px; }
+.hp-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.hp-recovery { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.hp-rings { display: flex; align-items: center; gap: 16px; }
+.hp-ring { position: relative; flex-shrink: 0; }
+.hp-ring-in { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+.hp-ring-in b { font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.hp-ring-in small { margin-top: 3px; font-size: 11px; font-weight: 700; color: var(--muted); }
+.hp-two { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 12px; margin-top: 12px; align-items: start; }
+.hp-card { margin: 0; }
+.hp-barsblock { margin-top: 14px; }
+.hp-bt { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
 @media (max-width: 860px) {
-  .hp-detail-body { display: flex; flex-direction: column; }
-  .hp-col { display: contents; }
+  .hp-two { grid-template-columns: minmax(0, 1fr); }
+  .hp-tiles { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .hp-recovery { align-items: flex-start; }
+  .hp-tiles-flush { flex-basis: 100%; }
 }
 /* Copy button (components/CopyButton.tsx), e.g. beside a device's IP and MAC */
 .copy-btn { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 4px 7px; border-radius: 8px; background: var(--tile); color: var(--muted); font-size: 11px; font-weight: 700; vertical-align: middle; }

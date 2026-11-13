@@ -37,6 +37,10 @@ const scale = (who: string, w: string, fat: string, muscle: string, bmi: string)
   ['bone_mass', who === 'alex' ? '3.2' : '2.4', kg],
   ['bmr', who === 'alex' ? '1780' : '1340', { unit_of_measurement: 'kcal/day', state_class: 'measurement' }],
   ['visceral_fat', who === 'alex' ? '9' : '5', { unit_of_measurement: 'level', state_class: 'measurement' }],
+  ['body_fat_mass', who === 'alex' ? '18.2' : '17.3', kg],
+  ['lean_body_mass', who === 'alex' ? '64.2' : '45.7', kg],
+  ['muscle_mass_percentage', who === 'alex' ? '73.1' : '69.2', pct],
+  ['bone_mass_percentage', who === 'alex' ? '3.9' : '3.8', pct],
 ];
 
 const BAND: Reading[] = [
@@ -62,6 +66,10 @@ const BAND: Reading[] = [
   ['sleep_debt_need', '0.4', hours],
   ['sleep_strain_need', '0.3', hours],
   ['sleep_nap_credit', '0', hours],
+  ['sleep_time_in_bed', '7.9', hours],
+  ['sleep_cycles', '5'],
+  ['sleep_disturbances', '14'],
+  ['max_heart_rate', '187', bpm],
   ['last_workout_strain', '11.2', { state_class: 'measurement' }],
   ['last_workout_average_hr', '138', bpm],
   ['last_workout_max_hr', '171', bpm],
@@ -88,6 +96,7 @@ const ride = (live: boolean, level: string, progress: string, ftp: string, weigh
   ['max_streak', best, { unit_of_measurement: 'w' }],
   ['total_distance', km, { unit_of_measurement: 'km', device_class: 'distance' }],
   ['total_time', days, { unit_of_measurement: 'd', device_class: 'duration' }],
+  ['total_distance_climbed', String(Math.round(Number(km) * 7) / 1000), { unit_of_measurement: 'km', device_class: 'distance' }],
 ];
 
 // [device id, device name, entity prefix, readings]
@@ -304,6 +313,14 @@ export function extraStatistics(id: string, days: number): StatPoint[] | undefin
     const end = id.includes('alex') ? 22.1 : 27.4;
     return daily(days, (i, r) => end + ((days - i) / 90) * 0.9 + (r() - 0.5) * 0.5, seed);
   }
+  if (id.startsWith('sensor.bathroom_scale_')) {
+    const key = id.replace(/^sensor.bathroom_scale_(alex|sam)_/, '');
+    const base: Record<string, number> = { body_fat_mass: 18.2, lean_body_mass: 64.2, muscle_mass: 60.2, water_percentage: 54, visceral_fat: 9, bmr: 1780, bone_mass: 3.2, bmi: 25.1 };
+    if (base[key] !== undefined) return daily(days, (_i, r) => base[key] * (1 + (r() - 0.5) * 0.02), seed);
+  }
+  if (id.endsWith('_spo2')) return daily(days, (_i, r) => 94 + r() * 4, seed);
+  if (id.endsWith('_skin_temperature')) return daily(days, (_i, r) => 33 + r() * 1.8, seed);
+  if (id.endsWith('_sleep_respiratory_rate')) return daily(days, (_i, r) => 14 + r() * 2, seed);
   if (id.endsWith('_hrv')) return daily(days, (_i, r) => 50 + r() * 20, seed);
   if (id.endsWith('_day_strain')) return daily(days, (_i, r) => 6 + r() * 12, seed);
   if (id.startsWith('sensor.ride_') && id.endsWith('_ftp')) return daily(days, (i, r) => (id.includes('alex') ? 212 : 150) - ((days - i) / 90) * 12 + (r() - 0.5) * 2, seed);
