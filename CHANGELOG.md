@@ -1,3 +1,10 @@
+# [1.68.0](https://github.com/Kanna727/ha-dashboard/compare/v1.67.0...v1.68.0) (2026-11-13)
+
+
+### Features
+
+* **health:** read a scale of template helpers by entity-ID prefix ([#91](https://github.com/Kanna727/ha-dashboard/issues/91)) ([40c5497](https://github.com/Kanna727/ha-dashboard/commit/40c5497b2763f7ba4c35c72dbab99531c06e4ab3))
+
 # [1.67.0](https://github.com/Kanna727/ha-dashboard/compare/v1.66.0...v1.67.0) (2026-11-13)
 
 
