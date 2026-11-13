@@ -203,3 +203,47 @@ gh secret set HA_PREVIEW_WEBHOOK_ID
 ```
 
 Without that secret the preview jobs skip with a warning. Pull requests from forks never deploy (they get no secrets), so only code pushed to this repo runs on your HA's origin.
+
+
+## 7. Medicine reminders and low-stock warnings (optional)
+
+The Medicines panel keeps its list in a hidden dashboard, which automations can't read. So the dashboard sends Home Assistant a summary as a `dashboard_medicines` event whenever it changes (an admin login has to have the dashboard open now and then: firing events is admin-only), and a trigger-based template sensor keeps it. Template sensors with triggers and attributes are YAML only. Add to `configuration.yaml`:
+
+```yaml
+template: !include templates.yaml
+```
+
+and create `templates.yaml`:
+
+```yaml
+- triggers:
+    - trigger: event
+      event_type: dashboard_medicines
+  sensor:
+    - name: Dashboard medicines
+      unique_id: dashboard_medicines
+      icon: mdi:pill
+      state: "{{ trigger.event.data.hash }}"
+      attributes:
+        times: "{{ trigger.event.data.times }}"
+        labels: "{{ trigger.event.data.labels }}"
+        people: "{{ trigger.event.data.people }}"
+        low_days: "{{ trigger.event.data.low_days }}"
+        medicines: "{{ trigger.event.data.medicines }}"
+        doses: "{{ trigger.event.data.doses }}"
+        taken: "{{ trigger.event.data.taken }}"
+        updated: "{{ now().isoformat() }}"
+```
+
+Check the configuration, then reload template entities (Tools → YAML → Template entities). Open the dashboard once with an admin login and `sensor.dashboard_medicines` fills in (its state is a short hash).
+
+**Dose reminders.** An automation with a template trigger that turns true at each dose time and 30 minutes after it (dose times come from the dashboard config, so a fixed time trigger can't be used):
+
+```yaml
+{% set t = (state_attr('sensor.dashboard_medicines', 'times') or {}).values() | list %}
+{{ now().strftime('%H:%M') in t or (now() - timedelta(minutes=30)).strftime('%H:%M') in t }}
+```
+
+Its actions keep the `doses` whose time is now (or 30 minutes ago, then marked late), whose `days` include today (`now().isoweekday() % 7`, 0 = Sunday), whose `until` hasn't passed, and whose key `YYYY-MM-DD|<slot>|<person>` isn't in `taken`; then send one message per person and dose time to that person's phone (a `choose` on the person id, each branch a `notify.mobile_app_<phone>` call). Give the on-time and the late message the same `tag` (Android) and `apns-collapse-id` (iOS) so the second replaces the first.
+
+**Low stock.** An automation at a fixed time (say 10:00) that lists every `medicines` entry not paused that is `empty`, or whose `runs_out` date is fewer than `low_days` days away, and sends the list to each phone.
