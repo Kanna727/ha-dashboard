@@ -1,3 +1,10 @@
+# [1.70.0](https://github.com/Kanna727/ha-dashboard/compare/v1.69.0...v1.70.0) (2026-11-13)
+
+
+### Features
+
+* **energy:** Energy history card with popup on every layout ([#93](https://github.com/Kanna727/ha-dashboard/issues/93)) ([a151278](https://github.com/Kanna727/ha-dashboard/commit/a151278106121eec8b5fafd299ca6a50a8a27188))
+
 # [1.69.0](https://github.com/Kanna727/ha-dashboard/compare/v1.68.0...v1.69.0) (2026-11-13)
 
 
