@@ -53,7 +53,7 @@ function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { classNam
         className: 'cols cols-wide-mid',
         columns: [
           [card('energy', <EnergyPanel />), card('batteries', <BatteriesPanel />)],
-          [card('energyHistory', <EnergyHistoryPanel full />)],
+          [card('energyHistory', <EnergyHistoryPanel />)],
           [card('network', <NetworkPanel />), card('networkDevices', <NetworkDevicesPanel />)],
         ],
       };
