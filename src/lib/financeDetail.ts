@@ -43,6 +43,7 @@ export interface CardDetail {
   statementDate?: string;
   lastBill?: CardBill;
   synced?: number;
+  owner?: string;
 }
 export interface Factor {
   name: string;
@@ -61,6 +62,7 @@ export interface BureauDetail {
   factors: Factor[];
   summary?: { title?: string; text?: string };
   history: { month: string; score: number }[];
+  owner?: string;
 }
 export interface CreditAccounts {
   type: string;
@@ -104,6 +106,7 @@ export interface Fund {
   gain: number;
   gainPct?: number;
   units?: number;
+  owner?: string;
 }
 export interface FundCategory {
   name: string;
@@ -133,6 +136,7 @@ export interface Holding {
   price?: number;
   value: number;
   isin?: string;
+  owner?: string;
 }
 export interface StocksDetail {
   value?: number;
@@ -172,11 +176,13 @@ export interface Policy {
   claimUrl?: string;
   hospitalsUrl?: string;
   grade?: string;
+  owner?: string;
 }
 export interface Loan {
   name: string;
   last4?: string;
   included: boolean;
+  owner?: string;
 }
 export interface Recurring {
   name: string;
@@ -185,6 +191,7 @@ export interface Recurring {
   frequency?: string;
   nextDue?: string;
   variable?: boolean;
+  owner?: string;
 }
 export interface SpendCategory {
   name: string;
@@ -196,7 +203,7 @@ export interface Snapshot {
   updated?: number;
   netWorthAsOf?: number;
   cards: CardDetail[];
-  closedCards: { name: string; last4?: string; closedAt?: string }[];
+  closedCards: { name: string; last4?: string; closedAt?: string; owner?: string }[];
   bureaus: BureauDetail[];
   creditAccounts: CreditAccounts[];
   epf?: EpfDetail;
@@ -204,7 +211,7 @@ export interface Snapshot {
   stocks?: StocksDetail;
   policies: Policy[];
   loans: Loan[];
-  fds: { name: string; principal?: number; maturity?: number; rate?: number; maturityDate?: string }[];
+  fds: { name: string; principal?: number; maturity?: number; rate?: number; maturityDate?: string; owner?: string }[];
   recurring: Recurring[];
   spending?: { month: string; total: number; categories: SpendCategory[]; untagged?: { amount: number; count?: number } };
   // Which sources the money app has linked (false: not connected).
@@ -560,6 +567,8 @@ export interface Tx {
   sub?: string;
   account?: string;
   notes?: string;
+  // Whose it is (FINANCE.people id), when there's more than one person.
+  owner?: string;
 }
 export interface FundTx {
   date: string;
@@ -567,6 +576,7 @@ export interface FundTx {
   scheme: string;
   amount: number;
   units?: number;
+  owner?: string;
 }
 export interface StockTx {
   t: number;
@@ -576,6 +586,7 @@ export interface StockTx {
   units: number;
   rate?: number;
   amount: number;
+  owner?: string;
 }
 export interface EpfTx {
   date: string;
@@ -585,6 +596,7 @@ export interface EpfTx {
   employer: number;
   pension: number;
   wageMonth?: string;
+  owner?: string;
 }
 export interface Activity {
   updated?: number;

@@ -1,4 +1,4 @@
-import { FINANCE } from '../config/entities';
+import { FINANCE, MONEY_PEOPLE } from '../config/entities';
 import { GlanceTile } from '../components/GlanceTile';
 import { Icon } from '../components/Icon';
 import { useNow } from '../hooks/useNow';
@@ -6,9 +6,10 @@ import { bankColor, daysUntil, dueLabel, fmtAgo, fmtInr, fmtWhen, fmtShort, isBi
 import { Amt } from './Amt';
 import { ComingUp, SpendingCharts } from './MoneyCharts';
 import { CardLimits, RecurringList, ScoreDetails, useBureauRank, useCardUse } from './MoneyDetails';
-import { fmtAuto, Head } from './parts';
+import { fmtAuto, Head, OwnerTag } from './parts';
 import { toggleAmounts, useAmountsHidden } from './privacy';
 import { useFinance } from './useFinance';
+import { MANY_PEOPLE, setMoneyPerson, useMoneyPerson } from './person';
 import { useSpentThisMonth } from './useTxEdits';
 
 // The Money page, "Wallet" design (the owner picked it on 2026-11-03 over a
@@ -40,6 +41,22 @@ export function EyeButton() {
     <button className="round small chevron money-eye" onClick={toggleAmounts} aria-label={hidden ? 'Show amounts' : 'Hide amounts'} title={hidden ? 'Show amounts' : 'Hide amounts'}>
       <Icon name={hidden ? 'eye' : 'eyeOff'} size={20} />
     </button>
+  );
+}
+
+// Both / one person (FINANCE.people); nothing with one person.
+export function PersonSwitch() {
+  const sel = useMoneyPerson();
+  if (!MANY_PEOPLE) return null;
+  const opts = [{ id: 'all', name: 'Both' }, ...MONEY_PEOPLE];
+  return (
+    <div className="segmented small money-person" role="tablist" aria-label="Whose money">
+      {opts.map((o) => (
+        <button key={o.id} role="tab" aria-selected={sel === o.id} className={sel === o.id ? 'active' : ''} onClick={() => setMoneyPerson(o.id)}>
+          {o.name}
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -103,7 +120,12 @@ function WalletCard({ card, bill }: { card: Account; bill: Finance['bill'] }) {
       <span className="wcard-owed">
         {card.balance === 0 ? 'Nothing owed' : card.balance < 0 ? <Amt>{fmtInr(-card.balance)} credit</Amt> : <Amt>{fmtInr(card.balance)}</Amt>}
       </span>
-      {card.last4 && <span className="wcard-num">•••• {card.last4}</span>}
+      {card.last4 && (
+        <span className="wcard-num">
+          •••• {card.last4}
+          <OwnerTag owner={card.owner} />
+        </span>
+      )}
       {use !== undefined && (
         <span className="wcard-use" title={`${use.toFixed(0)}% of the limit used`} aria-hidden>
           <i style={{ width: `${Math.max(use, 1)}%` }} />
@@ -168,6 +190,7 @@ export function PassbookPanel() {
             <span className="pass-name">
               {b.name}
               {b.last4 && <small>••{b.last4}</small>}
+              <OwnerTag owner={b.owner} />
               {b.balance < 0 && <span className="money-chip bad">Overdrawn</span>}
             </span>
             <span className={`pass-v ${b.balance < 0 ? 'neg' : ''}`}>
@@ -256,9 +279,9 @@ export function BillPanel() {
 
 const TONE_COLOR = { ok: 'var(--ok)', fair: 'var(--accent-light)', warn: 'var(--warn)', bad: 'var(--danger)' };
 
-function Dial({ score, bureau }: { score: number; bureau: string }) {
+function Dial({ score, bureau, owner }: { score: number; bureau: string; owner?: string }) {
   const band = scoreBand(score);
-  const rank = useBureauRank(bureau);
+  const rank = useBureauRank(bureau, owner);
   const color = TONE_COLOR[band.tone];
   const r = 50;
   const len = 2 * Math.PI * r * 0.75; // a 270° arc
@@ -275,7 +298,10 @@ function Dial({ score, bureau }: { score: number; bureau: string }) {
         </b>
         <small style={{ color }}>{band.label}</small>
       </span>
-      <span className="dial-name">{bureau}</span>
+      <span className="dial-name">
+        {bureau}
+        <OwnerTag owner={owner} />
+      </span>
       {rank && <small className="dial-rank muted">{rank}</small>}
     </div>
   );
@@ -289,7 +315,7 @@ export function ScoresPanel() {
       <Head label="Credit score" />
       <div className="score-dials">
         {f.scores.map((s) => (
-          <Dial key={s.id} score={s.score} bureau={s.bureau} />
+          <Dial key={s.id} score={s.score} bureau={s.bureau} owner={s.owner} />
         ))}
       </div>
       <ScoreDetails />
@@ -430,9 +456,10 @@ export function SpendPanel() {
 // one is due within a week (orange from 3 days, red when late), else this
 // month's spending; net worth beside it.
 export function MoneyTile() {
-  const f = useFinance();
+  // Everyone's (FINANCE.people), whoever the Money page shows.
+  const f = useFinance('all');
   const now = useNow(60_000);
-  const spent = useSpentThisMonth();
+  const spent = useSpentThisMonth('all');
   if (!f) return null;
   const bill = f.bill;
   const days = bill?.due ? daysUntil(bill.due, now) : undefined;

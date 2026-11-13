@@ -1,3 +1,4 @@
+import { MONEY_PEOPLE } from '../config/entities';
 import { useState, type ReactNode } from 'react';
 import { BarChart, type Bar } from '../components/BarChart';
 import { useNow } from '../hooks/useNow';
@@ -21,7 +22,7 @@ import { Amt } from './Amt';
 import { useTxEditor } from './TxEditor';
 import { useTxView } from './useTxEdits';
 import type { ViewTx } from '../lib/txEdits';
-import { fmtAuto, fmtDate, fmtMonth, fmtPct, fmtSigned, Head, MoreButton, ratingTone, StackBar } from './parts';
+import { fmtAuto, fmtDate, fmtMonth, fmtPct, fmtSigned, Head, MoreButton, OwnerTag, ratingTone, StackBar } from './parts';
 import { useFinance } from './useFinance';
 import { useActivity, useMoneyHistory, useSnapshot } from './useMoneyHistory';
 
@@ -203,6 +204,7 @@ export function CardLimits({ cards }: { cards: Account[] }) {
                     <span>
                       {c.name}
                       <small> ••{c.last4}</small>
+                      <OwnerTag owner={c.owner} />
                     </span>
                   </span>
                   <span className="cy-cycle">
@@ -281,9 +283,10 @@ export function RecurringList() {
       <span className="label">Recurring</span>
       <ul className="money-list">
         {list.map((r) => (
-          <li key={r.name}>
+          <li key={`${r.owner}${r.name}`}>
             <span>
               {r.name}
+              <OwnerTag owner={r.owner} />
               <small className="muted">
                 {' '}
                 {[frequencyLabel(r.frequency), r.category, r.nextDue && `next ${fmtDate(r.nextDue, now)}`].filter(Boolean).join(' · ')}
@@ -321,7 +324,10 @@ export function ScoreDetails() {
             <tr>
               <th />
               {bureaus.map((b) => (
-                <th key={b.bureau}>{b.bureau}</th>
+                <th key={`${b.owner}${b.bureau}`}>
+                  {b.bureau}
+                  <OwnerTag owner={b.owner} />
+                </th>
               ))}
             </tr>
           </thead>
@@ -337,7 +343,7 @@ export function ScoreDetails() {
                   {bureaus.map((b) => {
                     const x = b.factors.find((y) => y.name === n);
                     return (
-                      <td key={b.bureau}>
+                      <td key={`${b.owner}${b.bureau}`}>
                         <b>{fmtVal(x?.value, x?.unit)}</b>
                         {x?.rating && <span className={`rating ${ratingTone(x.rating)}`}>{x.rating}</span>}
                       </td>
@@ -384,9 +390,9 @@ export function ScoreDetails() {
 }
 
 // The rank under a dial ("Top 57%").
-export function useBureauRank(bureau: string): string | undefined {
+export function useBureauRank(bureau: string, owner?: string): string | undefined {
   const snap = useSnapshot();
-  const r = snap.bureaus.find((b) => b.bureau.toLowerCase() === bureau.toLowerCase())?.rank;
+  const r = snap.bureaus.find((b) => b.bureau.toLowerCase() === bureau.toLowerCase() && (!owner || b.owner === owner))?.rank;
   return r ? r.charAt(0) + r.slice(1).toLowerCase() : undefined;
 }
 
@@ -445,6 +451,7 @@ function TxRow({ t, onOpen }: { t: ViewTx; onOpen: (t: ViewTx) => void }) {
           {t.source === 'added' && <span className="tx-tag">added</span>}
           {t.edited && <span className="tx-tag">edited</span>}
           {t.hidden && <span className="tx-tag">hidden</span>}
+          <OwnerTag owner={t.owner ?? MONEY_PEOPLE[0].id} />
         </b>
         <small className="muted">{[t.note && t.merchant ? raw : '', t.category ? [t.category, t.sub].filter(Boolean).join(' · ') : 'Untagged', t.account, timeOf(t.t)].filter(Boolean).join(' · ')}</small>
       </span>
@@ -631,9 +638,12 @@ export function FundsPanel() {
           <span className="label">Holdings</span>
           <ul className="money-list holdings">
             {shown.map((h) => (
-              <li key={h.scheme}>
+              <li key={`${h.owner}${h.scheme}`}>
                 <span className="hl-name">
-                  <span>{shortScheme(h.scheme)}</span>
+                  <span>
+                    {shortScheme(h.scheme)}
+                    <OwnerTag owner={h.owner} />
+                  </span>
                   <small className="muted">{[h.category, h.plan, h.risk].filter(Boolean).join(' · ')}</small>
                 </span>
                 <span className="ml-v">
@@ -1080,7 +1090,7 @@ export function InsurancePanel() {
     <section className="panel money-insurance">
       <Head label="Insurance" summary={policies.length > 1 ? `${policies.length} policies` : undefined} />
       {policies.length ? (
-        policies.map((p, i) => <PolicyView key={p.name} p={p} cover={i === 0 && p.type === 'health' ? f?.healthCover : undefined} renews={i === 0 ? f?.premiumDue : undefined} />)
+        policies.map((p, i) => <PolicyView key={`${p.owner}${p.name}`} p={p} cover={i === 0 && p.type === 'health' ? f?.healthCover : undefined} renews={i === 0 ? f?.premiumDue : undefined} />)
       ) : (
         <div className="inv-head">
           <span className="inv-big">

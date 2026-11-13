@@ -3,6 +3,7 @@ import { VACUUM_DEVICE, vacuumEntities } from './vacuum';
 import { DESK_DEVICE, deskEntities, isDeskEntity } from './desk';
 import { EXTRA_DEVICES, EXTRA_REGISTRY, extraEntities } from './extras';
 import { financeEntities } from './finance';
+import { partnerFinanceEntities } from './financePartner';
 
 // States for the fictional home in config/dashboard.config.example.ts, tuned so
 // every card has something to show (car online, dishwasher mid-cycle).
@@ -335,6 +336,7 @@ const list: HassEntity[] = [
   ...extraEntities(),
   // Money helpers for the Money page (mock/finance.ts).
   ...financeEntities(),
+  ...partnerFinanceEntities(),
   // HA's copy of the medicines summary (a trigger-based template sensor; the
   // mock fills it when the dashboard sends its `dashboard_medicines` event).
   e('sensor.dashboard_medicines', 'unknown', { friendly_name: 'Dashboard medicines', icon: 'mdi:pill' }),
