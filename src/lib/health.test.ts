@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changeOver, findHealthSources, fmtHours, healthPeople, recoveryTone, sleepStages } from './health';
+import { changeOver, findHealthSources, fmtHours, healthPeople, helperScale, recoveryTone, sleepStages } from './health';
 
 const ent = (entityId: string, deviceId: string) => ({ entityId, deviceId, platform: 'x' });
 const registry = {
@@ -57,6 +57,17 @@ describe('healthPeople', () => {
       ['Alex', 'Scale A', 'Band', 'Rides'],
       ['Scale B', 'Scale B', undefined, undefined],
     ]);
+  });
+
+  it('reads a scale of device-less template helpers by entity-ID prefix', () => {
+    const people = healthPeople(sources, [{ name: 'Sam', scale: 'sensor.sam_weight' }, { name: 'Lee', scale: 'sensor.lee_body_fat_mass' }], deviceOf);
+    expect(people[0].scale?.roles.weight).toBe('sensor.sam_weight');
+    expect(people[0].scale?.roles.body_fat).toBe('sensor.sam_body_fat');
+    expect(people[0].scale?.roles.muscle_mass_percentage).toBe('sensor.sam_muscle_mass_percentage');
+    expect(people[1].scale?.roles.weight).toBe('sensor.lee_weight');
+    expect(people[0].scale?.deviceName).toBe('Sam');
+    expect(helperScale('sensor.room_temperature')).toBeUndefined();
+    expect(helperScale('light.sam_weight')).toBeUndefined();
   });
 
   it('ignores an entity that is not on a device of that kind', () => {
