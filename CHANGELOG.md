@@ -1,3 +1,10 @@
+# [1.69.0](https://github.com/Kanna727/ha-dashboard/compare/v1.68.0...v1.69.0) (2026-11-13)
+
+
+### Features
+
+* **health:** a full profile per person; only configured people show ([#92](https://github.com/Kanna727/ha-dashboard/issues/92)) ([6a058e5](https://github.com/Kanna727/ha-dashboard/commit/6a058e5117fd27dbc45f66941b118e6325953dca))
+
 # [1.68.0](https://github.com/Kanna727/ha-dashboard/compare/v1.67.0...v1.68.0) (2026-11-13)
 
 
