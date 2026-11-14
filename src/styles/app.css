@@ -3161,7 +3161,9 @@ b.tone-bad { color: var(--danger); }
 .txe-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
 .txe-field { display: grid; gap: 5px; min-width: 0; }
 .txe-field.wide { grid-column: 1 / -1; }
-.txe-field input { width: 100%; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--tile); color: var(--text); font: inherit; font-size: 15px; user-select: text; -webkit-user-select: text; color-scheme: dark; }
+.txe-field input, .txe-field select { width: 100%; padding: 10px 11px; border-radius: 10px; border: 1px solid var(--border); background: var(--tile); color: var(--text); font: inherit; font-size: 15px; user-select: text; -webkit-user-select: text; color-scheme: dark; }
+.txe-field select { appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 34px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a93a6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.txe-field select option { background: var(--tile); color: var(--text); }
 .txe-hint { margin: 0; font-size: 13px; color: var(--warn); }
 .txe-foot { margin: 0; }
 .chip-btn.danger { color: var(--danger); }
@@ -3539,3 +3541,11 @@ button.med-dose:not(:disabled):hover { background: var(--tile-hover); }
 .pl-kind.on { color: var(--text); border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, var(--tile)); }
 /* Phones: three, then two. */
 @media (max-width: 480px) { .pl-kinds { grid-template-columns: repeat(6, minmax(0, 1fr)); } .pl-kind { grid-column: span 2; } .pl-kind:nth-child(n + 4) { grid-column: span 3; } }
+/* Transaction editor: option lists that show everything on focus. */
+.txe-combo { position: relative; }
+.txe-opts { position: absolute; z-index: 5; left: 0; right: 0; top: calc(100% + 4px); margin: 0; padding: 4px; list-style: none; max-height: 220px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--border); background: var(--tile); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+.txe-opts li { padding: 9px 10px; border-radius: 7px; font-size: 15px; cursor: pointer; }
+.txe-opts li:hover, .txe-opts li.on { background: color-mix(in srgb, var(--text) 12%, transparent); }
+.txe-combo input { padding-right: 34px; }
+.txe-combo::after { content: ''; position: absolute; right: 13px; top: 50%; width: 12px; height: 8px; margin-top: -4px; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a93a6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center; transition: transform .15s; }
+.txe-combo:focus-within::after { transform: rotate(180deg); }

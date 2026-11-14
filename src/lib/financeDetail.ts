@@ -569,6 +569,8 @@ export interface Tx {
   notes?: string;
   // Whose it is (FINANCE.people id), when there's more than one person.
   owner?: string;
+  // Set only by the owner's change; see groupOf.
+  group?: TxGroup;
 }
 export interface FundTx {
   date: string;
@@ -674,25 +676,41 @@ export function parseActivity(doc: unknown): Activity {
 // Money moved between your own accounts and card bill payments aren't income
 // or spending (the card spends were counted when the card was used).
 const MOVES = /^(self transfer|credit bill|transfer)$/i;
-export const isMove = (t: Tx) => !!t.category && MOVES.test(t.category);
+const INVESTS = /^investments?$/i;
 
-// What came in and went out over the transactions, without moves.
+// The group a transaction is in: the owner's choice when they set one, else
+// from its category (transfers, investments) and otherwise from its direction.
+export const TX_GROUPS = ['spend', 'income', 'move', 'invest'] as const;
+export type TxGroup = (typeof TX_GROUPS)[number];
+export const isTxGroup = (v: unknown): v is TxGroup => (TX_GROUPS as readonly string[]).includes(v as string);
+export function groupOf(t: Tx): TxGroup {
+  if (t.group) return t.group;
+  if (t.category && MOVES.test(t.category)) return 'move';
+  if (t.category && INVESTS.test(t.category)) return 'invest';
+  return t.amount < 0 ? 'spend' : 'income';
+}
+export const isMove = (t: Tx) => groupOf(t) === 'move';
+export const isInvest = (t: Tx) => groupOf(t) === 'invest';
+
+// What came in and went out over the transactions, without moves and
+// investments (money put aside, not spent).
 export function flows(txs: Tx[]): { in: number; out: number } {
   let inn = 0;
   let out = 0;
   for (const t of txs) {
-    if (isMove(t)) continue;
+    if (isMove(t) || isInvest(t)) continue;
     if (t.amount > 0) inn += t.amount;
     else out -= t.amount;
   }
   return { in: inn, out };
 }
 
-export type TxFilter = 'all' | 'spends' | 'income' | 'moves';
+export type TxFilter = 'all' | 'spends' | 'income' | 'moves' | 'invests';
 export function filterTx<T extends Tx>(txs: T[], f: TxFilter): T[] {
-  if (f === 'spends') return txs.filter((t) => t.amount < 0 && !isMove(t));
-  if (f === 'income') return txs.filter((t) => t.amount > 0 && !isMove(t));
+  if (f === 'spends') return txs.filter((t) => groupOf(t) === 'spend');
+  if (f === 'income') return txs.filter((t) => groupOf(t) === 'income');
   if (f === 'moves') return txs.filter(isMove);
+  if (f === 'invests') return txs.filter(isInvest);
   return txs;
 }
 

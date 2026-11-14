@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useModal } from '../components/Modal';
 import { fmtInr } from '../lib/finance';
+import { groupOf, type TxGroup } from '../lib/financeDetail';
 import { diffPatch, withAdded, withChange, withHidden, withoutAdded, type ViewTx } from '../lib/txEdits';
 import { MONEY_PEOPLE } from '../config/entities';
 import { useFinance } from './useFinance';
@@ -74,6 +75,56 @@ function Field({ label, children, wide }: { label: string; children: ReactNode; 
   );
 }
 
+// A text box that lists every option when focused (a browser datalist only
+// lists the ones matching what is typed) and narrows the list once you type.
+function Combo({ value, onChange, options, placeholder, maxLength }: { value: string; onChange: (v: string) => void; options: string[]; placeholder?: string; maxLength?: number }) {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState(false);
+  const q = value.trim().toLowerCase();
+  const list = typed && q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+  const close = () => {
+    setOpen(false);
+    setTyped(false);
+  };
+  return (
+    <div className="txe-combo">
+      <input
+        value={value}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        autoComplete="off"
+        onFocus={() => setOpen(true)}
+        onBlur={close}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setTyped(true);
+          setOpen(true);
+        }}
+        onKeyDown={(e) => e.key === 'Escape' && open && (e.stopPropagation(), close())}
+      />
+      {open && list.length > 0 && (
+        <ul className="txe-opts" role="listbox">
+          {list.map((o) => (
+            <li
+              key={o}
+              role="option"
+              aria-selected={o === value}
+              className={o === value ? 'on' : ''}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(o);
+                close();
+              }}
+            >
+              {o}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
   const view = useTxView();
   const opts = useOptions(view);
@@ -92,6 +143,8 @@ export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
   const [owner, setOwner] = useState(tx?.owner ?? (sel !== 'all' ? sel : MONEY_PEOPLE[0].id));
   const accountOwner = opts.ownerOf.get(account.trim());
   const whose = accountOwner ?? owner;
+  // '' = automatic (from the category and direction), for a transaction not saved yet.
+  const [group, setGroup] = useState<TxGroup | ''>(tx ? groupOf(tx) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [confirm, setConfirm] = useState(false);
@@ -114,14 +167,14 @@ export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
     }
   };
 
-  const fields = { note: name, merchant, amount: signed, t: t!, category, sub, account };
+  const fields = { note: name, merchant, amount: signed, t: t!, category, sub, account, group: group || undefined };
   const onSave = () => {
     if (!ok) return;
     if (!tx || tx.source === 'added') {
       const id = tx?.key ?? `m${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
       const trim = (s: string) => s.trim() || undefined;
       void run((e) =>
-        withAdded(e, { id, t: t!, amount: signed, note: trim(name), merchant: trim(merchant), category: trim(category), sub: trim(sub), account: trim(account), ...(MANY_PEOPLE ? { owner: whose } : {}) }),
+        withAdded(e, { id, t: t!, amount: signed, note: trim(name), merchant: trim(merchant), category: trim(category), sub: trim(sub), account: trim(account), group: group || undefined, ...(MANY_PEOPLE ? { owner: whose } : {}) }),
       );
     } else {
       void run((e) => withChange(e, tx.key, tx.orig!, diffPatch(tx.orig!, fields)));
@@ -161,7 +214,7 @@ export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your own name for it (optional)" maxLength={80} />
         </Field>
         <Field label="Merchant">
-          <input value={merchant} onChange={(e) => setMerchant(e.target.value)} list="txe-merchants" placeholder="Who was paid" maxLength={80} />
+          <Combo value={merchant} onChange={setMerchant} options={opts.merchants} placeholder="Who was paid" maxLength={80} />
         </Field>
         <Field label="Amount (₹)">
           <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0" />
@@ -170,7 +223,16 @@ export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
           <input type="datetime-local" value={when} max={toLocalInput(now)} onChange={(e) => setWhen(e.target.value)} />
         </Field>
         <Field label="Account">
-          <input value={account} onChange={(e) => setAccount(e.target.value)} list="txe-accounts" maxLength={80} />
+          <Combo value={account} onChange={setAccount} options={opts.accounts} maxLength={80} />
+        </Field>
+        <Field label="Group">
+          <select value={group} onChange={(e) => setGroup(e.target.value as TxGroup | '')}>
+            {!tx && <option value="">Automatic</option>}
+            <option value="spend">Spends</option>
+            <option value="income">Income</option>
+            <option value="move">Transfers</option>
+            <option value="invest">Investments</option>
+          </select>
         </Field>
         {MANY_PEOPLE && (!tx || tx.source === 'added') && (
           // Not a <label>: it would pass every click on to the first button.
@@ -195,16 +257,12 @@ export function TxEditor({ tx, onDone }: { tx?: ViewTx; onDone: () => void }) {
           </div>
         )}
         <Field label="Category">
-          <input value={category} onChange={(e) => setCategory(e.target.value)} list="txe-cats" placeholder="Untagged" maxLength={60} />
+          <Combo value={category} onChange={setCategory} options={opts.cats} placeholder="Untagged" maxLength={60} />
         </Field>
         <Field label="Subcategory">
-          <input value={sub} onChange={(e) => setSub(e.target.value)} list="txe-subs" maxLength={60} />
+          <Combo value={sub} onChange={setSub} options={subsFor} maxLength={60} />
         </Field>
       </div>
-      <datalist id="txe-merchants">{opts.merchants.map((m) => <option key={m} value={m} />)}</datalist>
-      <datalist id="txe-accounts">{opts.accounts.map((m) => <option key={m} value={m} />)}</datalist>
-      <datalist id="txe-cats">{opts.cats.map((m) => <option key={m} value={m} />)}</datalist>
-      <datalist id="txe-subs">{subsFor.map((m) => <option key={m} value={m} />)}</datalist>
       {!ok && amount !== '' && <p className="txe-hint">Needs an amount above zero, a merchant or a name, and a time that isn't in the future.</p>}
       {error && <p className="net-name-error">{error}</p>}
       <div className="net-name-actions">
