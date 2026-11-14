@@ -34,6 +34,8 @@ jobs:
           if [ -n "$ids" ]; then echo "Entity IDs in bundle:"; echo "$ids" | sort -u; exit 1; fi
       - name: Mock build
         run: VITE_MOCK=1 npx vite build --outDir dist-mock
+      - name: Privacy check tests
+        run: sh scripts/privacy-check.test.sh
       - name: Privacy check
         env:
           PRIVACY_PATTERNS: ${{ secrets.PRIVACY_PATTERNS }}

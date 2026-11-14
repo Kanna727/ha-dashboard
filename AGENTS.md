@@ -22,7 +22,7 @@ Targets:
 
 - **No personal data in tracked files**: no names, emails, account or device IDs, addresses, coordinates, IPs, local paths, or details about the owner's HA setup. That applies to code, comments, docs, fixtures, screenshots and commit messages.
 - Every entity ID and name lives in `config/dashboard.config.ts` (gitignored). The committed `config/dashboard.config.example.ts` describes a fictional home, and `mock/fixtures.ts` matches the example.
-- `scripts/privacy-check.sh` greps tracked files for private patterns (`.privacy-patterns` locally, the `PRIVACY_PATTERNS` secret in CI). Enable the hook once per clone: `git config core.hooksPath .githooks`.
+- `scripts/privacy-check.sh` greps tracked files in two layers. Generic checks (`scripts/privacy-generic.patterns`, committed, run for everyone incl. fork PRs): API keys/tokens, webhook IDs, credentials in URLs, emails, private and Tailscale IPs, MACs that aren't locally administered (second hex digit not 2/6/A/E; use `02:00:5e:…`), and files that must never be committed (`.env*`, `*.local.*`, `.glb`/`.gltf`, keys). `example.com` emails, `users.noreply.github.com` and TEST-NET IPs (`192.0.2.x`) pass; a line with `privacy-check: ok` is skipped. Private patterns (`.privacy-patterns` locally, the `PRIVACY_PATTERNS` secret in CI) catch names, IDs and serials. `scripts/privacy-check.test.sh` tests the script and runs in CI. Enable the hook once per clone: `git config core.hooksPath .githooks`.
 - README screenshots come from the mock build only.
 
 ## Stack and constraints

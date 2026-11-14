@@ -422,7 +422,7 @@ export function formatMac(mac: string): string {
   return hex.length === 12 ? hex.match(/../g)!.join(':') : mac.toLowerCase();
 }
 
-// "192.168.1.9" before "192.168.1.10"; missing last.
+// "192.0.2.9" before "192.0.2.10"; missing last.
 export function compareIp(a?: string, b?: string): number {
   if (!a || !b) return a ? -1 : b ? 1 : 0;
   const pa = a.split('.').map(Number);

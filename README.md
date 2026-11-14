@@ -81,7 +81,7 @@ http://homeassistant.local/local/dashboard/preview/index.html?layout=tablet   # 
 ## Security and privacy
 
 - HA serves `/local/` without authentication, so the app file holds no secrets and no personal data; the per-home config is only readable after login. Every data call needs the device's own OAuth token. The Google Maps key is read at runtime from your Lovelace config over the authenticated WebSocket.
-- Personal data stays out of git: your config and owner notes are gitignored, and `scripts/privacy-check.sh` (a pre-commit hook plus a CI step) blocks commits containing private patterns. Enable the hook with `git config core.hooksPath .githooks`.
+- Personal data stays out of git: your config and owner notes are gitignored, and `scripts/privacy-check.sh` (a pre-commit hook plus a CI step) blocks commits containing private patterns, plus generic checks (keys, tokens, emails, private IPs, real MACs) that work for everyone. Enable the hook with `git config core.hooksPath .githooks`.
 
 ## Credits
 
