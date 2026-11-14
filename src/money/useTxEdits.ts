@@ -4,7 +4,8 @@ import { useNow } from '../hooks/useNow';
 import { applyEdits, editsDoc, monthAdjust, parseEdits, type TxEdits, type ViewTx } from '../lib/txEdits';
 import { useFinance } from './useFinance';
 import { useMoneyPerson } from './person';
-import { useActivity, useSaveStoreDoc, useStoreDoc } from './useMoneyHistory';
+import { useActivity, useHouseholdMoneyHistory, useMoneyHistory, useSaveStoreDoc, useStoreDoc } from './useMoneyHistory';
+import { monthSpend } from '../lib/finance';
 
 // The owner's changes to the transactions (lib/txEdits.ts): Home Assistant is
 // the source of truth, nothing goes back to the money app. Stored in the hidden
@@ -53,6 +54,14 @@ const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).pad
 export function useSpentThisMonth(person?: string): number | undefined {
   const f = useFinance(person);
   const now = useNow(60_000);
-  const adj = useSpendAdjust(monthKey(now), [], person);
+  const page = useMoneyHistory();
+  const household = useHouseholdMoneyHistory();
+  const cur = monthKey(now);
+  // The money app's own figure counts card bill payments and investments too;
+  // the per-month chart data leaves FINANCE.skipCategories out, so use that
+  // when this month is in it (the figure and the bars then agree).
+  const m = (person === 'all' ? household : page).months.find((x) => x.month === cur);
+  const adj = useSpendAdjust(cur, m ? FINANCE.skipCategories : [], person);
+  if (m) return Math.max(0, monthSpend(m, FINANCE.skipCategories).total + adj.total);
   return f?.spentThisMonth === undefined ? undefined : Math.max(0, f.spentThisMonth + adj.total);
 }
