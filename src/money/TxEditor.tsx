@@ -82,6 +82,8 @@ function Combo({ value, onChange, options, placeholder, maxLength }: { value: st
   const [typed, setTyped] = useState(false);
   const q = value.trim().toLowerCase();
   const list = typed && q ? options.filter((o) => o.toLowerCase().includes(q)) : options;
+  // Nothing by that name yet: offer to create it (it is saved with the transaction).
+  const create = typed && !!q && !options.some((o) => o.toLowerCase() === q) ? value.trim() : undefined;
   const close = () => {
     setOpen(false);
     setTyped(false);
@@ -102,7 +104,7 @@ function Combo({ value, onChange, options, placeholder, maxLength }: { value: st
         }}
         onKeyDown={(e) => e.key === 'Escape' && open && (e.stopPropagation(), close())}
       />
-      {open && list.length > 0 && (
+      {open && (list.length > 0 || create) && (
         <ul className="txe-opts" role="listbox">
           {list.map((o) => (
             <li
@@ -119,6 +121,20 @@ function Combo({ value, onChange, options, placeholder, maxLength }: { value: st
               {o}
             </li>
           ))}
+          {create !== undefined && (
+            <li
+              role="option"
+              aria-selected={false}
+              className="create"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(create);
+                close();
+              }}
+            >
+              + Create “{create}”
+            </li>
+          )}
         </ul>
       )}
     </div>
