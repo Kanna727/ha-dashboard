@@ -1,3 +1,10 @@
+# [1.71.0](https://github.com/Kanna727/ha-dashboard/compare/v1.70.0...v1.71.0) (2026-11-14)
+
+
+### Features
+
+* **money:** Investments group and editable transaction group ([#95](https://github.com/Kanna727/ha-dashboard/issues/95)) ([2d4f763](https://github.com/Kanna727/ha-dashboard/commit/2d4f763a58f6f0492795bf02a21a45e61975e2f4)), closes [#94](https://github.com/Kanna727/ha-dashboard/issues/94)
+
 # [1.70.0](https://github.com/Kanna727/ha-dashboard/compare/v1.69.0...v1.70.0) (2026-11-13)
 
 
