@@ -123,7 +123,7 @@ describe('device details', () => {
   it('formats MACs and sorts IPs numerically', () => {
     expect(formatMac('02-00-5E-00-00-0B')).toBe('02:00:5e:00:00:0b');
     expect(formatMac('02005e00000b')).toBe('02:00:5e:00:00:0b');
-    expect(['192.0.2.10', '192.0.2.9', undefined, '10.0.0.1'].sort(compareIp)).toEqual(['10.0.0.1', '192.0.2.9', '192.0.2.10', undefined]);
+    expect(['192.0.2.10', '192.0.2.9', undefined, '192.0.2.1'].sort(compareIp)).toEqual(['192.0.2.1', '192.0.2.9', '192.0.2.10', undefined]);
   });
 
   it('reads IP, MAC, traffic when reported, and offline devices on request', () => {
@@ -182,8 +182,8 @@ describe('device details', () => {
     const c = [{ entity: 'device_tracker.x', mac: '02:00:5e:12:84:99', name: 'x', band: 'Other', guest: false, family: 'x', online: true } as Client];
     const registry = {
       devices: [
-        { id: 'a', name: 'A', areaId: null, disabled: false, identifiers: ['11:22:33:12:84:99'] },
-        { id: 'b', name: 'B', areaId: null, disabled: false, identifiers: ['44:55:66:12:84:99'] },
+        { id: 'a', name: 'A', areaId: null, disabled: false, identifiers: ['A2:22:33:12:84:99'] },
+        { id: 'b', name: 'B', areaId: null, disabled: false, identifiers: ['A6:55:66:12:84:99'] },
       ],
       entities: [],
     };
@@ -199,7 +199,7 @@ describe('mesh map', () => {
     hall: node('hall', { device_type: 'satellite', device_model: 'Node Y', mac: 'AA-00-00-00-00-02', uplink_mac: 'aa:00:00:00:00:01', connection_type: 'band5', signal_level: 3, client_count: '4' }),
     loft: node('loft', { device_type: 'satellite', mac: 'AA-00-00-00-00-03', uplink_mac: 'AA-00-00-00-00-02', connection_type: 'wired' }),
     lost: node('lost', { device_type: 'satellite', mac: 'AA-00-00-00-00-04', uplink_mac: 'AA-00-00-00-00-99' }, 'not_home'),
-    phone: node('phone', { band: '5G', connection: 'host', mac: 'BB-00-00-00-00-01' }),
+    phone: node('phone', { band: '5G', connection: 'host', mac: 'A6-00-00-00-00-01' }),
   };
 
   it('reads node trackers and keeps them out of the clients', () => {
@@ -241,13 +241,13 @@ describe('client names', () => {
     expect(
       parseClientNames({
         clients: {
-          '0C-4E-A0-30-2D-AC': { device: 'hub1' },
-          '0c:4e:a0:30:e6:90': { name: '  Bedroom hub ', area: 'bedroom' },
+          '0E-4E-A0-30-2D-AC': { device: 'hub1' },
+          '0e:4e:a0:30:e6:90': { name: '  Bedroom hub ', area: 'bedroom' },
           bad: 'x',
           empty: { name: '   ' },
         },
       }),
-    ).toEqual({ '0c:4e:a0:30:2d:ac': { device: 'hub1' }, '0c:4e:a0:30:e6:90': { name: 'Bedroom hub', area: 'bedroom' } });
+    ).toEqual({ '0e:4e:a0:30:2d:ac': { device: 'hub1' }, '0e:4e:a0:30:e6:90': { name: 'Bedroom hub', area: 'bedroom' } });
     expect(parseClientNames(null)).toEqual({});
   });
 
