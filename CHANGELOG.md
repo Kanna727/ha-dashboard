@@ -1,3 +1,15 @@
+# [1.73.0](https://github.com/Kanna727/ha-dashboard/compare/v1.72.0...v1.73.0) (2026-11-14)
+
+
+### Bug Fixes
+
+* **money:** the spent-this-month figure leaves out skipped categories ([#98](https://github.com/Kanna727/ha-dashboard/issues/98)) ([98ab452](https://github.com/Kanna727/ha-dashboard/commit/98ab45241410d03044b94dd8e06ebb6f3b0b8969))
+
+
+### Features
+
+* **money:** Untagged filter on the transactions card ([#97](https://github.com/Kanna727/ha-dashboard/issues/97)) ([601ac9d](https://github.com/Kanna727/ha-dashboard/commit/601ac9dd32bae5cd33d03ad56ace7ebbc6395b32))
+
 # [1.72.0](https://github.com/Kanna727/ha-dashboard/compare/v1.71.0...v1.72.0) (2026-11-14)
 
 
