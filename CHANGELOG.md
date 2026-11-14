@@ -1,3 +1,15 @@
+# [1.74.0](https://github.com/Kanna727/ha-dashboard/compare/v1.73.0...v1.74.0) (2026-11-14)
+
+
+### Bug Fixes
+
+* **health:** the medicines board shows today until midnight ([#107](https://github.com/Kanna727/ha-dashboard/issues/107)) ([0988b20](https://github.com/Kanna727/ha-dashboard/commit/0988b209e7b2342e30b0ddf06fe015e1abb8d0bc))
+
+
+### Features
+
+* **privacy:** generic secret and personal-data checks in the pre-commit hook ([#106](https://github.com/Kanna727/ha-dashboard/issues/106)) ([ae3cbbb](https://github.com/Kanna727/ha-dashboard/commit/ae3cbbbe4f2d7c784131bda002367c32cca1541a))
+
 # [1.73.0](https://github.com/Kanna727/ha-dashboard/compare/v1.72.0...v1.73.0) (2026-11-14)
 
 
