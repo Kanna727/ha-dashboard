@@ -14,9 +14,10 @@
 // change is still counted from this copy (the money app's month totals still
 // hold the original, which the copy lets us take out). `amount` is signed
 // (money out negative), `t` epoch ms. Pure helpers, unit-tested (txEdits.test.ts).
-import { isMove, type Tx } from './financeDetail';
+import { groupOf, isInvest, isMove, isTxGroup, type Tx, type TxGroup } from './financeDetail';
 
 export interface TxPatch {
+  group?: TxGroup;
   note?: string;
   merchant?: string;
   amount?: number;
@@ -67,6 +68,7 @@ function patchOf(v: unknown): TxPatch {
   const o = obj(v);
   const p: TxPatch = {};
   for (const k of PATCH_KEYS) if (str(o[k]) !== undefined) p[k] = str(o[k]);
+  if (isTxGroup(o.group)) p.group = o.group;
   if (num(o.amount) !== undefined) p.amount = num(o.amount);
   if (num(o.t) !== undefined) p.t = num(o.t);
   return p;
@@ -132,7 +134,8 @@ export function txKeys(txs: Tx[]): string[] {
 
 // Empty strings in a patch clear the field.
 const pick = (v: string | undefined, orig: string | undefined) => (v === undefined ? orig : v.trim() || undefined);
-const hasPatch = (p: TxPatch) => PATCH_KEYS.some((k) => p[k] !== undefined) || p.amount !== undefined || p.t !== undefined;
+const hasPatch = (p: TxPatch) =>
+  PATCH_KEYS.some((k) => p[k] !== undefined) || p.amount !== undefined || p.t !== undefined || p.group !== undefined;
 
 function applyPatch(tx: Tx, p: TxPatch): Tx & { note?: string } {
   const t = p.t ?? tx.t;
@@ -146,6 +149,7 @@ function applyPatch(tx: Tx, p: TxPatch): Tx & { note?: string } {
     sub: p.category !== undefined && p.sub === undefined ? undefined : pick(p.sub, tx.sub),
     account: pick(p.account, tx.account),
     note: p.note?.trim() || undefined,
+    group: p.group ?? tx.group,
   };
 }
 
@@ -180,7 +184,7 @@ export function applyEdits(txs: Tx[], e: TxEdits): ViewTx[] {
 // What a transaction adds to a month's spending: money out that isn't a move
 // between own accounts or a card bill payment, nor in a skipped category.
 function spendOf(t: Tx, skip: Set<string>): number {
-  if (t.amount >= 0 || isMove(t) || (t.category && skip.has(t.category.toLowerCase()))) return 0;
+  if (t.amount >= 0 || isMove(t) || isInvest(t) || (t.category && skip.has(t.category.toLowerCase()))) return 0;
   return -t.amount;
 }
 const monthOf = (t: Tx) => t.date.slice(0, 7);
@@ -237,7 +241,7 @@ export function withHidden(e: TxEdits, key: string, orig: Tx, hide: boolean, at 
   const synced = { ...e.synced };
   const cur = synced[key];
   const patch: TxPatch = {};
-  if (cur) for (const k of [...PATCH_KEYS, 'amount', 't'] as const) if (cur[k] !== undefined) (patch as Record<string, unknown>)[k] = cur[k];
+  if (cur) for (const k of [...PATCH_KEYS, 'amount', 't', 'group'] as const) if (cur[k] !== undefined) (patch as Record<string, unknown>)[k] = cur[k];
   if (hide || hasPatch(patch)) synced[key] = { ...patch, ...(hide ? { hidden: true } : {}), orig: origCopy(orig), at };
   else delete synced[key];
   return { ...e, synced };
@@ -258,6 +262,7 @@ export function diffPatch(orig: Tx, next: TxPatch & { note?: string }, origNote?
   if (next.category !== undefined && !same(next.category, orig.category)) p.category = next.category.trim();
   if (next.sub !== undefined && !same(next.sub, orig.sub)) p.sub = next.sub.trim();
   if (next.account !== undefined && !same(next.account, orig.account)) p.account = next.account.trim();
+  if (next.group !== undefined && next.group !== groupOf(orig)) p.group = next.group;
   if (next.amount !== undefined && Math.abs(next.amount - orig.amount) > 0.004) p.amount = next.amount;
   if (next.t !== undefined && Math.abs(next.t - orig.t) >= 60_000) p.t = next.t;
   return p;

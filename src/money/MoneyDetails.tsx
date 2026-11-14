@@ -11,6 +11,7 @@ import {
   frequencyLabel,
   groupFundOrders,
   groupTrades,
+  isInvest,
   isMove,
   shortScheme,
   tidyName,
@@ -424,6 +425,7 @@ const FILTERS: [TxFilter, string][] = [
   ['spends', 'Spends'],
   ['income', 'Income'],
   ['moves', 'Transfers'],
+  ['invests', 'Investments'],
 ];
 const FIRST = 12;
 const timeOf = (t: number) => {
@@ -435,7 +437,7 @@ const timeOf = (t: number) => {
 function TxRow({ t, onOpen }: { t: ViewTx; onOpen: (t: ViewTx) => void }) {
   const raw = t.merchant ? tidyName(t.merchant) : t.notes ? t.notes.split('/').slice(0, 2).join(' ') : 'Unknown';
   const who = t.note ?? raw;
-  const move = isMove(t);
+  const move = isMove(t) || isInvest(t);
   return (
     <li className={`tx ${move ? 'move' : ''} ${t.hidden ? 'is-hidden' : ''}`} onClick={() => onOpen(t)} role="button" tabIndex={0}>
       <i style={{ background: categoryColor(t.category) }} />
@@ -539,7 +541,7 @@ export function TransactionsPanel() {
       {!list.length && <p className="money-note">Nothing here in these two weeks.</p>}
       {list.length > FIRST && <MoreButton open={all} total={list.length} onClick={() => setAll(!all)} />}
       <p className="money-note">
-        Tap a transaction to change it. Transfers between your own accounts and card bill payments aren't counted in or out.
+        Tap a transaction to change it, or its group. Transfers between your own accounts, card bill payments and investments aren't counted in or out.
         {tiny.length > 0 && ` ${tiny.length} credits under ₹1 (interest) not shown.`}
         {a.updated !== undefined && ` Updated ${fmtWhen(a.updated, now)}.`}
       </p>
