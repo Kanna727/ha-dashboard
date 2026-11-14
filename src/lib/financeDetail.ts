@@ -705,12 +705,13 @@ export function flows(txs: Tx[]): { in: number; out: number } {
   return { in: inn, out };
 }
 
-export type TxFilter = 'all' | 'spends' | 'income' | 'moves' | 'invests';
+export type TxFilter = 'all' | 'spends' | 'income' | 'moves' | 'invests' | 'untagged';
 export function filterTx<T extends Tx>(txs: T[], f: TxFilter): T[] {
   if (f === 'spends') return txs.filter((t) => groupOf(t) === 'spend');
   if (f === 'income') return txs.filter((t) => groupOf(t) === 'income');
   if (f === 'moves') return txs.filter(isMove);
   if (f === 'invests') return txs.filter(isInvest);
+  if (f === 'untagged') return txs.filter((t) => !t.category?.trim() || /^untagged$/i.test(t.category.trim()));
   return txs;
 }
 

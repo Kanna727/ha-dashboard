@@ -432,6 +432,7 @@ const FILTERS: [TxFilter, string][] = [
   ['income', 'Income'],
   ['moves', 'Transfers'],
   ['invests', 'Investments'],
+  ['untagged', 'Untagged'],
 ];
 const FIRST = 12;
 const timeOf = (t: number) => {
