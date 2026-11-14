@@ -1,3 +1,10 @@
+# [1.72.0](https://github.com/Kanna727/ha-dashboard/compare/v1.71.0...v1.72.0) (2026-11-14)
+
+
+### Features
+
+* **money:** offer to create a new merchant, category or subcategory ([#96](https://github.com/Kanna727/ha-dashboard/issues/96)) ([e66dadd](https://github.com/Kanna727/ha-dashboard/commit/e66dadd9c997c444f06db1ba184849abe2185151))
+
 # [1.71.0](https://github.com/Kanna727/ha-dashboard/compare/v1.70.0...v1.71.0) (2026-11-14)
 
 
