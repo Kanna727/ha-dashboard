@@ -3549,3 +3549,4 @@ button.med-dose:not(:disabled):hover { background: var(--tile-hover); }
 .txe-combo input { padding-right: 34px; }
 .txe-combo::after { content: ''; position: absolute; right: 13px; top: 50%; width: 12px; height: 8px; margin-top: -4px; pointer-events: none; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a93a6' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center; transition: transform .15s; }
 .txe-combo:focus-within::after { transform: rotate(180deg); }
+.txe-opts li.create { color: var(--accent, var(--text)); font-weight: 700; }
