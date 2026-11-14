@@ -416,7 +416,7 @@ export function matchClients(r: RegistrySnapshot, clients: Client[]): Map<string
   return out;
 }
 
-// "98-77-D5-3D-79-04" / "9877d53d7904" → "98:77:d5:3d:79:04"; anything else unchanged (lower case).
+// "02-00-5E-00-00-10" / "02005e000010" → "02:00:5e:00:00:10"; anything else unchanged (lower case).
 export function formatMac(mac: string): string {
   const hex = mac.toLowerCase().replace(/[^0-9a-f]/g, '');
   return hex.length === 12 ? hex.match(/../g)!.join(':') : mac.toLowerCase();

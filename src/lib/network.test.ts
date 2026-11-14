@@ -149,10 +149,10 @@ describe('device details', () => {
       client('device_tracker.lamp', '02:00:5e:00:00:01'), // MAC connection
       client('device_tracker.washer', '02:00:5e:00:00:02'), // inside an appliance ID
       client('device_tracker.bulb', '02:00:5e:00:00:03'), // serial number
-      client('device_tracker.plug', '98:77:d5:3d:79:06'), // a neighbour's MAC two steps off: no match
+      client('device_tracker.plug', '02:00:5e:00:00:12'), // a neighbour's MAC two steps off: no match
       client('device_tracker.sensor', '02:00:5e:12:84:99'), // same last 3 bytes
       client('device_tracker.nas', '02:00:5e:00:00:99'), // nothing
-      { ...client('device_tracker.oven', '02:00:5e:00:00:20'), name: 'bosch-oven-264110546172032156' }, // ID in the host name
+      { ...client('device_tracker.oven', '02:00:5e:00:00:20'), name: 'bosch-oven-100000000000000001' }, // ID in the host name
     ];
     const dev = (id: string, name: string, extra: Partial<RegistryDevice>): RegistryDevice => ({ id, name, areaId: 'hall', disabled: false, ...extra });
     const registry = {
@@ -161,10 +161,10 @@ describe('device details', () => {
         dev('light', 'Hall Light', { macs: ['02:00:5e:00:00:01'] }),
         dev('wash', 'Dishwasher', { identifiers: ['BOSCH-SMV6-02005E000002'] }),
         dev('bulb', 'Desk Lamp', { identifiers: ['deviceid_1-2'], serial: '02005E000003' }),
-        dev('wiz', 'WiZ Plug', { macs: ['98:77:d5:3d:79:04'] }),
+        dev('wiz', 'WiZ Plug', { macs: ['02:00:5e:00:00:10'] }),
         dev('fp2', 'Presence', { identifiers: ['AA:BB:CC:12:84:99'] }),
         dev('off', 'Old', { macs: ['02:00:5e:00:00:99'], disabled: true }),
-        dev('oven', 'Oven', { identifiers: ['264110546172032156'] }),
+        dev('oven', 'Oven', { identifiers: ['100000000000000001'] }),
       ],
       entities: [{ entityId: 'device_tracker.lamp', deviceId: 'trk', platform: 'router' }],
     };
