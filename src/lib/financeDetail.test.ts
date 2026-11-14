@@ -244,6 +244,7 @@ describe('parseActivity', () => {
     const inv = { ...base, amount: -5000, category: 'Investment' };
     const cafe = { ...base, amount: -100, category: 'Food' };
     expect(filterTx([inv, cafe], 'invests')).toEqual([inv]);
+    expect(filterTx([inv, cafe, { ...base, amount: -1 }, { ...base, amount: -2, category: 'Untagged' }], 'untagged')).toHaveLength(2);
     expect(filterTx([inv, cafe], 'spends')).toEqual([cafe]);
     expect(flows([inv, cafe])).toEqual({ in: 0, out: 100 });
     const moved = { ...cafe, group: 'invest' as const };
