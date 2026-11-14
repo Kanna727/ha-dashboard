@@ -149,12 +149,11 @@ describe('medicines', () => {
     expect(doseStates(daySchedule([omega], at('10:00'), times), at('10:00'))).toEqual(['next', 'later']);
   });
 
-  it('moves on to tomorrow once the day is ticked off, or two hours after its last dose', () => {
-    expect(shownDay([omega], at('21:00'), times).offset).toBe(0); // dinner not ticked yet
-    expect(shownDay([omega], at('22:31'), times).offset).toBe(1);
+  it('shows today until midnight, even once everything is ticked or long past', () => {
+    expect(shownDay([omega], at('21:00'), times).offset).toBe(0);
+    expect(shownDay([omega], at('23:59'), times).offset).toBe(0);
     const all = { ...omega, taken: { [lunch]: 1, [doseKey(at('10:00'), 'after_dinner', 'a')]: 1 } };
-    expect(shownDay([all], at('20:00'), times).offset).toBe(0); // ticked early: stays till its time
-    expect(shownDay([all], at('20:31'), times).offset).toBe(1);
+    expect(shownDay([all], at('20:31'), times).offset).toBe(0);
   });
 
   it('describes the schedule', () => {
