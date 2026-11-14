@@ -239,6 +239,18 @@ describe('parseActivity', () => {
     expect(tableRows({ columns: ['a', 'b'], rows: [[1, 2], 'x'] })).toEqual([{ a: 1, b: 2 }]);
   });
 
+  it('groups investments, and the owner can regroup any transaction', () => {
+    const base = { t: 1, date: '2026-11-05' };
+    const inv = { ...base, amount: -5000, category: 'Investment' };
+    const cafe = { ...base, amount: -100, category: 'Food' };
+    expect(filterTx([inv, cafe], 'invests')).toEqual([inv]);
+    expect(filterTx([inv, cafe], 'spends')).toEqual([cafe]);
+    expect(flows([inv, cafe])).toEqual({ in: 0, out: 100 });
+    const moved = { ...cafe, group: 'invest' as const };
+    expect(filterTx([moved], 'invests')).toEqual([moved]);
+    expect(filterTx([{ ...inv, group: 'spend' as const }], 'spends')).toHaveLength(1);
+  });
+
   it('signs transactions (money out negative), newest first', () => {
     expect(a.transactions.map((t) => t.amount)).toEqual([-500, -133.39, 9000]);
     expect(a.from).toBe('2026-10-24');
