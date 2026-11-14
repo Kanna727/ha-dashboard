@@ -224,19 +224,10 @@ export function daySchedule(list: MedicineDef[], day: Date, times: Record<MedSlo
 
 const allTaken = (s: SlotDoses) => Object.values(s.byPerson).every((ds) => ds.every((d) => d.taken));
 
-// Untaken doses stay on the board this long after the day's last dose time.
-export const LATE_HOURS = 2;
-
-// The day the panel shows: today, until its last dose time has passed with
-// everything ticked, or LATE_HOURS after it; then tomorrow.
+// The day the panel shows: always today, until midnight (never tomorrow's
+// schedule early). `offset` stays so the panel's tomorrow look still compiles.
 export function shownDay(list: MedicineDef[], now: Date, times: Record<MedSlot, string>): { offset: 0 | 1; slots: SlotDoses[] } {
-  const today = daySchedule(list, now, times);
-  const last = today.at(-1)?.at.getTime();
-  const t = now.getTime();
-  const over = last === undefined || t >= last + LATE_HOURS * 3_600_000 || (t >= last && today.every(allTaken));
-  if (!over) return { offset: 0, slots: today };
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  return { offset: 1, slots: daySchedule(list, tomorrow, times) };
+  return { offset: 0, slots: daySchedule(list, now, times) };
 }
 
 // Each slot's look: every dose ticked (done), past its time by GRACE_MIN with
