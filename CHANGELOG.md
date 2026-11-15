@@ -1,3 +1,10 @@
+# [1.77.0](https://github.com/Kanna727/ha-dashboard/compare/v1.76.0...v1.77.0) (2026-11-15)
+
+
+### Features
+
+* **storage:** shared storage layer and in-dashboard setup editor ([#109](https://github.com/Kanna727/ha-dashboard/issues/109)) ([807cefd](https://github.com/Kanna727/ha-dashboard/commit/807cefd1045885e92c91e5eeae0bdef785532083))
+
 # [1.76.0](https://github.com/Kanna727/ha-dashboard/compare/v1.75.0...v1.76.0) (2026-11-15)
 
 
