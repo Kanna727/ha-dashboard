@@ -155,6 +155,30 @@ export const haApi: HassApi = {
     }
     return out;
   },
+  async fetchStateHistory(entityIds, hours) {
+    const conn = await getConnection();
+    const res = await conn.sendMessagePromise<Record<string, { s: string; lu: number }[]>>({
+      type: 'history/history_during_period',
+      start_time: new Date(Date.now() - hours * 3600_000).toISOString(),
+      entity_ids: entityIds,
+      minimal_response: true,
+      no_attributes: true,
+      significant_changes_only: false,
+    });
+    return Object.fromEntries(Object.entries(res).map(([id, rows]) => [id, rows.map((r) => ({ t: r.lu * 1000, s: r.s }))]));
+  },
+  async createAutomation(id, config) {
+    const conn = await getConnection();
+    const auth = conn.options.auth;
+    if (!auth) throw new Error('Not signed in');
+    if (auth.expired) await auth.refreshAccessToken();
+    const r = await fetch(`${HASS_URL}/api/config/automation/config/${encodeURIComponent(id)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${auth.accessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...config }),
+    });
+    if (!r.ok) throw Object.assign(new Error(r.status === 401 || r.status === 403 ? 'Unauthorized' : `Home Assistant answered ${r.status}`), { code: r.status === 401 || r.status === 403 ? 'unauthorized' : 'failed' });
+  },
   async fetchLastStates(entityIds, hours) {
     const conn = await getConnection();
     const start = new Date(Date.now() - hours * 3600_000).toISOString();
