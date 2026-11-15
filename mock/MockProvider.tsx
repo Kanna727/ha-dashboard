@@ -6,6 +6,7 @@ import { store } from '../src/ha/store';
 import { hsToRgb, kelvinToRgb } from '../src/lib/lightColor';
 import { bucketStart } from '../src/lib/driveHistory';
 import { mockActivity, mockMoneyHistory, mockSnapshot } from './finance';
+import { mockOrders } from './investOrders';
 import { partnerActivity, partnerMoneyHistory, partnerSnapshot } from './financePartner';
 import { CAR_TEST, CarTestPanel } from './CarTestPanel';
 import { installMockCommute, MOCK_COMMUTE_CARD } from './commute';
@@ -368,6 +369,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
           if (urlPath === 'dashboard-money') return mockMoneyHistory();
           if (urlPath === 'dashboard-fold-data') return mockSnapshot();
           if (urlPath === 'dashboard-fold-activity') return mockActivity();
+          if (urlPath === 'dashboard-fold-orders') return mockOrders();
           // The second person's (mock/financePartner.ts).
           if (urlPath === 'dashboard-money-partner') return partnerMoneyHistory();
           if (urlPath === 'dashboard-fold-data-partner') return partnerSnapshot();

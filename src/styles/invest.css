@@ -1,0 +1,27 @@
+/* ---------- Returns, Gains, Next 60 days (src/money/InvestPanels.tsx) ---------- */
+.money-returns .pos, .money-gains .pos, .money-forecast .pos { color: var(--ok); }
+.money-returns .neg, .money-gains .neg, .money-forecast .neg { color: var(--danger); }
+.inv-rows { list-style: none; margin: 12px 0 0; padding: 0; display: grid; }
+.inv-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 2px; border-bottom: 1px dashed rgba(255, 255, 255, 0.07); min-width: 0; }
+.inv-row:last-child { border-bottom: 0; }
+.inv-row.dim { opacity: 0.55; }
+.inv-row-name { display: grid; min-width: 0; font-size: 14px; font-weight: 600; }
+.inv-row-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-row-name small { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-row-nums { display: grid; justify-items: end; flex: none; font-variant-numeric: tabular-nums; }
+.inv-row-nums b { font-size: 15px; }
+.inv-row-nums small { font-size: 12px; font-weight: 600; }
+.inv-note { margin: 12px 0 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.inv-fy { align-items: flex-start; }
+.inv-split { display: grid; justify-items: end; gap: 1px; }
+.inv-split small { font-size: 11.5px; }
+.fc-chart { width: 100%; height: 120px; margin-top: 12px; display: block; }
+.fc-line { fill: none; stroke: var(--accent); stroke-width: 2; }
+.fc-zero { stroke: var(--danger); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.7; vector-effect: non-scaling-stroke; }
+.fc-low { fill: var(--panel); stroke: var(--accent); stroke-width: 2; }
+.fc-low.neg { stroke: var(--danger); }
+.fc-events { margin-top: 10px; }
+.fc-events li.dim { opacity: 0.55; }
+.inv-why { margin-top: 10px; padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; text-align: left; }
+.inv-assume { margin: 8px 0 0; padding-left: 18px; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.inv-gains-title { display: block; margin-top: 14px; }
