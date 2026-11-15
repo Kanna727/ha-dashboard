@@ -1,3 +1,10 @@
+# [1.76.0](https://github.com/Kanna727/ha-dashboard/compare/v1.75.0...v1.76.0) (2026-11-15)
+
+
+### Features
+
+* **home:** house insights with one-tap automations ([#111](https://github.com/Kanna727/ha-dashboard/issues/111)) ([1e850b1](https://github.com/Kanna727/ha-dashboard/commit/1e850b173a3e6aab945ba2e50e9c0d61efb298d6))
+
 # [1.75.0](https://github.com/Kanna727/ha-dashboard/compare/v1.74.0...v1.75.0) (2026-11-15)
 
 
