@@ -83,6 +83,31 @@ export function financeEntities(): HassEntity[] {
   ];
 }
 
+// The fictional funds the snapshot lists (and mock/investOrders.ts has orders for).
+const fund = (scheme: string, category: string, invested: number, gainPct: number, risk: string) => ({
+  amc: `${scheme.split(' ')[0]} Mutual Fund`,
+  category,
+  invested,
+  value: Math.round(invested * (1 + gainPct / 100)),
+  gain: Math.round((invested * gainPct) / 100),
+  gain_pct: gainPct,
+  plan: 'Direct',
+  risk,
+  scheme: `${scheme} - Direct Plan Growth`,
+  units: Math.round(invested / 37),
+});
+export const MOCK_HOLDINGS = [
+  fund('Northwind Flexi Cap Fund', 'Equity', 62000, 14.2, 'Aggressive'),
+  fund('Bluebird Large Cap Fund', 'Equity', 48000, 9.8, 'Moderately Aggressive'),
+  fund('Harbor Short Term Debt Fund', 'Fixed Income', 36000, 6.1, 'Conservative'),
+  fund('Meadow Balanced Advantage Fund', 'Hybrid', 28000, 7.4, 'Balanced'),
+  fund('Summit Midcap Opportunities Fund', 'Equity', 22000, 18.6, 'Aggressive'),
+  fund('Riverside Liquid Fund', 'Fixed Income', 18000, 3.2, 'Conservative'),
+  fund('Lantern Gold Savings Fund', 'Commodity', 12000, -2.4, 'Aggressive'),
+  fund('Orchard Arbitrage Fund', 'Hybrid', 9900, 3.9, 'Balanced'),
+  fund('Cedar Small Cap Fund', 'Equity', 6000, 22.5, 'Aggressive'),
+];
+
 // The chart data the sync writes into the hidden 'dashboard-money' dashboard
 // (lib/finance.ts, parseMoneyHistory): a year of daily net worth (salary in on
 // the 1st, card bills and rent out, ending at today's figure), twelve months of
@@ -106,6 +131,9 @@ export function mockMoneyHistory() {
   }
   const shift = banks + investments - debt - days[days.length - 1][1];
   const net_worth = days.map(([d, x], i) => [d, Math.round(x + (shift * i) / days.length)]);
+  // The money app's history sometimes loses an account for a day (the cleaned chart smooths it).
+  const glitch = Math.floor(net_worth.length * 0.62);
+  net_worth[glitch] = [net_worth[glitch][0], Math.round(Number(net_worth[glitch][1]) * 0.38)];
   const spending = Array.from({ length: 12 }, (_, i) => {
     const m = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
     const part = i === 11 ? now.getDate() / 30 : 1;
@@ -151,29 +179,6 @@ export function mockSnapshot() {
         : { total_due: Math.round(v * 0.6), min_due: 200, due_date: off(-6 - i), statement_date: off(-26 + i), paid: true, paid_amount: Math.round(v * 0.6), remaining: 0 },
     synced: iso,
   }));
-  const fund = (scheme: string, category: string, invested: number, gainPct: number, risk: string) => ({
-    amc: `${scheme.split(' ')[0]} Mutual Fund`,
-    category,
-    invested,
-    value: Math.round(invested * (1 + gainPct / 100)),
-    gain: Math.round((invested * gainPct) / 100),
-    gain_pct: gainPct,
-    plan: 'Direct',
-    risk,
-    scheme: `${scheme} - Direct Plan Growth`,
-    units: Math.round(invested / 37),
-  });
-  const holdings = [
-    fund('Northwind Flexi Cap Fund', 'Equity', 62000, 14.2, 'Aggressive'),
-    fund('Bluebird Large Cap Fund', 'Equity', 48000, 9.8, 'Moderately Aggressive'),
-    fund('Harbor Short Term Debt Fund', 'Fixed Income', 36000, 6.1, 'Conservative'),
-    fund('Meadow Balanced Advantage Fund', 'Hybrid', 28000, 7.4, 'Balanced'),
-    fund('Summit Midcap Opportunities Fund', 'Equity', 22000, 18.6, 'Aggressive'),
-    fund('Riverside Liquid Fund', 'Fixed Income', 18000, 3.2, 'Conservative'),
-    fund('Lantern Gold Savings Fund', 'Commodity', 12000, -2.4, 'Aggressive'),
-    fund('Orchard Arbitrage Fund', 'Hybrid', 9900, 3.9, 'Balanced'),
-    fund('Cedar Small Cap Fund', 'Equity', 6000, 22.5, 'Aggressive'),
-  ];
   const factors = (util: number, inquiries: number, rating: string) => [
     { impact: 'high', name: 'Payment history', rating: 'Excellent', unit: '%', value: 100 },
     { impact: 'high', name: 'Credit utilization', rating: 'Good', unit: '%', value: util },
@@ -280,16 +285,16 @@ export function mockSnapshot() {
       invested: 241900,
       gain: funds - 241900,
       gain_pct: +(((funds - 241900) / 241900) * 100).toFixed(2),
-      count: holdings.length,
+      count: MOCK_HOLDINGS.length,
       allocation: { equity: 58.4, debt: 24.9, other: 16.7 },
       market_cap: { large: 41.2, mid: 18.5, small: 12.1, other: 28.2 },
       by_category: ['Equity', 'Fixed Income', 'Hybrid', 'Commodity'].map((category) => {
-        const hs = holdings.filter((h) => h.category === category);
+        const hs = MOCK_HOLDINGS.filter((h) => h.category === category);
         const value = hs.reduce((a, h) => a + h.value, 0);
         const invested = hs.reduce((a, h) => a + h.invested, 0);
         return { category, value, invested, gain: value - invested, gain_pct: +(((value - invested) / invested) * 100).toFixed(2), schemes: hs.length };
       }),
-      holdings,
+      holdings: MOCK_HOLDINGS,
       top_sectors: [
         { name: 'Banks', pct: 16.2 },
         { name: 'Govt-Sec', pct: 11.4 },
