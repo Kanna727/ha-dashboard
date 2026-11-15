@@ -14,6 +14,7 @@ import { MedicinesPanel } from '../medicines/MedicinesPanel';
 import { NetworkDevicesPanel, NetworkPanel } from '../panels/NetworkPanel';
 import { RoomsPanel } from '../panels/RoomsPanel';
 import { TopBar } from '../panels/TopBar';
+import { InsightsPanel } from '../panels/InsightsPanel';
 import { WeatherPanel } from '../panels/WeatherPanel';
 import { BillPanel, CardsPanel, InvestmentsPanel, MoneySummary, PassbookPanel, ScoresPanel, SpendPanel } from '../money/MoneyPanels';
 import { useHasMoney } from '../money/useFinance';
@@ -46,7 +47,7 @@ function pageColumns(page: Exclude<Page, 'clean'>, desktop: boolean): { classNam
     case 'home':
       return {
         className: 'cols cols-home',
-        columns: [[card('rooms', <RoomsPanel />), card('attention', <AttentionPanel />)], [card('glance', <GlancePanel />)]],
+        columns: [[card('rooms', <RoomsPanel />), card('attention', <AttentionPanel />)], [card('glance', <GlancePanel />), card('insights', <InsightsPanel />)]],
       };
     case 'energy':
       return {
@@ -205,6 +206,7 @@ const LABELS: Record<string, string> = {
   meals: 'Meals',
   medicines: 'Medicines',
   energyHistory: 'Energy history',
+  insights: 'House insights',
   health: 'Health',
   network: 'Network',
   batteries: 'Batteries',
@@ -241,6 +243,7 @@ function PhoneTab({ page }: { page: Page }) {
       {page === 'home' && (
         <>
           <AttentionPanel />
+          <InsightsPanel />
           <GlancePanel />
           <RoomsPanel />
         </>

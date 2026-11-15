@@ -5,6 +5,7 @@ import { HaProvider, haApi } from './ha/HaProvider';
 import { cacheConfig, fetchConfig, loadCachedConfig } from './config/load';
 import './styles/fonts.css';
 import './styles/app.css';
+import './styles/insights.css';
 
 // Mock provider is only pulled in for `npm run mock`; the dynamic import is
 // dead-code-eliminated from production builds.

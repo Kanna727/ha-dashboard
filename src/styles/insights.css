@@ -1,0 +1,27 @@
+/* ---------- House insights (src/panels/InsightsPanel.tsx) ---------- */
+.ins-list { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+.ins-row { border-radius: 14px; background: var(--card); border: 1px solid var(--border); border-left-width: 4px; padding: 10px 12px; min-width: 0; }
+.ins-row.alert { border-left-color: var(--danger); }
+.ins-row.notice { border-left-color: var(--warn); }
+.ins-row.info { border-left-color: #60a5fa; }
+.ins-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ins-icon { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--tile); color: var(--muted); }
+.ins-row.alert .ins-icon { color: var(--danger); }
+.ins-row.notice .ins-icon { color: var(--warn); }
+.ins-text { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.ins-text b { font-size: 14px; line-height: 1.3; }
+.ins-text small { font-size: 12.5px; line-height: 1.35; }
+.ins-act { display: flex; align-items: center; gap: 4px; flex: none; }
+.ins-x { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; }
+.ins-x:hover { background: var(--tile-hover); color: var(--text); }
+.ins-done { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 700; color: var(--ok); }
+.ins-note { margin: 8px 0 0 44px; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ins-draft { margin: 10px 0 0 44px; padding: 10px 12px; border-radius: 12px; background: var(--tile); display: grid; gap: 6px; font-size: 13px; }
+.ins-draft p { margin: 0; }
+.ins-draft ol { margin: 2px 0; padding-left: 18px; line-height: 1.5; }
+.ins-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.ins-err { margin: 0; font-size: 12.5px; font-weight: 700; color: var(--danger); }
+.ins-habits { margin-top: 12px; padding: 0; border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.ins-habits:hover { color: var(--text); }
+.ins-empty { margin: 10px 0 0; font-size: 13.5px; }
+.ins-foot { margin: 14px 0 0; font-size: 12px; line-height: 1.5; }
