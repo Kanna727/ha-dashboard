@@ -1,3 +1,15 @@
+# [1.75.0](https://github.com/Kanna727/ha-dashboard/compare/v1.74.0...v1.75.0) (2026-11-15)
+
+
+### Bug Fixes
+
+* **ci:** push the release commit and tag with an admin token ([#108](https://github.com/Kanna727/ha-dashboard/issues/108)) ([90218a0](https://github.com/Kanna727/ha-dashboard/commit/90218a05a4caa736f889e6dc27c1f5c21291eab7))
+
+
+### Features
+
+* **money:** investments engine, gains and 60-day forecast ([#110](https://github.com/Kanna727/ha-dashboard/issues/110)) ([0bf81ca](https://github.com/Kanna727/ha-dashboard/commit/0bf81ca819d783c31d4c994b1ff69159f4c7e095))
+
 # [1.74.0](https://github.com/Kanna727/ha-dashboard/compare/v1.73.0...v1.74.0) (2026-11-14)
 
 

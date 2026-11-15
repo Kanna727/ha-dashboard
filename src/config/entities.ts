@@ -84,6 +84,9 @@ export const FINANCE = {
   snapshotStore: 'dashboard-fold-data',
   activityStore: 'dashboard-fold-activity',
   editsStore: 'dashboard-money-edits',
+  ordersStore: 'dashboard-fold-orders',
+  fundClasses: {} as Record<string, 'equity' | 'debt' | 'other'>,
+  expectedIncome: [] as { name: string; amount: number; day: number }[],
   ...cfg.FINANCE,
 };
 // Whose money the page shows (FINANCE.people). One person with no name when
@@ -95,6 +98,7 @@ export interface MoneyPerson {
   store: string;
   snapshotStore: string;
   activityStore: string;
+  ordersStore: string;
 }
 export const MONEY_PEOPLE: MoneyPerson[] = (cfg.FINANCE?.people?.length ? cfg.FINANCE.people : [{ id: 'me', name: '' }]).map((p, i) => ({
   id: p.id,
@@ -103,6 +107,7 @@ export const MONEY_PEOPLE: MoneyPerson[] = (cfg.FINANCE?.people?.length ? cfg.FI
   store: p.store ?? (i === 0 ? FINANCE.store : `${FINANCE.store}-${p.id}`),
   snapshotStore: p.snapshotStore ?? (i === 0 ? FINANCE.snapshotStore : `${FINANCE.snapshotStore}-${p.id}`),
   activityStore: p.activityStore ?? (i === 0 ? FINANCE.activityStore : `${FINANCE.activityStore}-${p.id}`),
+  ordersStore: p.ordersStore ?? (i === 0 ? FINANCE.ordersStore : `${FINANCE.ordersStore}-${p.id}`),
 }));
 export const MEDICINES = {
   people: MEALS.people,
