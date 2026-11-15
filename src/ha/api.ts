@@ -141,6 +141,11 @@ export interface HassApi {
   // Fires an event on HA's bus (admin users only), e.g. for a trigger-based template sensor.
   fireEvent(eventType: string, data: Record<string, unknown>): Promise<void>;
   fetchHistory(entityIds: string[], hours: number): Promise<Record<string, HistoryPoint[]>>;
+  // Every state change of each entity over the last `hours`, as the state text (on, off, open, ...)
+  // so non-numeric entities can be read too (the house insights). Within the recorder's keep days.
+  fetchStateHistory(entityIds: string[], hours: number): Promise<Record<string, { t: number; s: string }[]>>;
+  // Adds an automation (HA's config API, so it needs an admin login); HA reloads automations itself.
+  createAutomation(id: string, config: object): Promise<void>;
   // Each entity's newest state in the window that isn't unavailable/unknown, with
   // its time in ms. For last-known values of non-numeric entities (e.g. binary sensors).
   fetchLastStates(entityIds: string[], hours: number): Promise<Record<string, LastState | undefined>>;

@@ -22,6 +22,7 @@ import { extraHistory, extraStatChanges, extraStatistics, MOCK_MACS, SPEEDTEST_I
 import { ENERGY } from '../src/config/entities';
 import { engineFor } from '../src/storage';
 import { setAdmin } from '../src/storage/admin';
+import { mockStateHistory, plugDailyStats } from './insights';
 import { mockMedicines } from './medicines';
 import { HA_EVENT } from '../src/lib/medicines';
 import { mockCalendarChange, mockCalendarEvents, mockHabits, mockTodoItems, PLANNER_STATES, subscribeMockTodo, todoService } from './planner';
@@ -279,7 +280,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         }));
         return Object.fromEntries(
           // A day's max is close enough to its mean for the fake series.
-          ids.map((id) => [id, (extraStatistics(id, days) ?? (id === ENERGY.total ? series.slice(-3) : id === ENERGY.legacyTotal ? series.slice(0, -3) : [])).map((p) => ({ ...p, max: (p as { max?: number }).max ?? p.mean }))]),
+          ids.map((id) => [id, (plugDailyStats(id, days) ?? extraStatistics(id, days) ?? (id === ENERGY.total ? series.slice(-3) : id === ENERGY.legacyTotal ? series.slice(0, -3) : [])).map((p) => ({ ...p, max: (p as { max?: number }).max ?? p.mean }))]),
         );
       },
       async fetchStatChanges(ids, days, period) {
@@ -311,6 +312,21 @@ export default function MockProvider({ children }: { children: ReactNode }) {
             extraStatChanges(id, days) ?? (id.endsWith('_odometer') ? series((d) => d.km) : id.endsWith('_trips_today') ? series((d) => d.trips, 21) : id.endsWith('_drive_time_today') ? series((d) => d.minutes, 21) : []),
           ]),
         );
+      },
+      async fetchStateHistory(entityIds, hours) {
+        return mockStateHistory(entityIds, hours);
+      },
+      // The automations added from the insights: kept in localStorage so a reload shows them as added.
+      async createAutomation(id, config) {
+        console.info('[mock] create automation', id, config);
+        // ?mockViewer behaves like a non-admin login (HA refuses the config API).
+        if (new URLSearchParams(window.location.search).has('mockViewer')) throw Object.assign(new Error('Unauthorized'), { code: 'unauthorized' });
+        try {
+          const all = JSON.parse(localStorage.getItem('mockAutomations') ?? '{}');
+          localStorage.setItem('mockAutomations', JSON.stringify({ ...all, [id]: config }));
+        } catch {
+          /* storage blocked */
+        }
       },
       async fetchLastStates(entityIds) {
         if (entityIds.some((id) => CAR_LAST_STATES[id])) if (!FROZEN) await new Promise((r) => setTimeout(r, 1500));
