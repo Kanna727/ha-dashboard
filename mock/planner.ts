@@ -17,6 +17,7 @@ const at = (n: number, hhmm: string) => atTime(addDays(today(), n), hhmm).toISOS
 function seed(id: string): TodoEntry[] {
   let n = 0;
   const item = (summary: string, extra: Partial<TodoEntry> = {}): TodoEntry => ({ uid: `${id}-${++n}`, summary, status: 'needs_action', ...extra });
+  if (id === 'todo.dashboard_data') return []; // the storage inbox (storage/inbox.ts) starts empty
   if (id === 'todo.todos')
     return [
       item('Fix the balcony light', { due: on(-2) }),
@@ -37,8 +38,8 @@ function seed(id: string): TodoEntry[] {
   return ['Milk', 'Eggs', 'Bananas', 'Bread', 'Detergent', 'Dish soap', 'Tomatoes', 'Rice'].map((s) => item(s, s === 'Bread' ? { status: 'completed' } : {}));
 }
 
-export const TODO_LISTS = ['todo.todos', 'todo.reminders', 'todo.shopping_list'];
-const NAMES: Record<string, string> = { 'todo.todos': 'Todos', 'todo.reminders': 'Reminders', 'todo.shopping_list': 'Shopping list', 'calendar.family': 'Family', 'calendar.appointments': 'Appointments' };
+export const TODO_LISTS = ['todo.todos', 'todo.reminders', 'todo.shopping_list', 'todo.dashboard_data'];
+const NAMES: Record<string, string> = { 'todo.dashboard_data': 'Dashboard data', 'todo.todos': 'Todos', 'todo.reminders': 'Reminders', 'todo.shopping_list': 'Shopping list', 'calendar.family': 'Family', 'calendar.appointments': 'Appointments' };
 
 export const PLANNER_STATES: Record<string, HassEntity> = Object.fromEntries(
   [...TODO_LISTS, 'calendar.family', 'calendar.appointments'].map((id) => [
@@ -58,16 +59,18 @@ const lists = new Map<string, TodoEntry[]>();
 const listeners = new Map<string, Set<(items: TodoEntry[]) => void>>();
 const key = (id: string) => `mockTodo:${id}`;
 
+// Read from localStorage every time, so two tabs (two screens) share a list.
 function get(id: string): TodoEntry[] {
-  if (!lists.has(id)) {
-    let saved: TodoEntry[] | null = null;
-    try {
-      saved = JSON.parse(localStorage.getItem(key(id)) ?? 'null');
-    } catch {
-      /* storage blocked */
+  try {
+    const saved: TodoEntry[] | null = JSON.parse(localStorage.getItem(key(id)) ?? 'null');
+    if (saved) {
+      lists.set(id, saved);
+      return saved;
     }
-    lists.set(id, saved ?? seed(id));
+  } catch {
+    /* storage blocked */
   }
+  if (!lists.has(id)) lists.set(id, seed(id));
   return lists.get(id)!;
 }
 function set(id: string, items: TodoEntry[]) {
@@ -78,6 +81,17 @@ function set(id: string, items: TodoEntry[]) {
     /* storage blocked */
   }
   listeners.get(id)?.forEach((l) => l(items));
+}
+
+// The list's items as todo/item/list would answer, for the lists this mock keeps.
+export const mockTodoItems = (id: string): TodoEntry[] | null => (TODO_LISTS.includes(id) ? get(id) : null);
+
+// Another tab changed a list: tell the ones following it here.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    const id = TODO_LISTS.find((l) => key(l) === e.key);
+    if (id) listeners.get(id)?.forEach((l) => l(get(id)));
+  });
 }
 
 export function subscribeMockTodo(id: string, cb: (items: TodoEntry[]) => void): () => void {

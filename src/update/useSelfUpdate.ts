@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useEntity } from '../ha/store';
 import { useHass, useHassStatus } from '../ha/api';
 import { BUILD_HELPER, CONFIG_HASH } from '../config/entities';
-import { cacheConfig, fetchConfig } from '../config/load';
+import { cacheConfig, fetchConfig, isDraftPreview } from '../config/load';
 import { saveSnapshotNow } from '../ha/snapshot';
 
 declare const __BUILD_HASH__: string;
@@ -30,6 +30,8 @@ export function useSelfUpdate() {
 
   useEffect(() => {
     // Mock builds (the deployed preview included) update from version.json instead (previewUpdate.ts).
+    // The setup editor's live preview runs a draft config and must keep it.
+    if (isDraftPreview()) return;
     if (import.meta.env.VITE_MOCK || BUILD_HASH === 'dev' || !target || target === 'unknown' || target === 'unavailable') return;
     if (target === DEPLOY_ID) {
       sessionStorage.removeItem(GUARD_KEY);

@@ -12,6 +12,7 @@ import { MusicPlayer, PlayerDots, activePlayers } from './MusicPlayer';
 import { cycle, useSwipe } from '../hooks/useSwipe';
 import { StatusDialog } from './StatusDialog';
 import { ArrangeButton } from '../layout/Canvas';
+import { SetupButton } from '../setup/SetupHost';
 import { usePage } from '../layout/pages';
 import { useMoneySection } from '../money/sections';
 import { VacationButton } from '../components/VacationMode';
@@ -171,6 +172,7 @@ export function TopBar({ compact = false }: { compact?: boolean }) {
         <LeaveHomeButton />
         <VacationButton />
         {page !== 'clean' && !(page === 'money' && !moneySection) && <ArrangeButton />}
+        <SetupButton />
       </div>
       <div className="big-clock">{now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</div>
     </header>

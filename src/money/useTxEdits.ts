@@ -42,10 +42,7 @@ export function useSpendAdjust(month: string, skip: string[] = [], person?: stri
   return useMemo(() => monthAdjust(view, month, skip), [view, month, key]);
 }
 
-export function saveErrorText(e: unknown): string {
-  const msg = String((e as { message?: unknown })?.message ?? e);
-  return /unauthor|admin/i.test(msg) ? 'Only an admin login can save changes to Home Assistant.' : `Couldn’t save: ${msg}`;
-}
+export { saveErrorText } from '../storage';
 
 const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 

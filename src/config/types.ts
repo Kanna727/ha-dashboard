@@ -191,6 +191,10 @@ export interface DashboardConfig {
   // Medicines panel settings. The medicines themselves are added and edited on
   // the dashboard and kept in HA (MEDICINES.store; see lib/medicines.ts).
   MEDICINES?: MedicinesConfig;
+  // Shared storage (storage/). `inbox`: the Local To-do list a login that can't
+  // write HA's dashboards (a non-admin) saves into instead; default
+  // 'todo.dashboard_data', used when it exists. `false` turns the inbox off.
+  STORAGE?: { inbox?: string | false };
   // Optional: settings added after the config moved into HA must be optional
   // with defaults in entities.ts, because the stored config can be older than
   // the app.

@@ -308,3 +308,16 @@ Check the configuration, then reload template entities (Tools → YAML → Templ
 Its actions keep the `doses` whose time is now (or 30 minutes ago, then marked late), whose `days` include today (`now().isoweekday() % 7`, 0 = Sunday), whose `until` hasn't passed, and whose key `YYYY-MM-DD|<slot>|<person>` isn't in `taken`; then send one message per person and dose time to that person's phone (a `choose` on the person id, each branch a `notify.mobile_app_<phone>` call). Give the on-time and the late message the same `tag` (Android) and `apns-collapse-id` (iOS) so the second replaces the first.
 
 **Low stock.** An automation at a fixed time (say 10:00) that lists every `medicines` entry not paused that is `empty`, or whose `runs_out` date is fewer than `low_days` days away, and sends the list to each phone.
+
+## 9. Saving as a non-admin login (optional)
+
+The dashboard keeps its own data (the arranged layout, medicines, habits, your changes to transactions, names you give network devices) in hidden dashboards, and Home Assistant only lets an **admin** save those. A login that isn't an admin (a family member, a wall screen) can read everything, but without this step its changes are refused with "Only an admin login can save changes to Home Assistant."
+
+The fix is one list that every login may write:
+
+1. Settings → Devices & services → Add integration → **Local To-do**. Name it **Dashboard data**, so the entity is `todo.dashboard_data`. (To use another list, put its entity ID in the config: `STORAGE: { inbox: 'todo.my_list' }`; `STORAGE: { inbox: false }` turns the feature off.)
+2. That's all. Leave the list alone: the dashboard keeps one item per document in it (the item's name is the document's name, its description the document as JSON). Don't tick, rename or delete those items.
+
+How it works: a non-admin login saves into the list; every screen reads both the list and the hidden dashboard and takes the newer copy; the next time a screen with an admin login is open it moves the newer copy into the hidden dashboard. A document saved by a non-admin therefore reaches the other screens at once and the hidden dashboard whenever an admin screen next looks. Nothing is created in Home Assistant by the dashboard itself, and the list holds nothing the hidden dashboards don't.
+
+Check it: open the dashboard with the non-admin login, rename a device in the Network popup, then open it as an admin and look for the same name.
