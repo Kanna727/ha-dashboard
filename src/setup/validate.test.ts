@@ -46,7 +46,7 @@ describe('errors', () => {
     c = setAt(c, ['CAR_DETAIL', 'model'], { url: 'x.glb', paint: 'green', paintMaterial: '(' });
     c = setAt(c, ['BATTERIES'], { low: 150 });
     const m = messages(validateConfig(c));
-    expect(m).toContain('WEATHER: "Weather Home" isn’t an entity ID (like light.kitchen)');
+    expect(m).toContain('WEATHER: "Weather Home" isn’t an entity ID (like domain.entity_name)');
     expect(m).toContain('COMMUTE.arriveBy: "25:00" isn’t a time like 07:30');
     expect(m).toContain('CAR_DETAIL.model.paint: "green" isn’t a colour like #2c3527');
     expect(m).toContain('CAR_DETAIL.model.paintMaterial: Not a valid pattern');

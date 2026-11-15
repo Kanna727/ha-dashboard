@@ -50,7 +50,7 @@ const typeName = (v: unknown) => (v === null ? 'nothing' : Array.isArray(v) ? 'a
 function checkEntity(id: string, domains: readonly string[] | undefined, path: Path, out: Issue[], known?: Known) {
   if (!ENTITY_ID.test(id)) {
     // An empty entity is allowed (the card shows as unavailable); a malformed one isn't.
-    out.push(id ? { path, level: 'error', message: `"${id}" isn’t an entity ID (like light.kitchen)` } : { path, level: 'warn', message: 'Not chosen yet; this shows as unavailable' });
+    out.push(id ? { path, level: 'error', message: `"${id}" isn’t an entity ID (like domain.entity_name)` } : { path, level: 'warn', message: 'Not chosen yet; this shows as unavailable' });
     return;
   }
   if (domains?.length && !domains.includes(id.split('.')[0])) out.push({ path, level: 'warn', message: `Usually ${domains.map((d) => `${d}.*`).join(' or ')}, not ${id.split('.')[0]}.*` });

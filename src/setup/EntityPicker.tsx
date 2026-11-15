@@ -51,7 +51,7 @@ export function EntityPicker({
   value,
   onChange,
   domains,
-  placeholder = 'light.kitchen',
+  placeholder = 'domain.entity_name',
   invalid,
 }: {
   value: string;
