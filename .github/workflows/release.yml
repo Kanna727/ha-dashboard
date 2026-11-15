@@ -32,6 +32,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v7
         with:
           node-version: 22
@@ -53,7 +54,9 @@ jobs:
             @semantic-release/exec@6
             @semantic-release/git@10
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # An admin's token: the protect-main ruleset only lets admins push the
+          # release commit and tag; GITHUB_TOKEN cannot be a bypass actor.
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
 
   deploy:
     # HA is only reachable on the home network, so the runner joins the tailnet
