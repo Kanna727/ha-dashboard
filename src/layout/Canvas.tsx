@@ -157,7 +157,7 @@ export function FreeCanvas({ name, page, className, columns }: { name: string; p
   // Saves this page's layout into the shared document, keeping the other pages'.
   const latest = useRef(shared);
   latest.current = shared;
-  const save = useCallback((l: object) => latest.current.save(withPageLayout(latest.current.data, page, l)), [page]);
+  const save = useCallback((l: object) => latest.current.save((current) => withPageLayout(current, page, l)), [page]);
   useEffect(() => {
     if (!known || data !== null || editing) return;
     const old = parseLayout(legacyLayout(name), idsKey.split(','), mainRef.current?.clientWidth ?? 0);
@@ -171,7 +171,7 @@ export function FreeCanvas({ name, page, className, columns }: { name: string; p
       tone: 'warn',
       title: 'Layout not saved to Home Assistant',
       text:
-        (e as { code?: string }).code === 'unauthorized'
+        ['unauthorized', 'not-admin'].includes((e as { code?: string }).code ?? '')
           ? 'Saving the layout needs an admin login. Other devices keep the old layout.'
           : 'Other devices keep the old layout; move a card again to retry.',
     });

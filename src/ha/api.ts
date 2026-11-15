@@ -9,6 +9,9 @@ export type ConnectionStatus = 'connecting' | 'live' | 'reconnecting';
 export interface HassStatus {
   status: ConnectionStatus;
   userName?: string;
+  // The logged-in user is an admin (undefined until known). Saving to HA's
+  // dashboards, creating automations and editing the config need one.
+  isAdmin?: boolean;
 }
 
 export interface HistoryPoint {
@@ -165,16 +168,11 @@ export interface HassApi {
   fetchRegistry(): Promise<RegistrySnapshot>;
   // Every automation's raw config (automation/config), for the thresholds they gate on.
   fetchAutomationConfigs(): Promise<AutomationConfig[]>;
-  // The arranged card layout every device shares (layout/Canvas.tsx), kept as the
-  // config of a hidden dashboard: null if it was never saved. Saving needs an admin
-  // user and creates the dashboard the first time.
-  fetchLayout(): Promise<unknown | null>;
-  saveLayout(layout: object): Promise<void>;
-  // Calls back whenever any device saves the layout.
-  subscribeLayout(cb: () => void): () => void;
-  // A small JSON document kept as the config of another hidden storage
-  // dashboard (`urlPath`), the same way as the layout: null if never saved;
-  // saving needs an admin and creates the dashboard (titled `title`) the first time.
+  // A small JSON document kept as the config of a hidden storage dashboard
+  // (`urlPath`): null if never saved; saving needs an admin and creates the
+  // dashboard (titled `title`) the first time. Only storage/ calls these three
+  // (the shared layout, medicines, habits, client names, ... all go through its
+  // hooks, which add conflict handling and the non-admin inbox).
   fetchStore(urlPath: string): Promise<unknown | null>;
   saveStore(urlPath: string, data: object, title: string): Promise<void>;
   subscribeStore(urlPath: string, cb: () => void): () => void;

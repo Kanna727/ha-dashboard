@@ -20,16 +20,24 @@ import { mockPlayCamera } from './camera';
 import { ALERTS_TEST, AlertsTestPanel } from './AlertsTestPanel';
 import { extraHistory, extraStatChanges, extraStatistics, MOCK_MACS, SPEEDTEST_IDS, speedTestResult } from './extras';
 import { ENERGY } from '../src/config/entities';
+import { engineFor } from '../src/storage';
+import { setAdmin } from '../src/storage/admin';
 import { mockStateHistory, plugDailyStats } from './insights';
 import { mockMedicines } from './medicines';
 import { HA_EVENT } from '../src/lib/medicines';
-import { mockCalendarChange, mockCalendarEvents, mockHabits, PLANNER_STATES, subscribeMockTodo, todoService } from './planner';
+import { mockCalendarChange, mockCalendarEvents, mockHabits, mockTodoItems, PLANNER_STATES, subscribeMockTodo, todoService } from './planner';
 import { AUTOMATIONS, FIXTURES, FORECAST, FORECAST_HOURLY, REGISTRY, TODO_ITEMS, TODO_ITEMS_2 } from './fixtures';
 
 // Offline stand-in for HA: serves fixtures, applies service calls locally
 // and logs them, so layouts can be exercised without touching the house.
 let states = { ...FIXTURES, ...PLANNER_STATES };
 const MOCK_LAYOUT = 'mockSharedLayout';
+const MOCK_PARAMS = new URLSearchParams(window.location.search);
+const MOCK_VIEWER = MOCK_PARAMS.has('mockViewer');
+const MOCK_LATENCY = Number(MOCK_PARAMS.get('mockLatency')) || 0;
+const lag = () => (MOCK_LATENCY ? new Promise<void>((r) => setTimeout(r, MOCK_LATENCY * (0.5 + Math.random()))) : Promise.resolve());
+const storeKey = (urlPath: string) => (urlPath === 'dashboard-layout' ? MOCK_LAYOUT : `mockStore:${urlPath}`);
+setAdmin(!MOCK_VIEWER);
 installMockCommute();
 
 function patch(id: string, update: Partial<HassEntity> & { attributes?: Record<string, unknown> }) {
@@ -186,7 +194,7 @@ function useMockStatus() {
     const id = window.setTimeout(() => setStatus('live'), ms);
     return () => window.clearTimeout(id);
   }, [param]);
-  return useMemo(() => ({ status, userName: 'Alex' }), [status]);
+  return useMemo(() => ({ status, userName: 'Alex', isAdmin: !MOCK_VIEWER }), [status]);
 }
 
 export default function MockProvider({ children }: { children: ReactNode }) {
@@ -334,7 +342,7 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         };
       },
       async fetchTodo(entityId) {
-        return entityId.includes('to_do') ? TODO_ITEMS_2 : TODO_ITEMS;
+        return mockTodoItems(entityId) ?? (entityId.includes('to_do') ? TODO_ITEMS_2 : TODO_ITEMS);
       },
       subscribeTodo(entityId, cb) {
         return subscribeMockTodo(entityId, cb);
@@ -355,31 +363,14 @@ export default function MockProvider({ children }: { children: ReactNode }) {
       async fetchAutomationConfigs() {
         return AUTOMATIONS;
       },
-      // The shared layout lives in localStorage; other tabs follow through the storage event.
-      async fetchLayout() {
-        try {
-          return JSON.parse(localStorage.getItem(MOCK_LAYOUT) ?? 'null');
-        } catch {
-          return null;
-        }
-      },
-      async saveLayout(layout) {
-        localStorage.setItem(MOCK_LAYOUT, JSON.stringify(layout));
-        window.dispatchEvent(new Event(MOCK_LAYOUT));
-      },
-      subscribeLayout(cb) {
-        const on = (e: Event) => (e.type === MOCK_LAYOUT || (e as StorageEvent).key === MOCK_LAYOUT) && cb();
-        window.addEventListener('storage', on);
-        window.addEventListener(MOCK_LAYOUT, on);
-        return () => {
-          window.removeEventListener('storage', on);
-          window.removeEventListener(MOCK_LAYOUT, on);
-        };
-      },
-      // Other hidden-dashboard documents (client names): localStorage per url_path, followed across tabs.
+      // The hidden-dashboard documents (the shared layout, client names, medicines, ...):
+      // localStorage per url_path, followed across tabs through the storage event.
+      // ?mockLatency=<ms> makes every call take about that long (two tabs saving at
+      // once), ?mockViewer refuses saves like a non-admin login.
       async fetchStore(urlPath) {
+        await lag();
         try {
-          const saved = JSON.parse(localStorage.getItem(`mockStore:${urlPath}`) ?? 'null');
+          const saved = JSON.parse(localStorage.getItem(storeKey(urlPath)) ?? 'null');
           // The money sync's documents, as it would write them (mock/finance.ts).
           if (saved) return saved;
           if (urlPath === 'dashboard-money') return mockMoneyHistory();
@@ -398,11 +389,13 @@ export default function MockProvider({ children }: { children: ReactNode }) {
         }
       },
       async saveStore(urlPath, data) {
-        localStorage.setItem(`mockStore:${urlPath}`, JSON.stringify(data));
-        window.dispatchEvent(new Event(`mockStore:${urlPath}`));
+        await lag();
+        if (MOCK_VIEWER) throw Object.assign(new Error('Unauthorized'), { code: 'unauthorized' });
+        localStorage.setItem(storeKey(urlPath), JSON.stringify(data));
+        window.dispatchEvent(new Event(storeKey(urlPath)));
       },
       subscribeStore(urlPath, cb) {
-        const key = `mockStore:${urlPath}`;
+        const key = storeKey(urlPath);
         const on = (e: Event) => (e.type === key || (e as StorageEvent).key === key) && cb();
         window.addEventListener('storage', on);
         window.addEventListener(key, on);
@@ -428,6 +421,18 @@ export default function MockProvider({ children }: { children: ReactNode }) {
     }),
     [],
   );
+
+  // Test hook (mock build only): save through the same engine as the app, e.g.
+  // __mockStorage.update('dashboard-names', (cur) => ({ ...cur, x: 1 })).
+  useEffect(() => {
+    const w = window as unknown as { __mockStorage: unknown };
+    w.__mockStorage = {
+      update: (path: string, change: (cur: unknown) => object) => engineFor(api, path, 'Test').update(change),
+      get: (path: string) => engineFor(api, path, 'Test').get(),
+      status: (path: string) => engineFor(api, path, 'Test').status(),
+      flush: (path: string) => engineFor(api, path, 'Test').flush(),
+    };
+  }, [api]);
 
   return (
     <HassContext.Provider value={api}>

@@ -45,6 +45,8 @@ HA_URL=http://homeassistant.local HA_TOKEN=<admin long-lived token>   python scr
 
 The schema, with comments, is in [`src/config/types.ts`](src/config/types.ts).
 
+**Or edit it on the dashboard.** Signed in as an admin, the cog in the top bar opens the setup editor: a form for every setting with entity pickers that suggest what Home Assistant has, checks as you type, and a live preview on your real data. Saving applies your edits to the stored config and every open screen reloads onto it. On a fresh install (Home Assistant holds no config yet) it opens by itself and can start from your areas and entities. **Export** downloads the config as a `dashboard.config.ts`; keep that file in step if you also use `deploy.py --config-only`, which replaces whatever the editor saved.
+
 ## Releases and deploys
 
 Versions follow [SemVer](https://semver.org) and are derived from [Conventional Commit](https://www.conventionalcommits.org) PR titles. PRs are squash-merged, and CI checks the title:

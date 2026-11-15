@@ -2,9 +2,10 @@ import { StrictMode, Suspense, lazy, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import localConfig from 'virtual:dashboard-config';
 import { HaProvider, haApi } from './ha/HaProvider';
-import { cacheConfig, fetchConfig, loadCachedConfig } from './config/load';
+import { cacheConfig, fetchConfig, loadCachedConfig, loadDraftConfig, loadMockOverride, NoConfigError } from './config/load';
 import './styles/fonts.css';
 import './styles/app.css';
+import './styles/setup.css';
 import './styles/insights.css';
 import './styles/invest.css';
 
@@ -19,8 +20,9 @@ const splash = (content: ReactNode) => root.render(<div className="splash">{cont
 
 async function boot() {
   // Dev and mock builds embed the config. Production fetches it from HA after
-  // login, and uses this device's cached copy when it has one.
-  const cfg = localConfig ?? loadCachedConfig();
+  // login, and uses this device's cached copy when it has one. The setup editor's
+  // live preview runs the draft instead (a mock build runs the config it saved).
+  const cfg = loadDraftConfig() ?? loadMockOverride() ?? localConfig ?? loadCachedConfig();
   if (!cfg) {
     // First visit on this device. The bundle is a single file, so the app's
     // modules have already run (with an empty config) by the time the fetch
@@ -35,6 +37,18 @@ async function boot() {
       if (cacheConfig(await fetchConfig((urlPath) => haApi.fetchLovelaceConfig(urlPath)))) window.location.reload();
       else splash('This browser blocks local storage, which the dashboard needs. Allow site data for this page.');
     } catch (err) {
+      if (err instanceof NoConfigError) {
+        // A fresh install: nothing to show yet, so start the setup editor.
+        const { SetupOnly } = await import('./setup/SetupOnly');
+        root.render(
+          <StrictMode>
+            <Provider>
+              <SetupOnly />
+            </Provider>
+          </StrictMode>,
+        );
+        return;
+      }
       const msg = (err as { message?: string })?.message ?? String(err);
       splash(`Couldn't load the dashboard config from Home Assistant (${msg}). Deploy it with python scripts/deploy.py --config-only.`);
     }

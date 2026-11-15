@@ -117,6 +117,7 @@ export const MEDICINES = {
   haSensor: undefined as string | undefined,
   ...cfg.MEDICINES,
 };
+export const STORAGE = { inbox: undefined as string | false | undefined, ...cfg.STORAGE };
 export const PLANNER = {
   todos: 'todo.todos',
   reminders: 'todo.reminders',

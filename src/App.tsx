@@ -13,6 +13,8 @@ import { DesktopLayout, PhoneLayout, TabletLayout } from './layout/Layouts';
 import { useSelfUpdate } from './update/useSelfUpdate';
 import { useVacuumAutoOpen } from './vacuum/useAutoOpen';
 import { setMoneyLayout } from './money/privacy';
+import { isDraftPreview } from './config/load';
+import { SetupHost } from './setup/SetupHost';
 
 type LayoutName = 'tablet' | 'phone' | 'desktop';
 
@@ -28,6 +30,7 @@ function detectLayout(): LayoutName {
 
 export function App() {
   const [layout, setLayout] = useState<LayoutName>(detectLayout);
+  const preview = isDraftPreview();
   useSelfUpdate();
   useVacuumAutoOpen();
   // Before paint, so amounts on the Money page start blurred or not without a flash.
@@ -44,12 +47,18 @@ export function App() {
       <ModalProvider>
         <ToastProvider>
           <SkyBackdrop />
-          <Alerts />
-          <Doorbell />
-          <NightMode layout={layout} />
-          <IdleHome layout={layout} />
-          <ScreenPower />
-          <MedicinesToHa />
+          {/* The setup editor's preview shows the layout only: no alerts, camera, night screen or HA writes. */}
+          {!preview && (
+            <>
+              <Alerts />
+              <Doorbell />
+              <NightMode layout={layout} />
+              <IdleHome layout={layout} />
+              <ScreenPower />
+              <MedicinesToHa />
+              <SetupHost />
+            </>
+          )}
           {layout === 'phone' ? <PhoneLayout /> : layout === 'tablet' ? <TabletLayout /> : <DesktopLayout />}
         </ToastProvider>
       </ModalProvider>

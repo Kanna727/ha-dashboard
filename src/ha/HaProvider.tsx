@@ -21,7 +21,7 @@ import {
   type StatPoint,
   type TodoItem,
 } from './api';
-import { LAYOUT_DASHBOARD } from '../config/load';
+import { setAdmin } from '../storage/admin';
 import { playCamera } from './cameraStream';
 import { loadSnapshot, persistSnapshots } from './snapshot';
 import { store } from './store';
@@ -88,7 +88,8 @@ function getConnection(): Promise<Connection> {
 // which fetches the config through it before the app renders.
 // JSON documents kept as the config of hidden storage dashboards (the shared
 // layout, the client names). Reading works for any logged-in user; saving and
-// creating the dashboard need an admin.
+// creating the dashboard need an admin. Only storage/ uses these, through
+// fetchStore / saveStore / subscribeStore below.
 async function fetchDoc(urlPath: string): Promise<unknown | null> {
   const conn = await getConnection();
   try {
@@ -360,15 +361,6 @@ export const haApi: HassApi = {
     // One that can't be read (e.g. removed meanwhile) is skipped rather than failing them all.
     return res.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
   },
-  fetchLayout() {
-    return fetchDoc(LAYOUT_DASHBOARD);
-  },
-  saveLayout(layout) {
-    return saveDoc(LAYOUT_DASHBOARD, layout, 'Dashboard layout', 'mdi:view-dashboard-edit-outline');
-  },
-  subscribeLayout(cb) {
-    return subscribeDoc(LAYOUT_DASHBOARD, cb);
-  },
   fetchStore(urlPath) {
     return fetchDoc(urlPath);
   },
@@ -417,6 +409,7 @@ export function HaProvider({ children }: { children: ReactNode }) {
   });
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
   const [userName, setUserName] = useState<string | undefined>(() => localStorage.getItem('dashUserName') ?? undefined);
+  const [isAdmin, setIsAdmin] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
     let unsubEntities: (() => void) | undefined;
@@ -438,6 +431,8 @@ export function HaProvider({ children }: { children: ReactNode }) {
         .then((u) => {
           setUserName(u.name);
           localStorage.setItem('dashUserName', u.name);
+          setAdmin(u.is_admin);
+          setIsAdmin(u.is_admin);
         })
         .catch(() => undefined);
     });
@@ -449,7 +444,7 @@ export function HaProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const statusValue = useMemo(() => ({ status, userName }), [status, userName]);
+  const statusValue = useMemo(() => ({ status, userName, isAdmin }), [status, userName, isAdmin]);
 
   // First visit on this device: nothing cached yet, so wait for live data.
   if (!hasSnapshot && status !== 'live') {
