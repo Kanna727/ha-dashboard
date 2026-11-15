@@ -6,6 +6,7 @@ import { cacheConfig, fetchConfig, loadCachedConfig, loadDraftConfig, loadMockOv
 import './styles/fonts.css';
 import './styles/app.css';
 import './styles/setup.css';
+import './styles/invest.css';
 
 // Mock provider is only pulled in for `npm run mock`; the dynamic import is
 // dead-code-eliminated from production builds.

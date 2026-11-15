@@ -21,6 +21,7 @@ import { NetWorthPanel } from '../money/MoneyCharts';
 import { BalanceSheetPanel, EpfPanel, FundsPanel, InsurancePanel, StocksPanel, TransactionsPanel } from '../money/MoneyDetails';
 import { useMoneySection, type MoneySection } from '../money/sections';
 import { MoneyStrip, MoneyTiles } from '../money/MoneyTiles';
+import { ForecastPanel, ReturnsPanel } from '../money/InvestPanels';
 import { CleanPage, useHasClean } from './CleanPage';
 import { AppointmentsPanel } from '../planner/AppointmentsPanel';
 import { CalendarPanel } from '../planner/CalendarPanel';
@@ -90,7 +91,7 @@ function moneyColumns(section: MoneySection): { className: string; columns: Card
         className: 'cols cols-money',
         columns: [
           [card('moneySummary', <MoneySummary />), card('networth', <NetWorthPanel />), card('balance', <BalanceSheetPanel />)],
-          [card('bill', <BillPanel />)],
+          [card('bill', <BillPanel />), card('forecast', <ForecastPanel />)],
         ],
       };
     case 'spending':
@@ -106,7 +107,7 @@ function moneyColumns(section: MoneySection): { className: string; columns: Card
       return {
         className: 'cols cols-2',
         columns: [
-          [card('investments', <InvestmentsPanel />), card('funds', <FundsPanel />)],
+          [card('investments', <InvestmentsPanel />), card('returns', <ReturnsPanel />), card('funds', <FundsPanel />)],
           [card('epf', <EpfPanel />), card('stocks', <StocksPanel />)],
         ],
       };
@@ -137,6 +138,7 @@ function MoneyPhone() {
         <>
           <MoneySummary />
           <BillPanel />
+          <ForecastPanel />
           <NetWorthPanel />
           <BalanceSheetPanel />
         </>
@@ -158,6 +160,7 @@ function MoneyPhone() {
       {section === 'invest' && (
         <>
           <InvestmentsPanel />
+          <ReturnsPanel />
           <FundsPanel />
           <StocksPanel />
           <EpfPanel />
@@ -223,6 +226,9 @@ const LABELS: Record<string, string> = {
   balance: 'Own and owe',
   transactions: 'Transactions',
   funds: 'Mutual funds',
+  returns: 'Returns',
+  gains: 'Gains',
+  forecast: 'Next 60 days',
   stocks: 'Stocks',
   epf: 'EPF',
   insurance: 'Insurance',

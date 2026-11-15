@@ -6,6 +6,7 @@ import { daysUntil, rowColors, fmtInr, fmtShort, monthSpend, netWorthRange, type
 import { Amt } from './Amt';
 import { OwnerTag } from './parts';
 import { useFinance } from './useFinance';
+import { useCleanNetWorth } from './useInvest';
 import { useMonthSubs } from './MoneyDetails';
 import { frequencyLabel } from '../lib/financeDetail';
 import { useMoneyHistory, useSnapshot } from './useMoneyHistory';
@@ -101,7 +102,9 @@ export function NetWorthPanel() {
   const now = useNow(60_000);
   const [range, setRange] = useState(1);
   const [picked, setPicked] = useState<number | null>(null);
-  const all = withToday(h, f?.netWorth, now);
+  // One-day glitches in the money app's history are smoothed away (lib/invest/netWorth.ts).
+  const cleaned = useCleanNetWorth(withToday(h, f?.netWorth, now));
+  const all = cleaned.points;
   const r = netWorthRange(all, RANGES[range][1], now.getTime() + DAY);
   if (r.points.length < 2) return null;
   const last = r.points[r.points.length - 1];
@@ -154,6 +157,11 @@ export function NetWorthPanel() {
             High <Amt>{fmtShort(r.high.v)}</Amt> · {fmtDay(r.high.t)}
           </span>
         </div>
+      )}
+      {cleaned.removed.length > 0 && (
+        <p className="inv-note" title={cleaned.removed.map((x) => `${fmtDay(x.t)}: the money app said ${fmtShort(x.v)}`).join('\n')}>
+          {cleaned.removed.length} day{cleaned.removed.length === 1 ? '' : 's'} the money app reported oddly {cleaned.removed.length === 1 ? 'was' : 'were'} smoothed (an account missing for a day).
+        </p>
       )}
     </section>
   );

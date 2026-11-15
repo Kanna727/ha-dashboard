@@ -240,6 +240,12 @@ export interface DashboardConfig {
   // details into (defaults 'dashboard-fold-data', 'dashboard-fold-activity').
   // `editsStore`: where the dashboard keeps the owner's own changes to the
   // transactions (default 'dashboard-money-edits'; created on the first save).
+  // `ordersStore`: the hidden dashboard the sync writes every mutual fund order
+  // into (default 'dashboard-fold-orders'; see lib/invest/orders.ts): the returns,
+  // gains and SIP forecast are computed from it. `fundClasses`: a fund's tax class
+  // by a piece of its name, when the guess from its category is wrong.
+  // `expectedIncome`: money that arrives each month (`day` of the month), counted
+  // in the cash-flow forecast.
   // `people`: more than one person's money (each their own money-app sync):
   // `id` (a short slug), `name`, the helpers' `prefix`, and their own `store`,
   // `snapshotStore`, `activityStore` (defaults: the first person uses the keys
@@ -247,7 +253,7 @@ export interface DashboardConfig {
   // Both / one person switch, and tags each account, card and transaction.
   FINANCE?: {
     prefix?: string;
-    people?: { id: string; name: string; prefix?: string; store?: string; snapshotStore?: string; activityStore?: string }[];
+    people?: { id: string; name: string; prefix?: string; store?: string; snapshotStore?: string; activityStore?: string; ordersStore?: string }[];
     hide?: ('tablet' | 'phone' | 'desktop')[];
     cardColors?: Record<string, [string, string]>;
     store?: string;
@@ -256,6 +262,9 @@ export interface DashboardConfig {
     snapshotStore?: string;
     activityStore?: string;
     editsStore?: string;
+    ordersStore?: string;
+    fundClasses?: Record<string, 'equity' | 'debt' | 'other'>;
+    expectedIncome?: { name: string; amount: number; day: number }[];
   };
   // Planner page (planner/): habits, to-do lists and the master calendar.
   // `todos`, `reminders`, `shopping`: HA todo lists (defaults 'todo.todos',
